@@ -1,7 +1,12 @@
-export default function AuthLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return <>{children}</>;
+import DefaultNavbar from "@/components/navbar/DefaultNavbar";
+import Footer from "@/components/footer/Footer";
+
+export default function UserLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      <DefaultNavbar />
+      {children}
+      <Footer />
+    </>
+  );
 }

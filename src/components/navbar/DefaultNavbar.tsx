@@ -3,24 +3,35 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { logout } from "@/services/auth.service";
+import { useAuthUser, ROLE_LABEL } from "@/hooks/useAuthUser";
 
 export default function DefaultNavbar() {
-  // Untuk sementara digunakan untuk testing UI.
-  // false = guest
-  // true = user login
-  const isLoggedIn = false;
+  const router = useRouter();
+
+  // user = null  → guest
+  // user = {...} → sudah login (data dari tabel profiles)
+  const { user, loading } = useAuthUser();
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+  const handleLogout = async () => {
+    await logout();
+    setIsProfileOpen(false);
+    setIsDrawerOpen(false);
+    router.push("/login");
+    router.refresh();
+  };
 
   return (
     <>
       {/*NAVBAR*/}
       <nav className="fixed top-0 z-50 w-full shadow-[0_24px_48px_rgba(14,23,68,0.06)]">
         <div className="bg-white/80 backdrop-blur-[24px]">
-          {/* Ubah di baris ini: tambahkan justify-between (atau justify-evenly jika ingin ada spacing seimbang di ujung kiri-kanan) */}
           <div className="mx-auto flex h-20 max-w-screen-2xl items-center justify-between px-4 md:px-8">
-            {/* BRAND: Hapus `flex-1` di sini agar ukurannya menyesuaikan isi saja */}
+            {/* BRAND */}
             <Link
               href="/"
               className="flex min-w-0 items-center gap-1.5 md:gap-2"
@@ -65,7 +76,7 @@ export default function DefaultNavbar() {
             {/* DESKTOP ACTIONS */}
             <div className="relative hidden items-center gap-4 md:flex">
               {/* GUEST */}
-              {!isLoggedIn && (
+              {!loading && !user && (
                 <>
                   <Link
                     href="/login"
@@ -84,7 +95,7 @@ export default function DefaultNavbar() {
               )}
 
               {/* USER */}
-              {isLoggedIn && (
+              {user && (
                 <>
                   <button
                     type="button"
@@ -128,10 +139,12 @@ export default function DefaultNavbar() {
 
                           <div>
                             <h3 className="text-lg font-extrabold leading-tight">
-                              Robby
+                              {user.fullName}
                             </h3>
 
-                            <p className="mt-1 text-xs opacity-90">Customer</p>
+                            <p className="mt-1 text-xs opacity-90">
+                              {ROLE_LABEL[user.role]}
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -174,9 +187,7 @@ export default function DefaultNavbar() {
                         <button
                           type="button"
                           className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm font-bold text-red-600 transition hover:bg-red-50"
-                          onClick={() => {
-                            console.log("Logout");
-                          }}
+                          onClick={handleLogout}
                         >
                           ↪<span>Logout</span>
                         </button>
@@ -187,7 +198,7 @@ export default function DefaultNavbar() {
               )}
             </div>
 
-            {/* MOBILE MENU BUTTON (Di mobile otomatis terdorong ke kanan karena justify-between) */}
+            {/* MOBILE MENU BUTTON */}
             <button
               type="button"
               aria-label="Buka navigasi"
@@ -203,20 +214,19 @@ export default function DefaultNavbar() {
 
       {/*MOBILE BACKDROP*/}
       <div
-        className={`fixed inset - 0 top - 20 z - [55] bg - slate - 900 / 45 backdrop - blur - sm transition - opacity md:hidden ${
+        className={`fixed inset-0 top-20 z-[55] bg-slate-900/45 backdrop-blur-sm transition-opacity md:hidden ${
           isDrawerOpen
             ? "pointer-events-auto opacity-100"
             : "pointer-events-none opacity-0"
-        } `}
+        }`}
         onClick={() => setIsDrawerOpen(false)}
       />
 
-      {/*        MOBILE DRAWER
-       */}
+      {/*MOBILE DRAWER*/}
       <aside
-        className={`fixed left - 0 top - 20 z - [60] flex h - [calc(100vh - 5rem)] w - [min(20rem, 82vw)] flex - col bg - white p - 4 shadow - [24px_0_48px_rgba(14, 23, 68, 0.14)] transition - transform duration - 300 md:hidden ${
+        className={`fixed left-0 top-20 z-[60] flex h-[calc(100vh-5rem)] w-[min(20rem,82vw)] flex-col bg-white p-4 shadow-[24px_0_48px_rgba(14,23,68,0.14)] transition-transform duration-300 md:hidden ${
           isDrawerOpen ? "translate-x-0" : "-translate-x-[102%]"
-        } `}
+        }`}
       >
         {/* Drawer Header */}
         <div className="flex items-center justify-between gap-4 border-b border-[#cac4cf]/65 pb-4">
@@ -280,9 +290,8 @@ export default function DefaultNavbar() {
             </Link>
           </div>
 
-          {/*            GUEST MOBILE
-           */}
-          {!isLoggedIn && (
+          {/* GUEST MOBILE */}
+          {!loading && !user && (
             <div className="mt-1 flex flex-col gap-3">
               <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#64748b]">
                 Akun
@@ -306,9 +315,8 @@ export default function DefaultNavbar() {
             </div>
           )}
 
-          {/*            USER MOBILE
-           */}
-          {isLoggedIn && (
+          {/* USER MOBILE */}
+          {user && (
             <>
               {/* User Card */}
               <div className="flex items-center gap-3.5 rounded-2xl border border-[#cac4cf]/45 bg-gradient-to-br from-[#004796]/[0.08] to-[#045ec2]/[0.04] px-4 py-3.5">
@@ -326,10 +334,12 @@ export default function DefaultNavbar() {
                   </p>
 
                   <h3 className="truncate text-base font-extrabold text-[#111e3f]">
-                    Robby
+                    {user.fullName}
                   </h3>
 
-                  <p className="text-xs text-[#475569]">Profil Customer</p>
+                  <p className="text-xs text-[#475569]">
+                    Profil {ROLE_LABEL[user.role]}
+                  </p>
                 </div>
               </div>
 
@@ -376,9 +386,7 @@ export default function DefaultNavbar() {
                 <button
                   type="button"
                   className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-br from-[#004796] to-[#045ec2] px-4 py-3.5 font-semibold text-white"
-                  onClick={() => {
-                    console.log("Logout");
-                  }}
+                  onClick={handleLogout}
                 >
                   ↪ Logout
                 </button>

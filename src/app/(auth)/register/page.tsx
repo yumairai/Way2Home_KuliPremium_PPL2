@@ -3,8 +3,12 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { register } from "@/services/auth.service";
 
 export default function RegisterPage() {
+  const router = useRouter();
+
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirmation, setShowPasswordConfirmation] =
     useState(false);
@@ -17,6 +21,8 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [terms, setTerms] = useState(false);
+
+  const [submitError, setSubmitError] = useState("");
 
   const [errors, setErrors] = useState({
     name: "",
@@ -36,6 +42,11 @@ export default function RegisterPage() {
       passwordConfirmation: "",
       terms: "",
     };
+
+    // Nama
+    if (name.trim().length < 2) {
+      newErrors.name = "Nama lengkap wajib diisi.";
+    }
 
     // Email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -81,22 +92,22 @@ export default function RegisterPage() {
     }
 
     setIsLoading(true);
+    setSubmitError("");
 
-    // TODO:
-    // Nanti di sini kita sambungkan ke API register Way2Home.
-
-    console.log({
-      name,
-      email,
-      phone_number: phoneNumber,
+    const result = await register({
+      name: name.trim(),
+      email: email.trim(),
+      phone: phoneNumber,
       password,
-      password_confirmation: passwordConfirmation,
     });
 
-    // Temporary loading simulation
-    setTimeout(() => {
+    if (!result.ok) {
+      setSubmitError(result.message);
       setIsLoading(false);
-    }, 1000);
+      return;
+    }
+
+    router.push("/login?registered=1");
   };
 
   return (
@@ -147,6 +158,13 @@ export default function RegisterPage() {
               Silakan isi data di bawah ini untuk mendaftar
             </p>
           </div>
+
+          {/* Submit Error */}
+          {submitError && (
+            <div className="mb-4 text-center text-sm text-red-500">
+              {submitError}
+            </div>
+          )}
 
           <form onSubmit={handleSubmit}>
             {/* =========================
@@ -469,7 +487,7 @@ export default function RegisterPage() {
       >
         <div>
           <Image
-            src="/images/logo-w2h.png"
+            src="/images/aset/logo-w2h.png"
             alt="Logo Way2Home"
             width={120}
             height={120}

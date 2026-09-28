@@ -1,10 +1,16 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, Suspense, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter, useSearchParams } from "next/navigation";
+import { login } from "@/services/auth.service";
 
-export default function LoginPage() {
+function LoginForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const registered = searchParams.get("registered") === "1";
+
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -12,24 +18,24 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  const [errorMessage, setErrorMessage] = useState("");
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     setIsLoading(true);
+    setErrorMessage("");
 
-    // TODO:
-    // Nanti login API Way2Home dipanggil di sini.
+    const result = await login(email.trim(), password);
 
-    console.log({
-      email,
-      password,
-      rememberMe,
-    });
-
-    // Temporary loading simulation
-    setTimeout(() => {
+    if (!result.ok) {
+      setErrorMessage(result.message);
       setIsLoading(false);
-    }, 1000);
+      return;
+    }
+
+    router.push("/dashboard");
+    router.refresh();
   };
 
   return (
@@ -82,15 +88,18 @@ export default function LoginPage() {
           </div>
 
           {/* Success Message */}
-          <div className="mb-4 hidden rounded-md border border-green-200 bg-green-100 px-3 py-2 text-center text-sm text-green-800">
-            Registrasi berhasil! Silakan masuk dengan akun kamu.
-          </div>
+          {registered && (
+            <div className="mb-4 rounded-md border border-green-200 bg-green-100 px-3 py-2 text-center text-sm text-green-800">
+              Registrasi berhasil! Silakan masuk dengan akun kamu.
+            </div>
+          )}
 
           {/* Error Message */}
-          {/* Nanti bisa dibuat conditional berdasarkan response API */}
-          <div className="mb-4 text-center text-sm text-red-500">
-            {/* Error message */}
-          </div>
+          {errorMessage && (
+            <div className="mb-4 text-center text-sm text-red-500">
+              {errorMessage}
+            </div>
+          )}
 
           <form onSubmit={handleSubmit}>
             {/* =========================
@@ -258,7 +267,7 @@ export default function LoginPage() {
       >
         <div>
           <Image
-            src="/images/logo-w2h.png"
+            src="/images/aset/logo-w2h.png"
             alt="Logo Way2Home"
             width={120}
             height={120}
@@ -273,5 +282,13 @@ export default function LoginPage() {
         </div>
       </section>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   );
 }
