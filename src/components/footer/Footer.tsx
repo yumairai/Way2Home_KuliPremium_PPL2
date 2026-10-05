@@ -45,14 +45,7 @@ export default function Footer() {
             href="/material"
             className="text-sm text-slate-500 transition-colors duration-200 hover:text-orange-600"
           >
-            Material
-          </Link>
-
-          <Link
-            href="/renovation"
-            className="text-sm text-slate-500 transition-colors duration-200 hover:text-orange-600"
-          >
-            Renovasi
+            Ai Planning Based
           </Link>
 
           <a
