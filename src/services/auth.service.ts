@@ -10,8 +10,8 @@ export async function login(email: string, password: string) {
     error.message === "Invalid login credentials"
       ? "Email atau password salah."
       : error.message === "Email not confirmed"
-      ? "Email belum dikonfirmasi. Cek inbox kamu."
-      : error.message;
+        ? "Email belum dikonfirmasi. Cek inbox kamu."
+        : error.message;
 
   return { ok: false as const, message };
 }
