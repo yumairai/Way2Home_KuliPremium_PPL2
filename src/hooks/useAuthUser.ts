@@ -31,7 +31,11 @@ export function useAuthUser() {
     const supabase = createClient();
     let active = true;
 
-    const load = async (sessionUser?: { id: string; email?: string; user_metadata?: Record<string, unknown> }) => {
+    const load = async (sessionUser?: {
+      id: string;
+      email?: string;
+      user_metadata?: Record<string, unknown>;
+    }) => {
       if (!sessionUser) {
         if (active) {
           setUser(null);
@@ -53,7 +57,11 @@ export function useAuthUser() {
 
       if (profile) {
         // Profil ditemukan di tabel profiles
-        setUser({ id, fullName: profile.full_name ?? "User", role: toRole(profile.role) });
+        setUser({
+          id,
+          fullName: profile.full_name ?? "User",
+          role: toRole(profile.role),
+        });
       } else {
         // Fallback: gunakan user_metadata dari JWT Supabase
         // (disimpan saat register via options.data)

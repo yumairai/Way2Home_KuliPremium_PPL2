@@ -3,12 +3,15 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { logout } from "@/services/auth.service";
 import { useAuthUser, ROLE_LABEL } from "@/hooks/useAuthUser";
 
 export default function DefaultNavbar() {
   const router = useRouter();
+  const pathname = usePathname();
+  const isCatalogActive =
+    pathname === "/katalog" || pathname.startsWith("/katalog/");
 
   // user = null  → guest
   // user = {...} → sudah login (data dari tabel profiles)
@@ -30,7 +33,7 @@ export default function DefaultNavbar() {
       {/*NAVBAR*/}
       <nav className="fixed top-0 z-50 w-full shadow-[0_24px_48px_rgba(14,23,68,0.06)]">
         <div className="bg-white/80 backdrop-blur-[24px]">
-          <div className="mx-auto flex h-20 max-w-screen-2xl items-center justify-between px-4 md:px-8">
+          <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6 lg:px-8">
             {/* BRAND */}
             <Link
               href="/"
@@ -53,14 +56,14 @@ export default function DefaultNavbar() {
             <div className="hidden items-center gap-6 md:flex">
               <Link
                 href="/"
-                className="font-semibold text-[#2563eb] transition hover:text-[#1d4ed8]"
+                className={`font-semibold transition ${pathname === "/dashboard" ? "text-[#2563eb]" : "text-[#475569] hover:text-[#2563eb]"}`}
               >
                 Beranda
               </Link>
 
               <Link
-                href="/recommendation"
-                className="font-semibold text-[#475569] transition hover:text-[#2563eb]"
+                href="/katalog"
+                className={`font-semibold transition ${isCatalogActive ? "text-[#2563eb]" : "text-[#475569] hover:text-[#2563eb]"}`}
               >
                 Desain
               </Link>
@@ -152,31 +155,17 @@ export default function DefaultNavbar() {
                       {/* Menu */}
                       <div className="flex flex-col gap-1 p-3">
                         <Link
-                          href="/customer/order"
-                          className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-[#475569] transition hover:bg-[#f0f4ff] hover:text-[#0053da]"
-                        >
-                          🛒 <span>Pesanan Saya</span>
-                        </Link>
-
-                        <Link
                           href="/proyek"
                           className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-[#475569] transition hover:bg-[#f0f4ff] hover:text-[#0053da]"
                         >
-                          🏠 <span>Proyek Saya</span>
-                        </Link>
-
-                        <Link
-                          href="/renovation"
-                          className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-[#475569] transition hover:bg-[#f0f4ff] hover:text-[#0053da]"
-                        >
-                          🔨 <span>Renovasi Saya</span>
+                          <span>Proyek Rumah Saya</span>
                         </Link>
 
                         <Link
                           href="/profile"
                           className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-[#475569] transition hover:bg-[#f0f4ff] hover:text-[#0053da]"
                         >
-                          👤 <span>Edit Profile</span>
+                          <span>Edit Profile</span>
                         </Link>
                       </div>
 
@@ -186,7 +175,7 @@ export default function DefaultNavbar() {
                       <div className="p-3">
                         <button
                           type="button"
-                          className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm font-bold text-red-600 transition hover:bg-red-50"
+                          className="flex w-full items-center hover: cursor-pointer gap-3 rounded-lg px-4 py-3 text-sm font-bold text-red-600 transition hover:bg-red-50"
                           onClick={handleLogout}
                         >
                           ↪<span>Logout</span>
@@ -214,19 +203,17 @@ export default function DefaultNavbar() {
 
       {/*MOBILE BACKDROP*/}
       <div
-        className={`fixed inset-0 top-20 z-[55] bg-slate-900/45 backdrop-blur-sm transition-opacity md:hidden ${
-          isDrawerOpen
-            ? "pointer-events-auto opacity-100"
-            : "pointer-events-none opacity-0"
-        }`}
+        className={`fixed inset-0 top-20 z-[55] bg-slate-900/45 backdrop-blur-sm transition-opacity md:hidden ${isDrawerOpen
+          ? "pointer-events-auto opacity-100"
+          : "pointer-events-none opacity-0"
+          }`}
         onClick={() => setIsDrawerOpen(false)}
       />
 
       {/*MOBILE DRAWER*/}
       <aside
-        className={`fixed left-0 top-20 z-[60] flex h-[calc(100vh-5rem)] w-[min(20rem,82vw)] flex-col bg-white p-4 shadow-[24px_0_48px_rgba(14,23,68,0.14)] transition-transform duration-300 md:hidden ${
-          isDrawerOpen ? "translate-x-0" : "-translate-x-[102%]"
-        }`}
+        className={`fixed left-0 top-20 z-[60] flex h-[calc(100vh-5rem)] w-[min(20rem,82vw)] flex-col bg-white p-4 shadow-[24px_0_48px_rgba(14,23,68,0.14)] transition-transform duration-300 md:hidden ${isDrawerOpen ? "translate-x-0" : "-translate-x-[102%]"
+          }`}
       >
         {/* Drawer Header */}
         <div className="flex items-center justify-between gap-4 border-b border-[#cac4cf]/65 pb-4">
@@ -274,7 +261,7 @@ export default function DefaultNavbar() {
             </Link>
 
             <Link
-              href="/recommendation"
+              href="/katalog"
               onClick={() => setIsDrawerOpen(false)}
               className="rounded-[0.9rem] border border-[#cac4cf]/45 bg-[#f7f2f6] px-4 py-3.5 font-semibold text-[#475569]"
             >
