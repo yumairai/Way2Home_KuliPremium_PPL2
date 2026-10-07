@@ -70,12 +70,12 @@ export default async function DesignDetailPage({
                 {design.location}
               </p>
             </div>
-            <button
-              type="button"
-              className="mt-8 w-full rounded-full bg-gradient-to-r from-[#004796] to-[#045ec2] px-6 py-4 font-bold text-white transition hover:-translate-y-0.5 hover:shadow-lg"
+            <Link
+              href={`/bangun/${design.slug}`}
+              className="mt-8 block w-full rounded-full bg-gradient-to-r from-[#004796] to-[#045ec2] px-6 py-4 text-center font-bold text-white transition hover:-translate-y-0.5 hover:shadow-lg"
             >
               Mulai rencanakan rumah
-            </button>
+            </Link>
           </div>
         </div>
         <section className="mt-10 rounded-[2rem] bg-[#111e3f] p-8 text-white md:p-10">
