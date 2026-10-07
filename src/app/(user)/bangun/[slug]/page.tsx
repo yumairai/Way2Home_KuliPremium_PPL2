@@ -13,5 +13,5 @@ export default async function BuildHousePage({ params }: { params: Promise<{ slu
   const design = getHouseDesign(slug);
   if (!design) notFound();
 
-  return <BuildHouseForm design={design} packageLabel="Material + Jasa" designId={design.slug} />;
+  return <BuildHouseForm design={design} />;
 }

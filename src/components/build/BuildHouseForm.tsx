@@ -125,7 +125,6 @@ function UploadField({
 
 export default function BuildHouseForm({
   design,
-  packageLabel,
 }: {
   design: {
     name: string;
@@ -137,7 +136,6 @@ export default function BuildHouseForm({
     estimatedDuration: number;
     image: string;
   };
-  packageLabel: string;
 }) {
   const [address, setAddress] = useState("");
   const [documents, setDocuments] = useState<Record<string, DocumentFile | null>>({
@@ -252,27 +250,6 @@ export default function BuildHouseForm({
                 <p className="mt-1 text-lg font-bold text-[#111e3f]">{value}</p>
               </div>
             ))}
-          </div>
-        </section>
-
-        <section className="mt-10 rounded-3xl border border-[#dbe4f2] bg-white p-6 shadow-sm md:p-8">
-          <div className="flex items-center gap-4">
-            <h2 className="shrink-0 text-sm font-bold uppercase tracking-wider text-[#475569]">Pilihan Paket Pembangunan</h2>
-            <div className="h-px flex-1 bg-[#edf1f6]" />
-          </div>
-          <div className="mt-6 rounded-2xl border-2 border-[#004796] bg-[#eef5ff] p-5">
-            <div className="flex items-start gap-4">
-              <div className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#004796]">
-                <span className="h-2.5 w-2.5 rounded-full bg-white" />
-              </div>
-              <div>
-                <p className="font-bold text-[#111e3f]">{packageLabel}</p>
-                <p className="mt-1 text-sm text-[#475569]">Solusi lengkap & terima kunci</p>
-              </div>
-            </div>
-          </div>
-          <div className="mt-4 rounded-2xl bg-[#f7f9fc] p-4 text-sm text-[#475569]">
-            <strong>Info:</strong> Anda perlu mengunggah dokumen pendukung dan alamat lengkap.
           </div>
         </section>
 
