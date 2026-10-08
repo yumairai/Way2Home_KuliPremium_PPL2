@@ -436,11 +436,11 @@ export default function RegisterPage() {
                 />
                 <label htmlFor="legal-consent" className="cursor-pointer leading-5">
                   Dengan mendaftar, saya menyetujui{" "}
-                  <button type="button" onClick={() => setActiveModal("terms")} className="font-semibold text-[#004796] underline underline-offset-2">
+                  <button type="button" onClick={() => setActiveModal("terms")} className=" font-semibold text-[#004796] cursor-pointer">
                     Syarat &amp; Ketentuan
                   </button>{" "}
                   dan{" "}
-                  <button type="button" onClick={() => setActiveModal("privacy")} className="font-semibold text-[#004796] underline underline-offset-2">
+                  <button type="button" onClick={() => setActiveModal("privacy")} className="font-semibold text-[#004796] cursor-pointer">
                     Kebijakan Privasi
                   </button>{" "}
                   Way2Home.

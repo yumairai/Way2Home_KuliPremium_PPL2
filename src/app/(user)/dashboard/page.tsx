@@ -7,7 +7,7 @@ export default function DashboardPage() {
   return (
     <main className="min-h-screen bg-[#fffbfe] pb-20 pt-32 text-[#1c1b1f]">
       {/*HERO SECTION*/}
-      <section className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-16 px-8 lg:grid-cols-12">
+      <section className="mx-auto grid max-w-screen-2xl grid-cols-1 items-center gap-16 px-8 lg:grid-cols-12">
         {/*
             HERO CONTENT
      */}
@@ -139,7 +139,7 @@ export default function DashboardPage() {
       {/*
           FEATURES SECTION
      */}
-      <section className="mx-auto mt-40 max-w-7xl px-8">
+      <section className="mx-auto mt-40 max-w-screen-2xl px-8">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
           {/*
               FEATURE 1

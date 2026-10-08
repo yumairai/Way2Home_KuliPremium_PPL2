@@ -19,7 +19,7 @@ export default async function DesignDetailPage({
   if (!design) notFound();
   return (
     <main className="min-h-screen bg-[#f7f9fc] pb-24 pt-28 text-[#111e3f]">
-      <div className="mx-auto max-w-6xl px-6 lg:px-8">
+      <div className="mx-auto max-w-screen-2xl px-6 lg:px-8">
         <Link
           href="/katalog"
           className="inline-flex py-4 text-sm font-semibold text-[#045ec2] transition-transform duration-300 hover:translate-x-2 active:scale-95"

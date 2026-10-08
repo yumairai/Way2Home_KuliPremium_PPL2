@@ -32,7 +32,7 @@ export default function AiResults() {
 
   return (
     <main className="min-h-screen bg-[#f7f9fc] pb-24 pt-32 text-[#111e3f]">
-      <div className="mx-auto max-w-7xl px-6 lg:px-8">
+      <div className="mx-auto max-w-screen-2xl px-6 lg:px-8">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <span className="inline-flex items-center gap-2 rounded-full border border-[#8fb9ed]/40 bg-[#eef5ff] px-4 py-1.5 text-xs font-bold text-[#004796]">

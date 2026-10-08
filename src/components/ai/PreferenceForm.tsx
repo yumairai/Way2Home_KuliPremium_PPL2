@@ -220,7 +220,7 @@ export default function PreferenceForm() {
         <div className="absolute inset-0 -z-20 bg-[url('/images/aset/construction.jpg')] bg-cover bg-center" />
         <div className="absolute inset-0 -z-10 bg-[#111e3f]/80" />
         <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[#08152f]/95 via-[#111e3f]/70 to-[#004796]/40" />
-        <div className="mx-auto grid max-w-7xl items-center gap-10 px-6 py-12 lg:grid-cols-[1.15fr_0.85fr] lg:px-8 lg:py-14">
+        <div className="mx-auto grid max-w-screen-2xl items-center gap-10 px-6 py-12 lg:grid-cols-[1.15fr_0.85fr] lg:px-8 lg:py-14">
           <div>
             <span className="inline-flex items-center gap-2 rounded-full border border-[#8fb9ed]/40 bg-[#eef5ff]/10 px-4 py-1.5 text-xs font-bold tracking-wide text-[#b9d8ff]">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#fcd47c]" />
