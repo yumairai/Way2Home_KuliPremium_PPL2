@@ -250,7 +250,7 @@ export default function CatalogGrid() {
         <div className="absolute inset-0 -z-10 bg-[#111e3f]/75" />
         <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[#08152f]/95 via-[#111e3f]/75 to-[#111e3f]/35" />
 
-        <div className="mx-auto flex min-h-[520px] max-w-7xl flex-col justify-end px-6 pb-16 pt-32 lg:px-8 lg:pb-20">
+        <div className="mx-auto flex min-h-[520px] max-w-screen-2xl flex-col justify-end px-6 pb-16 pt-32 lg:px-8 lg:pb-20">
           <div className="max-w-3xl">
             <p className="mb-5 text-sm font-semibold tracking-wide text-[#b9d8ff]">
               Katalog Way2Home
@@ -265,7 +265,7 @@ export default function CatalogGrid() {
           </div>
 
           {/* Search + sort: di tengah, di dalam container */}
-          <div className="mx-auto mt-10 flex w-full max-w-7xl flex-col gap-3 rounded-2xl border border-white/60 bg-white p-3 shadow-[0_20px_45px_rgba(17,30,63,0.2)] sm:flex-row sm:items-center">
+          <div className="mx-auto mt-10 flex w-full max-w-screen-2xl flex-col gap-3 rounded-2xl border border-white/60 bg-white p-3 shadow-[0_20px_45px_rgba(17,30,63,0.2)] sm:flex-row sm:items-center">
             <label className="sr-only" htmlFor="catalog-search">
               Cari desain rumah
             </label>
@@ -290,7 +290,7 @@ export default function CatalogGrid() {
           </div>
         </div>
       </section>
-      <section className="mx-auto max-w-7xl px-6 pt-20 lg:px-8">
+      <section className="mx-auto max-w-screen-2xl px-6 pt-20 lg:px-8">
         <div className="mb-8 lg:hidden">
           <button
             type="button"

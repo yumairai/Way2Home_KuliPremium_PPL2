@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { logout } from "@/services/auth.service";
 import { useAuthUser, ROLE_LABEL } from "@/hooks/useAuthUser";
@@ -19,6 +19,20 @@ export default function DefaultNavbar() {
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isProfileOpen) return;
+
+    const handleOutsideClick = (event: PointerEvent) => {
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setIsProfileOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handleOutsideClick);
+    return () => document.removeEventListener("pointerdown", handleOutsideClick);
+  }, [isProfileOpen]);
 
   const handleLogout = async () => {
     await logout();
@@ -33,7 +47,7 @@ export default function DefaultNavbar() {
       {/*NAVBAR*/}
       <nav className="fixed top-0 z-50 w-full shadow-[0_24px_48px_rgba(14,23,68,0.06)]">
         <div className="bg-white/80 backdrop-blur-[24px]">
-          <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6 lg:px-8">
+          <div className="mx-auto flex h-20 max-w-screen-2xl items-center justify-between px-6 lg:px-8">
             {/* BRAND */}
             <Link
               href="/"
@@ -55,22 +69,22 @@ export default function DefaultNavbar() {
             {/* DESKTOP NAVIGATION */}
             <div className="hidden items-center gap-6 md:flex">
               <Link
-                href="/"
-                className={`font-semibold transition ${pathname === "/dashboard" ? "text-[#2563eb]" : "text-[#475569] hover:text-[#2563eb]"}`}
+                href="/dashboard"
+                className={`py-2 font-semibold transition-all duration-200 ease-out hover:-translate-y-0.5 active:scale-[0.97] ${pathname === "/dashboard" ? "text-[#2563eb]" : "text-[#475569] hover:text-[#2563eb]"}`}
               >
                 Beranda
               </Link>
 
               <Link
                 href="/katalog"
-                className={`font-semibold transition ${isCatalogActive ? "text-[#2563eb]" : "text-[#475569] hover:text-[#2563eb]"}`}
+                className={`py-2 font-semibold transition-all duration-200 ease-out hover:-translate-y-0.5 active:scale-[0.97] ${isCatalogActive ? "text-[#2563eb]" : "text-[#475569] hover:text-[#2563eb]"}`}
               >
                 Desain
               </Link>
 
               <Link
                 href="/ai-planning-based"
-                className="font-semibold text-[#475569] transition hover:text-[#2563eb]"
+                className="py-2 font-semibold text-[#475569] transition-all duration-200 ease-out hover:-translate-y-0.5 hover:text-[#2563eb] active:scale-[0.97]"
               >
                 AI Planning Based
               </Link>
@@ -99,91 +113,93 @@ export default function DefaultNavbar() {
 
               {/* USER */}
               {user && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setIsProfileOpen(!isProfileOpen)}
-                    className="rounded-full"
-                    aria-label="Buka profile"
-                  >
-                    <Image
-                      src="/images/aset/avatar.jpg"
-                      alt="User profile avatar"
-                      width={48}
-                      height={48}
-                      className="h-12 w-12 rounded-full object-cover transition active:scale-90"
-                    />
-                  </button>
+                <div ref={profileRef} className="relative">
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setIsProfileOpen(!isProfileOpen)}
+                      className="rounded-full hover:cursor-pointer transition-transform hover:scale-105"
+                      aria-label="Buka profile"
+                    >
+                      <Image
+                        src="/images/aset/avatar.jpg"
+                        alt="User profile avatar"
+                        width={48}
+                        height={48}
+                        className="h-12 w-12 rounded-full object-cover transition active:scale-90"
+                      />
+                    </button>
 
-                  {/* PROFILE DROPDOWN */}
-                  {isProfileOpen && (
-                    <div className="absolute right-0 top-16 w-72 overflow-hidden rounded-b-[10px] bg-[#fffbfe] shadow-[0_24px_48px_rgba(14,23,68,0.12)]">
-                      {/* Header */}
-                      <div className="relative overflow-hidden bg-gradient-to-br from-[#004796] to-[#2a3a7a] p-4 text-white">
-                        <div className="absolute inset-0 opacity-15">
-                          <Image
-                            src="/images/aset/construction.jpg"
-                            alt=""
-                            fill
-                            className="object-cover"
-                          />
-                        </div>
-
-                        <div className="relative z-10 flex items-center gap-3">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-lg">
+                    {/* PROFILE DROPDOWN */}
+                    {isProfileOpen && (
+                      <div className="absolute right-0 top-16 w-72 overflow-hidden rounded-b-[10px] bg-[#fffbfe] shadow-[0_24px_48px_rgba(14,23,68,0.12)]">
+                        {/* Header */}
+                        <div className="relative overflow-hidden bg-gradient-to-br from-[#004796] to-[#2a3a7a] p-4 text-white">
+                          <div className="absolute inset-0 opacity-15">
                             <Image
-                              src="/images/aset/avatar.jpg"
-                              alt="Avatar"
-                              width={48}
-                              height={48}
-                              className="h-12 w-12 rounded-full object-cover"
+                              src="/images/aset/construction.jpg"
+                              alt=""
+                              fill
+                              className="object-cover"
                             />
                           </div>
 
-                          <div>
-                            <h3 className="text-lg font-extrabold leading-tight">
-                              {user.fullName}
-                            </h3>
+                          <div className="relative z-10 flex items-center gap-3">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-lg">
+                              <Image
+                                src="/images/aset/avatar.jpg"
+                                alt="Avatar"
+                                width={48}
+                                height={48}
+                                className="h-12 w-12 rounded-full object-cover"
+                              />
+                            </div>
 
-                            <p className="mt-1 text-xs opacity-90">
-                              {ROLE_LABEL[user.role]}
-                            </p>
+                            <div>
+                              <h3 className="text-lg font-extrabold leading-tight">
+                                {user.fullName}
+                              </h3>
+
+                              <p className="mt-1 text-xs opacity-90">
+                                {ROLE_LABEL[user.role]}
+                              </p>
+                            </div>
                           </div>
                         </div>
+
+                        {/* Menu */}
+                        <div className="flex flex-col gap-1 p-3">
+                          <Link
+                            href="/proyek"
+                            className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-[#475569] transition hover:bg-[#f0f4ff] hover:text-[#0053da]"
+                          >
+                            <span>Proyek Rumah Saya</span>
+                          </Link>
+
+                          <Link
+                            href="/profile"
+                            className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-[#475569] transition hover:bg-[#f0f4ff] hover:text-[#0053da]"
+                          >
+                            <span>Edit Profile</span>
+                          </Link>
+                        </div>
+
+                        <div className="h-px bg-[#f1f3f9]" />
+
+                        {/* Logout */}
+                        <div className="p-3">
+                          <button
+                            type="button"
+                            className="flex w-full items-center hover: cursor-pointer gap-3 rounded-lg px-4 py-3 text-sm font-bold text-red-600 transition hover:bg-red-50"
+                            onClick={handleLogout}
+                          >
+                            ↪<span>Logout</span>
+                          </button>
+                        </div>
                       </div>
-
-                      {/* Menu */}
-                      <div className="flex flex-col gap-1 p-3">
-                        <Link
-                          href="/proyek"
-                          className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-[#475569] transition hover:bg-[#f0f4ff] hover:text-[#0053da]"
-                        >
-                          <span>Proyek Rumah Saya</span>
-                        </Link>
-
-                        <Link
-                          href="/profile"
-                          className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-[#475569] transition hover:bg-[#f0f4ff] hover:text-[#0053da]"
-                        >
-                          <span>Edit Profile</span>
-                        </Link>
-                      </div>
-
-                      <div className="h-px bg-[#f1f3f9]" />
-
-                      {/* Logout */}
-                      <div className="p-3">
-                        <button
-                          type="button"
-                          className="flex w-full items-center hover: cursor-pointer gap-3 rounded-lg px-4 py-3 text-sm font-bold text-red-600 transition hover:bg-red-50"
-                          onClick={handleLogout}
-                        >
-                          ↪<span>Logout</span>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </>
+                    )}
+                  </>
+                </div>
               )}
             </div>
 
@@ -255,7 +271,7 @@ export default function DefaultNavbar() {
             <Link
               href="/"
               onClick={() => setIsDrawerOpen(false)}
-              className="rounded-[0.9rem] border border-[#cac4cf]/45 bg-[#f7f2f6] px-4 py-3.5 font-semibold text-[#475569]"
+              className="rounded-[0.9rem] border border-[#cac4cf]/45 bg-[#f7f2f6] px-4 py-3.5 font-semibold text-[#475569] transition-all duration-200 ease-out hover:translate-x-1 hover:border-[#045ec2]/30 hover:bg-[#eef5ff] hover:text-[#004796] active:scale-[0.98]"
             >
               Beranda
             </Link>
@@ -263,7 +279,7 @@ export default function DefaultNavbar() {
             <Link
               href="/katalog"
               onClick={() => setIsDrawerOpen(false)}
-              className="rounded-[0.9rem] border border-[#cac4cf]/45 bg-[#f7f2f6] px-4 py-3.5 font-semibold text-[#475569]"
+              className="rounded-[0.9rem] border border-[#cac4cf]/45 bg-[#f7f2f6] px-4 py-3.5 font-semibold text-[#475569] transition-all duration-200 ease-out hover:translate-x-1 hover:border-[#045ec2]/30 hover:bg-[#eef5ff] hover:text-[#004796] active:scale-[0.98]"
             >
               Desain
             </Link>
@@ -271,7 +287,7 @@ export default function DefaultNavbar() {
             <Link
               href="/ai-planning-based"
               onClick={() => setIsDrawerOpen(false)}
-              className="rounded-[0.9rem] border border-[#cac4cf]/45 bg-[#f7f2f6] px-4 py-3.5 font-semibold text-[#475569]"
+              className="rounded-[0.9rem] border border-[#cac4cf]/45 bg-[#f7f2f6] px-4 py-3.5 font-semibold text-[#475569] transition-all duration-200 ease-out hover:translate-x-1 hover:border-[#045ec2]/30 hover:bg-[#eef5ff] hover:text-[#004796] active:scale-[0.98]"
             >
               AI Planning Based
             </Link>

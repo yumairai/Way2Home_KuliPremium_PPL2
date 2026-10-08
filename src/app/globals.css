@@ -1,5 +1,47 @@
 @import "tailwindcss";
 
+.range-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 9999px;
+  background: linear-gradient(
+    to right,
+    #004796 0%,
+    #045ec2 var(--range-progress, 0%),
+    #dbe4f2 var(--range-progress, 0%),
+    #dbe4f2 100%
+  );
+  outline: none;
+  cursor: pointer;
+}
+
+.range-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 20px;
+  width: 20px;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: 3px solid #004796;
+  box-shadow: 0 2px 8px rgba(17, 30, 63, 0.2);
+  transition: transform 0.15s ease;
+}
+
+.range-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+.range-slider::-moz-range-thumb {
+  height: 20px;
+  width: 20px;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: 3px solid #004796;
+  box-shadow: 0 2px 8px rgba(17, 30, 63, 0.2);
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;

@@ -6,6 +6,25 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { register } from "@/services/auth.service";
 
+const legalContent = {
+  terms: [
+    ["1. Ketentuan Umum", "Dengan menggunakan Way2Home, pengguna menyatakan bahwa informasi yang diberikan adalah benar, lengkap, dan dapat dipertanggungjawabkan."],
+    ["2. Akun Pengguna", "Pengguna bertanggung jawab menjaga keamanan akun, termasuk email, kata sandi, dan informasi lain yang digunakan untuk mengakses Way2Home."],
+    ["3. Data Pengguna", "Data yang diberikan pengguna digunakan untuk menyediakan layanan Way2Home, termasuk pengelolaan proyek pembangunan dan fitur yang tersedia dalam sistem."],
+    ["4. Rekomendasi dan Informasi Sistem", "Informasi, rekomendasi desain, estimasi, atau analisis yang diberikan oleh sistem merupakan informasi pendukung dan tidak menggantikan keputusan profesional dalam pelaksanaan pembangunan."],
+    ["5. Penggunaan Sistem", "Pengguna tidak diperkenankan menggunakan Way2Home untuk tujuan yang melanggar hukum, memberikan informasi palsu, atau melakukan tindakan yang dapat mengganggu keamanan dan operasional sistem."],
+    ["6. Perubahan Layanan", "Way2Home dapat melakukan perubahan, pengembangan, atau pembaruan terhadap fitur dan layanan untuk meningkatkan kualitas sistem."],
+    ["7. Persetujuan", "Dengan mencentang checkbox pada saat registrasi, pengguna menyatakan telah membaca, memahami, dan menyetujui Syarat & Ketentuan serta Kebijakan Privasi Way2Home."],
+  ],
+  privacy: [
+    ["1. Data yang Dikumpulkan", "Way2Home dapat mengumpulkan data akun, informasi profil, data preferensi desain, serta data yang berkaitan dengan proyek pembangunan."],
+    ["2. Penggunaan Data", "Data digunakan untuk menyediakan layanan, mengelola proyek, memberikan rekomendasi, dan meningkatkan kualitas sistem Way2Home."],
+    ["3. Keamanan Data", "Way2Home berupaya menjaga keamanan data pengguna dan membatasi akses terhadap data sesuai kebutuhan sistem."],
+    ["4. Penggunaan Fitur AI", "Data tertentu dapat digunakan sebagai input untuk fitur analisis atau rekomendasi berbasis AI yang tersedia dalam Way2Home."],
+    ["5. Persetujuan Pengguna", "Dengan menggunakan Way2Home, pengguna menyetujui pengumpulan dan penggunaan data sesuai dengan Kebijakan Privasi ini."],
+  ],
+} as const;
+
 export default function RegisterPage() {
   const router = useRouter();
 
@@ -21,6 +40,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [terms, setTerms] = useState(false);
+  const [activeModal, setActiveModal] = useState<"terms" | "privacy" | null>(null);
 
   const [submitError, setSubmitError] = useState("");
 
@@ -404,21 +424,28 @@ export default function RegisterPage() {
               )}
             </div>
 
-            {/* =========================
-                TERMS & CONDITIONS
-                ========================= */}
             <div className="mb-5">
-              <label className="flex cursor-pointer items-start gap-2 text-sm text-[#2B3361]">
+              <div className="flex items-start gap-2 text-sm text-[#2B3361]">
                 <input
+                  id="legal-consent"
                   type="checkbox"
                   checked={terms}
                   onChange={(e) => setTerms(e.target.checked)}
                   required
-                  className="mt-0.5 h-4 w-4 cursor-pointer accent-[#2B3361]"
+                  className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-[#004796]"
                 />
-
-                <span>Saya setuju dengan Syarat & Ketentuan</span>
-              </label>
+                <label htmlFor="legal-consent" className="cursor-pointer leading-5">
+                  Dengan mendaftar, saya menyetujui{" "}
+                  <button type="button" onClick={() => setActiveModal("terms")} className=" font-semibold text-[#004796] cursor-pointer">
+                    Syarat &amp; Ketentuan
+                  </button>{" "}
+                  dan{" "}
+                  <button type="button" onClick={() => setActiveModal("privacy")} className="font-semibold text-[#004796] cursor-pointer">
+                    Kebijakan Privasi
+                  </button>{" "}
+                  Way2Home.
+                </label>
+              </div>
 
               {errors.terms && (
                 <p className="mt-1 text-xs text-red-500">{errors.terms}</p>
@@ -430,7 +457,7 @@ export default function RegisterPage() {
                 ========================= */}
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || !terms}
               className="
                 flex w-full items-center
                 justify-center gap-2
@@ -440,8 +467,8 @@ export default function RegisterPage() {
                 font-bold text-white
                 transition
                 hover:bg-[#21274b]
-                disabled:cursor-wait
-                disabled:opacity-85
+                disabled:cursor-not-allowed
+                disabled:opacity-60
               "
             >
               {isLoading && (
@@ -501,6 +528,54 @@ export default function RegisterPage() {
           </p>
         </div>
       </section>
+
+      {activeModal && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/55 p-4"
+          onClick={() => setActiveModal(null)}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="legal-modal-title"
+            className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="flex items-center justify-between border-b border-gray-100 px-5 py-4 sm:px-7">
+              <h2 id="legal-modal-title" className="text-lg font-bold text-[#2B3361] sm:text-xl">
+                {activeModal === "terms" ? "Syarat & Ketentuan" : "Kebijakan Privasi"}
+              </h2>
+              <button
+                type="button"
+                aria-label="Tutup dialog"
+                onClick={() => setActiveModal(null)}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-2xl leading-none text-gray-500 transition hover:bg-gray-100 hover:text-gray-800"
+              >
+                ×
+              </button>
+            </header>
+            <div className="overflow-y-auto px-5 py-5 sm:px-7">
+              <div className="space-y-5 text-sm leading-6 text-gray-600">
+                {legalContent[activeModal].map(([title, description]) => (
+                  <section key={title}>
+                    <h3 className="mb-1 font-semibold text-[#2B3361]">{title}</h3>
+                    <p>{description}</p>
+                  </section>
+                ))}
+              </div>
+            </div>
+            <footer className="border-t border-gray-100 px-5 py-4 text-right sm:px-7">
+              <button
+                type="button"
+                onClick={() => setActiveModal(null)}
+                className="rounded-lg bg-[#004796] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#045ec2]"
+              >
+                Tutup
+              </button>
+            </footer>
+          </section>
+        </div>
+      )}
     </main>
   );
 }
