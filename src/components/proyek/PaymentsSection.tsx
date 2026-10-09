@@ -51,6 +51,14 @@ export default function PaymentsSection({ project }: { project: Project }) {
         </svg>
         <p><strong>Informasi penting:</strong> Jika pembayaran belum dilunasi sesuai jadwal, pengerjaan proyek akan ditunda sementara.</p>
       </div>
+      {project.payments.find((payment) => payment.status === "aktif") && (
+        <button
+          type="button"
+          className="mt-5 flex min-h-14 w-full cursor-pointer items-center justify-center gap-3 rounded-full bg-gradient-to-r from-[#004796] to-[#045ec2] px-8 font-bold text-white shadow-[0_10px_25px_rgba(0,71,150,0.3)] transition hover:-translate-y-0.5 hover:shadow-lg active:scale-95"
+        >
+          Bayar {project.payments.find((payment) => payment.status === "aktif")?.label}
+        </button>
+      )}
     </section>
   );
 }
