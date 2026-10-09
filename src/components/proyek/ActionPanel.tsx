@@ -280,24 +280,6 @@ export default function ActionPanel({ project }: { project: Project }) {
             </button>
           )}
 
-          {project.status === "Proyek Aktif" && !allInstallmentsPaid && activePayment && (
-            <button
-              type="button"
-              className="flex min-h-14 cursor-pointer items-center gap-3 rounded-full bg-gradient-to-r from-[#004796] to-[#045ec2] px-8 font-bold text-white shadow-[0_10px_25px_rgba(0,71,150,0.3)] transition hover:-translate-y-0.5 hover:shadow-lg active:scale-95"
-            >
-              Bayar {activePayment.label}
-            </button>
-          )}
-
-          {project.status === "Proyek Aktif" && (
-            <button
-              type="button"
-              className="flex min-h-14 cursor-pointer items-center gap-3 rounded-full bg-[#eef5ff] px-8 font-bold text-[#004796] transition hover:-translate-y-0.5 active:scale-95"
-            >
-              Pantau Progress
-            </button>
-          )}
-
           {project.status === "Selesai" && (
             <button
               type="button"

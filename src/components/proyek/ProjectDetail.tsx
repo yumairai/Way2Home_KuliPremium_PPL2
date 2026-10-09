@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import type { Project } from "@/types/proyek";
 import { formatRupiah } from "@/utils/format";
 import ActionPanel from "./ActionPanel";
@@ -62,6 +63,19 @@ export default function ProjectDetail({ project }: { project: Project }) {
       </section>
 
       <ActionPanel project={project} />
+
+      {(project.status === "Proyek Aktif" || project.status === "Selesai") && (
+        <Link
+          href={`/proyek/${project.id}/tracking`}
+          className="group flex items-center justify-between gap-5 rounded-[1.5rem] border border-[#cfe0f1] bg-[#f3f8fd] p-6 transition-colors hover:bg-[#eaf3fc] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#045ec2]"
+        >
+          <span>
+            <span className="block text-base font-bold text-[#173f68]">Pantau progres pembangunan</span>
+            <span className="mt-1 block text-sm text-[#647b91]">Lihat milestone, pembaruan tim, dan dokumentasi proyek.</span>
+          </span>
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white text-lg text-[#045ec2] shadow-sm transition-transform group-hover:translate-x-0.5" aria-hidden="true">→</span>
+        </Link>
+      )}
 
       {project.status === "Proyek Aktif" && <PaymentsSection project={project} />}
     </div>
