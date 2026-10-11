@@ -1,17 +1,15 @@
-import { projects } from "@/data/proyek";
+import { createClient } from "@/utils/supabase/server";
+import { getUserProjects, getUserProjectById } from "@/services/project.service";
 import ProjectDetail from "@/components/proyek/ProjectDetail";
 import MilestoneSidebar from "@/components/proyek/MilestoneSidebar";
 import ProjectSidebar from "@/components/proyek/ProjectSidebar";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 
 export const metadata = {
   title: "Proyek Rumah Saya | Way2Home",
   description: "Kelola dan pantau progres pembangunan hunian impian Anda.",
 };
-
-export function generateStaticParams() {
-  return projects.map(({ id }) => ({ id: String(id) }));
-}
 
 export default async function ProyekDetailPage({
   params,
@@ -19,7 +17,10 @@ export default async function ProyekDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const project = projects.find((item) => item.id === Number(id));
+  const supabase = await createClient();
+  const projects = await getUserProjects(supabase);
+  const project = await getUserProjectById(supabase, id);
+
   if (!project) notFound();
 
   return (
@@ -49,12 +50,11 @@ export default async function ProyekDetailPage({
 
 function LinkBack() {
   return (
-    <a
-      href="/dashboard"
-      className="inline-flex items-center gap-2 text-sm font-semibold text-[#475569] transition hover:text-[#004796]"
+    <Link
+      href="/proyek"
+      className="inline-flex text-sm font-semibold text-[#045ec2] transition hover:translate-x-1"
     >
-      <span aria-hidden="true" className="text-[#004796]">←</span>
-      Kembali ke Dashboard
-    </a>
+      {"< "} Kembali ke daftar proyek
+    </Link>
   );
 }
