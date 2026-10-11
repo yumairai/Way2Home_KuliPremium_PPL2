@@ -5,6 +5,13 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { login } from "@/services/auth.service";
+import { authenticateDemoAccount, setDemoRole, type DemoRole } from "@/utils/demo-auth";
+
+const DEMO_HOME: Record<DemoRole, string> = {
+  admin: "/admin",
+  mandor: "/mandor",
+  pengawas: "/pengawas",
+};
 
 function LoginForm() {
   const router = useRouter();
@@ -17,16 +24,46 @@ function LoginForm() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [errors, setErrors] = useState({ email: "", password: "" });
 
   const [errorMessage, setErrorMessage] = useState("");
+
+  const validateForm = () => {
+    const nextErrors = { email: "", password: "" };
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!email.trim()) {
+      nextErrors.email = "Email wajib diisi.";
+    } else if (!emailRegex.test(email.trim())) {
+      nextErrors.email = "Format email tidak valid.";
+    }
+
+    if (!password.trim()) {
+      nextErrors.password = "Password wajib diisi.";
+    }
+
+    setErrors(nextErrors);
+    return !nextErrors.email && !nextErrors.password;
+  };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    setIsLoading(true);
     setErrorMessage("");
 
-    const result = await login(email.trim(), password);
+    if (!validateForm()) return;
+
+    setIsLoading(true);
+    const normalizedEmail = email.trim().toLowerCase();
+    const demoRole = authenticateDemoAccount(normalizedEmail, password);
+
+    if (demoRole) {
+      setDemoRole(demoRole);
+      router.replace(DEMO_HOME[demoRole]);
+      return;
+    }
+
+    const result = await login(normalizedEmail, password);
 
     if (!result.ok) {
       setErrorMessage(result.message);
@@ -34,7 +71,7 @@ function LoginForm() {
       return;
     }
 
-    router.push("/dashboard");
+    router.replace("/dashboard");
     router.refresh();
   };
 
@@ -101,7 +138,7 @@ function LoginForm() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} noValidate>
             {/* =========================
                 EMAIL
                 ========================= */}
@@ -115,21 +152,29 @@ function LoginForm() {
 
               <input
                 id="email"
-                type="email"
+                type="text"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (errors.email) {
+                    setErrors((prev) => ({ ...prev, email: "" }));
+                  }
+                }}
                 placeholder="Masukkan email"
-                required
-                className="
-                  w-full rounded-lg border border-gray-200
-                  bg-white px-3 py-2.5
-                  text-sm text-gray-800
-                  outline-none
-                  transition
-                  placeholder:text-gray-400
-                  focus:border-[#045ec2]
-                "
+                aria-invalid={!!errors.email}
+                className={
+                  "w-full rounded-lg border bg-white px-3 py-2.5 text-sm text-gray-800 outline-none transition placeholder:text-gray-400 " +
+                  (errors.email
+                    ? "border-red-300 bg-red-50 focus:border-red-500"
+                    : "border-gray-200 focus:border-[#045ec2]")
+                }
               />
+
+              {errors.email && (
+                <p className="mt-1 text-xs font-medium text-red-500">
+                  {errors.email}
+                </p>
+              )}
             </div>
 
             {/* =========================
@@ -148,18 +193,20 @@ function LoginForm() {
                   id="password"
                   type={showPassword ? "text" : "password"}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (errors.password) {
+                      setErrors((prev) => ({ ...prev, password: "" }));
+                    }
+                  }}
                   placeholder="Masukkan password"
-                  required
-                  className="
-                    w-full rounded-lg border border-gray-200
-                    bg-white px-3 py-2.5 pr-11
-                    text-sm text-gray-800
-                    outline-none
-                    transition
-                    placeholder:text-gray-400
-                    focus:border-[#045ec2]
-                  "
+                  aria-invalid={!!errors.password}
+                  className={
+                    "w-full rounded-lg border bg-white px-3 py-2.5 pr-11 text-sm text-gray-800 outline-none transition placeholder:text-gray-400 " +
+                    (errors.password
+                      ? "border-red-300 bg-red-50 focus:border-red-500"
+                      : "border-gray-200 focus:border-[#045ec2]")
+                  }
                 />
 
                 <button
@@ -187,6 +234,12 @@ function LoginForm() {
                   />
                 </button>
               </div>
+
+              {errors.password && (
+                <p className="mt-1 text-xs font-medium text-red-500">
+                  {errors.password}
+                </p>
+              )}
             </div>
 
             {/* =========================

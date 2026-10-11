@@ -1,4 +1,5 @@
 import type { DocumentJenis, ProjectStatus as DBProjectStatus } from "./database.types";
+import type { ProjectTracking } from "@/types/project-tracking";
 
 export type DocumentStatus = "pending" | "revision" | "approved";
 
@@ -93,4 +94,5 @@ export type Project = {
   payments: Payment[];
   scope: string[];
   activePeriod?: number;
+  tracking?: ProjectTracking;
 };

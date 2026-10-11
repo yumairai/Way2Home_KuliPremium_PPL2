@@ -53,6 +53,12 @@ export default function RegisterPage() {
     terms: "",
   });
 
+  const getInputClassName = (hasError: boolean) =>
+    "w-full rounded-lg border bg-white px-3 py-2.5 text-sm text-gray-800 outline-none transition placeholder:text-gray-400 " +
+    (hasError
+      ? "border-red-300 bg-red-50 focus:border-red-500"
+      : "border-gray-200 focus:border-[#045ec2]");
+
   const validateForm = () => {
     const newErrors = {
       name: "",
@@ -186,7 +192,7 @@ export default function RegisterPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} noValidate>
             {/* =========================
                 NAMA LENGKAP
                 ========================= */}
@@ -202,23 +208,21 @@ export default function RegisterPage() {
                 id="name"
                 type="text"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  if (errors.name) {
+                    setErrors((prev) => ({ ...prev, name: "" }));
+                  }
+                }}
                 placeholder="Masukkan nama lengkap"
-                required
-                className="
-                  w-full rounded-lg
-                  border border-gray-200
-                  bg-white px-3 py-2.5
-                  text-sm text-gray-800
-                  outline-none
-                  transition
-                  placeholder:text-gray-400
-                  focus:border-[#045ec2]
-                "
+                aria-invalid={!!errors.name}
+                className={getInputClassName(!!errors.name)}
               />
 
               {errors.name && (
-                <p className="mt-1 text-xs text-red-500">{errors.name}</p>
+                <p className="mt-1 text-xs font-medium text-red-500">
+                  {errors.name}
+                </p>
               )}
             </div>
 
@@ -235,25 +239,23 @@ export default function RegisterPage() {
 
               <input
                 id="email"
-                type="email"
+                type="text"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (errors.email) {
+                    setErrors((prev) => ({ ...prev, email: "" }));
+                  }
+                }}
                 placeholder="Masukkan email aktif"
-                required
-                className="
-                  w-full rounded-lg
-                  border border-gray-200
-                  bg-white px-3 py-2.5
-                  text-sm text-gray-800
-                  outline-none
-                  transition
-                  placeholder:text-gray-400
-                  focus:border-[#045ec2]
-                "
+                aria-invalid={!!errors.email}
+                className={getInputClassName(!!errors.email)}
               />
 
               {errors.email && (
-                <p className="mt-1 text-xs text-red-500">{errors.email}</p>
+                <p className="mt-1 text-xs font-medium text-red-500">
+                  {errors.email}
+                </p>
               )}
             </div>
 
@@ -272,25 +274,20 @@ export default function RegisterPage() {
                 id="phone_number"
                 type="tel"
                 value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
+                onChange={(e) => {
+                  setPhoneNumber(e.target.value);
+                  if (errors.phoneNumber) {
+                    setErrors((prev) => ({ ...prev, phoneNumber: "" }));
+                  }
+                }}
                 placeholder="Contoh: 081234567xxx"
-                required
-                pattern="[0-9]{10,14}"
                 inputMode="numeric"
-                className="
-                  w-full rounded-lg
-                  border border-gray-200
-                  bg-white px-3 py-2.5
-                  text-sm text-gray-800
-                  outline-none
-                  transition
-                  placeholder:text-gray-400
-                  focus:border-[#045ec2]
-                "
+                aria-invalid={!!errors.phoneNumber}
+                className={getInputClassName(!!errors.phoneNumber)}
               />
 
               {errors.phoneNumber && (
-                <p className="mt-1 text-xs text-red-500">
+                <p className="mt-1 text-xs font-medium text-red-500">
                   {errors.phoneNumber}
                 </p>
               )}
@@ -312,20 +309,28 @@ export default function RegisterPage() {
                   id="password"
                   type={showPassword ? "text" : "password"}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (errors.password) {
+                      setErrors((prev) => ({ ...prev, password: "" }));
+                    }
+                    if (passwordConfirmation && e.target.value !== passwordConfirmation) {
+                      setErrors((prev) => ({
+                        ...prev,
+                        passwordConfirmation: "Konfirmasi kata sandi tidak sesuai.",
+                      }));
+                    } else if (passwordConfirmation) {
+                      setErrors((prev) => ({ ...prev, passwordConfirmation: "" }));
+                    }
+                  }}
                   placeholder="Buat password"
-                  required
-                  className="
-                    w-full rounded-lg
-                    border border-gray-200
-                    bg-white
-                    px-3 py-2.5 pr-11
-                    text-sm text-gray-800
-                    outline-none
-                    transition
-                    placeholder:text-gray-400
-                    focus:border-[#045ec2]
-                  "
+                  aria-invalid={!!errors.password}
+                  className={
+                    "w-full rounded-lg border bg-white px-3 py-2.5 pr-11 text-sm text-gray-800 outline-none transition placeholder:text-gray-400 " +
+                    (errors.password
+                      ? "border-red-300 bg-red-50 focus:border-red-500"
+                      : "border-gray-200 focus:border-[#045ec2]")
+                  }
                 />
 
                 <button
@@ -354,7 +359,9 @@ export default function RegisterPage() {
               </div>
 
               {errors.password && (
-                <p className="mt-1 text-xs text-red-500">{errors.password}</p>
+                <p className="mt-1 text-xs font-medium text-red-500">
+                  {errors.password}
+                </p>
               )}
             </div>
 
@@ -374,20 +381,26 @@ export default function RegisterPage() {
                   id="password_confirmation"
                   type={showPasswordConfirmation ? "text" : "password"}
                   value={passwordConfirmation}
-                  onChange={(e) => setPasswordConfirmation(e.target.value)}
+                  onChange={(e) => {
+                    setPasswordConfirmation(e.target.value);
+                    if (errors.passwordConfirmation) {
+                      setErrors((prev) => ({ ...prev, passwordConfirmation: "" }));
+                    }
+                    if (password && e.target.value !== password) {
+                      setErrors((prev) => ({
+                        ...prev,
+                        passwordConfirmation: "Konfirmasi kata sandi tidak sesuai.",
+                      }));
+                    }
+                  }}
                   placeholder="Ulangi password"
-                  required
-                  className="
-                    w-full rounded-lg
-                    border border-gray-200
-                    bg-white
-                    px-3 py-2.5 pr-11
-                    text-sm text-gray-800
-                    outline-none
-                    transition
-                    placeholder:text-gray-400
-                    focus:border-[#045ec2]
-                  "
+                  aria-invalid={!!errors.passwordConfirmation}
+                  className={
+                    "w-full rounded-lg border bg-white px-3 py-2.5 pr-11 text-sm text-gray-800 outline-none transition placeholder:text-gray-400 " +
+                    (errors.passwordConfirmation
+                      ? "border-red-300 bg-red-50 focus:border-red-500"
+                      : "border-gray-200 focus:border-[#045ec2]")
+                  }
                 />
 
                 <button
@@ -418,7 +431,7 @@ export default function RegisterPage() {
               </div>
 
               {errors.passwordConfirmation && (
-                <p className="mt-1 text-xs text-red-500">
+                <p className="mt-1 text-xs font-medium text-red-500">
                   {errors.passwordConfirmation}
                 </p>
               )}
@@ -430,9 +443,16 @@ export default function RegisterPage() {
                   id="legal-consent"
                   type="checkbox"
                   checked={terms}
-                  onChange={(e) => setTerms(e.target.checked)}
-                  required
-                  className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-[#004796]"
+                  onChange={(e) => {
+                    setTerms(e.target.checked);
+                    if (errors.terms) {
+                      setErrors((prev) => ({ ...prev, terms: "" }));
+                    }
+                  }}
+                  className={
+                    "mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-[#004796] " +
+                    (errors.terms ? "ring-1 ring-red-300" : "")
+                  }
                 />
                 <label htmlFor="legal-consent" className="cursor-pointer leading-5">
                   Dengan mendaftar, saya menyetujui{" "}
@@ -448,7 +468,9 @@ export default function RegisterPage() {
               </div>
 
               {errors.terms && (
-                <p className="mt-1 text-xs text-red-500">{errors.terms}</p>
+                <p className="mt-1 text-xs font-medium text-red-500">
+                  {errors.terms}
+                </p>
               )}
             </div>
 
@@ -531,7 +553,7 @@ export default function RegisterPage() {
 
       {activeModal && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/55 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4"
           onClick={() => setActiveModal(null)}
         >
           <section
