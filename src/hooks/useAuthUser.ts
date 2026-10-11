@@ -64,7 +64,6 @@ export function useAuthUser() {
         });
       } else {
         // Fallback: gunakan user_metadata dari JWT Supabase
-        // (disimpan saat register via options.data)
         const fallbackName =
           (user_metadata?.full_name as string) ||
           (user_metadata?.name as string) ||
@@ -76,7 +75,6 @@ export function useAuthUser() {
       setLoading(false);
     };
 
-    // getSession() membaca dari storage lokal (cepat, tanpa round-trip ke server)
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (active) load(session?.user);
     });
