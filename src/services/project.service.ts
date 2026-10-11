@@ -117,24 +117,7 @@ export async function createProjectWithDocuments(
     throw new ServiceError("Desain rumah tidak ditemukan.", 404);
   }
 
-  // 3. Cek proyek ganda (status aktif: draft / verifikasi_dokumen / revisi_dokumen / alokasi_mandor_pengawas)
-  const { data: existingProject } = await supabase
-    .from("projects")
-    .select("id, status")
-    .eq("customer_id", user.id)
-    .eq("design_id", design.id)
-    .in("status", ["draft", "verifikasi_dokumen", "revisi_dokumen", "alokasi_mandor_pengawas"])
-    .maybeSingle();
-
-  if (existingProject) {
-    throw new ServiceError(
-      "Anda sudah memiliki pengajuan untuk desain ini.",
-      409,
-      { projectId: existingProject.id }
-    );
-  }
-
-  // 4. Validasi Server-Side
+  // 3. Validasi Server-Side
   const validationErrors: Record<string, string> = {};
 
   if (!alamat.trim()) {

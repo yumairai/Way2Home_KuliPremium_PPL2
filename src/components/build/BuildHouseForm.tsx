@@ -284,6 +284,7 @@ export default function BuildHouseForm({ design }: { design: HouseDesign }) {
         if (resData.projectId) {
           setExistingProjectId(resData.projectId);
         }
+        window.scrollTo({ top: 0, behavior: "smooth" });
       } else if (response.status === 422) {
         if (resData.errors) {
           setErrors(resData.errors);
@@ -292,11 +293,13 @@ export default function BuildHouseForm({ design }: { design: HouseDesign }) {
           type: "error",
           text: resData.message || "Mohon periksa kembali data pengajuan Anda.",
         });
+        window.scrollTo({ top: 0, behavior: "smooth" });
       } else {
         setNotification({
           type: "error",
           text: resData.message || "Terjadi kesalahan saat mengajukan pembangunan.",
         });
+        window.scrollTo({ top: 0, behavior: "smooth" });
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Terjadi kesalahan jaringan saat terhubung ke server.";
