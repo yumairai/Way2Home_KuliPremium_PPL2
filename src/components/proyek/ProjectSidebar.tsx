@@ -17,7 +17,7 @@ export default function ProjectSidebar({
   currentId,
 }: {
   projects: Project[];
-  currentId: number;
+  currentId: string | number;
 }) {
   return (
     <aside className="w-full shrink-0 xl:w-80">
@@ -28,7 +28,7 @@ export default function ProjectSidebar({
             <p className="py-6 text-center text-sm text-[#64748b]">Tidak ada proyek</p>
           ) : (
             projects.map((item) => {
-              const isActive = item.id === currentId;
+              const isActive = String(item.id) === String(currentId);
               return (
                 <Link
                   key={item.id}
@@ -48,13 +48,20 @@ export default function ProjectSidebar({
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    aria-hidden="true"
+                    className="shrink-0 text-[#004796]"
                   >
-                    <path d="M3 21V9l9-6 9 6v12" />
-                    <path d="M9 21v-6h6v6" />
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                    <polyline points="9 22 9 12 15 12 15 22" />
                   </svg>
-                  <span className="flex-1 truncate text-sm">{item.designName}</span>
-                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${STATUS_STYLE[item.status] ?? "bg-[#f1f5f9] text-[#475569]"}`}>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold">{item.designName}</p>
+                    <p className="truncate text-xs text-[#64748b]">{item.location}</p>
+                  </div>
+                  <span
+                    className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                      STATUS_STYLE[item.status] || "bg-gray-100 text-gray-700"
+                    }`}
+                  >
                     {item.status}
                   </span>
                 </Link>

@@ -1,7 +1,8 @@
 "use client";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import DesignCard from "@/components/catalog/DesignCard";
-import { houseDesigns } from "@/data/house-designs";
+import type { HouseDesign } from "@/types/house-design";
 
 const PAGE_SIZE = 6;
 const priceRanges = [
@@ -67,6 +68,7 @@ function CustomSelect({
       document.removeEventListener("keydown", closeOnEscape);
     };
   }, [open, onOpenChange]);
+
   return (
     <div ref={containerRef} className="relative">
       <span className="mb-2 block text-sm font-semibold text-[#111e3f]">
@@ -84,6 +86,7 @@ function CustomSelect({
         <span
           className={`transition duration-150 ${open ? "scale-110 opacity-100" : "scale-100 opacity-50"}`}
         >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/images/icon/down.png"
             alt=""
@@ -95,7 +98,7 @@ function CustomSelect({
         <div
           role="listbox"
           aria-labelledby={id}
-          className="absolute left-0 right-0 top-full z-20 mt-2 overflow-hidden rounded-xl border border-[#dbe4f2] bg-white p-1 shadow-[0_18px_35px_rgba(17,30,63,0.14)]"
+          className="absolute left-0 right-0 top-full z-20 mt-2 max-h-60 overflow-y-auto rounded-xl border border-[#dbe4f2] bg-white p-1 shadow-[0_18px_35px_rgba(17,30,63,0.14)]"
         >
           {options.map((option) => (
             <button
@@ -119,6 +122,10 @@ function CustomSelect({
 }
 
 export default function CatalogGrid() {
+  const [designs, setDesigns] = useState<HouseDesign[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const [query, setQuery] = useState("");
   const [style, setStyle] = useState("Semua gaya");
   const [price, setPrice] = useState(priceRanges[0].label);
@@ -129,20 +136,44 @@ export default function CatalogGrid() {
   const [page, setPage] = useState(1);
   const [filterOpen, setFilterOpen] = useState(false);
   const [openSelect, setOpenSelect] = useState<string | null>(null);
+
   const setSelectOpen = (id: string, open: boolean) =>
     setOpenSelect(open ? id : null);
-  const styles = [
-    "Semua gaya",
-    ...new Set(houseDesigns.map((design) => design.style)),
-  ];
+
+  useEffect(() => {
+    async function fetchCatalog() {
+      try {
+        setLoading(true);
+        const res = await fetch("/api/designs");
+        if (!res.ok) throw new Error("Gagal memuat katalog");
+        const data = await res.json();
+        setDesigns(data);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Terjadi kesalahan saat mengambil katalog.";
+        setError(message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchCatalog();
+  }, []);
+
+  const styles = useMemo(() => {
+    const uniqueStyles = Array.from(
+      new Set(designs.map((design) => design.style))
+    );
+    return ["Semua gaya", ...uniqueStyles];
+  }, [designs]);
+
   const priceRange =
     priceRanges.find((item) => item.label === price) ?? priceRanges[0];
   const landRange =
     landRanges.find((item) => item.label === land) ?? landRanges[0];
   const buildingRange =
     buildingRanges.find((item) => item.label === building) ?? buildingRanges[0];
+
   const filtered = useMemo(() => {
-    const result = houseDesigns.filter(
+    const result = designs.filter(
       (design) =>
         `${design.name} ${design.style} ${design.location}`
           .toLowerCase()
@@ -157,26 +188,29 @@ export default function CatalogGrid() {
         (bedrooms === "Semua kamar" ||
           (bedrooms === "4 kamar atau lebih"
             ? design.bedrooms >= 4
-            : design.bedrooms === Number(bedrooms[0]))),
+            : design.bedrooms === Number(bedrooms[0])))
     );
     return [...result].sort((a, b) =>
       sort === "Harga terendah"
         ? a.estimatedCost - b.estimatedCost
         : sort === "Harga tertinggi"
           ? b.estimatedCost - a.estimatedCost
-          : 0,
+          : 0
     );
-  }, [buildingRange, bedrooms, landRange, priceRange, query, sort, style]);
+  }, [buildingRange, bedrooms, landRange, priceRange, query, sort, style, designs]);
+
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount);
   const visible = filtered.slice(
     (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE,
+    currentPage * PAGE_SIZE
   );
+
   const update = (setter: (value: string) => void, value: string) => {
     setter(value);
     setPage(1);
   };
+
   const reset = () => {
     setQuery("");
     setStyle("Semua gaya");
@@ -187,6 +221,7 @@ export default function CatalogGrid() {
     setSort("Rekomendasi");
     setPage(1);
   };
+
   const filters = (
     <div className="space-y-5">
       <CustomSelect
@@ -243,6 +278,7 @@ export default function CatalogGrid() {
       </button>
     </div>
   );
+
   return (
     <main className="min-h-screen bg-[#f7f9fc] pb-24 text-[#111e3f]">
       <section className="relative isolate overflow-visible bg-[#111e3f] text-white">
@@ -264,7 +300,6 @@ export default function CatalogGrid() {
             </p>
           </div>
 
-          {/* Search + sort: di tengah, di dalam container */}
           <div className="mx-auto mt-10 flex w-full max-w-screen-2xl flex-col gap-3 rounded-2xl border border-white/60 bg-white p-3 shadow-[0_20px_45px_rgba(17,30,63,0.2)] sm:flex-row sm:items-center">
             <label className="sr-only" htmlFor="catalog-search">
               Cari desain rumah
@@ -290,6 +325,7 @@ export default function CatalogGrid() {
           </div>
         </div>
       </section>
+
       <section className="mx-auto max-w-screen-2xl px-6 pt-20 lg:px-8">
         <div className="mb-8 lg:hidden">
           <button
@@ -300,6 +336,7 @@ export default function CatalogGrid() {
             Filter desain
           </button>
         </div>
+
         <div className="grid items-start gap-8 lg:grid-cols-[250px_1fr]">
           <aside className="hidden rounded-2xl border border-[#dbe4f2] bg-white p-5 shadow-sm lg:block">
             <div className="mb-5 flex items-center justify-between">
@@ -310,13 +347,28 @@ export default function CatalogGrid() {
             </div>
             {filters}
           </aside>
+
           <div>
             <p className="mb-5 text-sm text-[#64748b]">
               Menampilkan{" "}
               <strong className="text-[#111e3f]">{filtered.length}</strong>{" "}
               desain rumah
             </p>
-            {filtered.length ? (
+
+            {loading ? (
+              <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div
+                    key={i}
+                    className="h-80 animate-pulse rounded-[1.75rem] bg-gray-200"
+                  />
+                ))}
+              </div>
+            ) : error ? (
+              <div className="rounded-3xl border border-red-200 bg-red-50 p-6 text-center text-red-700">
+                {error}
+              </div>
+            ) : filtered.length ? (
               <>
                 <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                   {visible.map((design) => (
@@ -335,6 +387,7 @@ export default function CatalogGrid() {
                       onClick={() => setPage((value) => value - 1)}
                       className="cursor-pointer rounded-full border border-[#dbe4f2] px-4 py-2 text-lg text-[#475569] transition hover:border-[#8fb9ed] hover:bg-[#eef5ff] disabled:cursor-not-allowed disabled:opacity-40"
                     >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src="/images/icon/chevron-left.png"
                         alt=""
@@ -343,7 +396,7 @@ export default function CatalogGrid() {
                     </button>
                     {Array.from(
                       { length: pageCount },
-                      (_, index) => index + 1,
+                      (_, index) => index + 1
                     ).map((item) => (
                       <button
                         type="button"
@@ -362,6 +415,7 @@ export default function CatalogGrid() {
                       onClick={() => setPage((value) => value + 1)}
                       className="cursor-pointer rounded-full border border-[#dbe4f2] px-4 py-2 text-lg text-[#475569] transition hover:border-[#8fb9ed] hover:bg-[#eef5ff] disabled:cursor-not-allowed disabled:opacity-40"
                     >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src="/images/icon/chevron-right.png"
                         alt=""
@@ -392,6 +446,7 @@ export default function CatalogGrid() {
           </div>
         </div>
       </section>
+
       {filterOpen && (
         <div
           className="fixed inset-0 z-[70] bg-[#111e3f]/45 p-4 lg:hidden"
