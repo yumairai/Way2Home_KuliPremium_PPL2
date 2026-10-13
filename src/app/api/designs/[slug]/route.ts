@@ -4,7 +4,7 @@ import { getDesignBySlug } from "@/services/design.service";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: Promise<{ slug: string }> },
 ) {
   try {
     const { slug } = await params;
@@ -14,7 +14,7 @@ export async function GET(
     if (!design) {
       return NextResponse.json(
         { message: "Desain rumah tidak ditemukan." },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -23,7 +23,7 @@ export async function GET(
     console.error("Error in GET /api/designs/[slug]:", error);
     return NextResponse.json(
       { message: "Gagal mengambil detail desain." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -149,7 +149,10 @@ export default function CatalogGrid() {
         const data = await res.json();
         setDesigns(data);
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "Terjadi kesalahan saat mengambil katalog.";
+        const message =
+          err instanceof Error
+            ? err.message
+            : "Terjadi kesalahan saat mengambil katalog.";
         setError(message);
       } finally {
         setLoading(false);
@@ -160,7 +163,7 @@ export default function CatalogGrid() {
 
   const styles = useMemo(() => {
     const uniqueStyles = Array.from(
-      new Set(designs.map((design) => design.style))
+      new Set(designs.map((design) => design.style)),
     );
     return ["Semua gaya", ...uniqueStyles];
   }, [designs]);
@@ -188,22 +191,31 @@ export default function CatalogGrid() {
         (bedrooms === "Semua kamar" ||
           (bedrooms === "4 kamar atau lebih"
             ? design.bedrooms >= 4
-            : design.bedrooms === Number(bedrooms[0])))
+            : design.bedrooms === Number(bedrooms[0]))),
     );
     return [...result].sort((a, b) =>
       sort === "Harga terendah"
         ? a.estimatedCost - b.estimatedCost
         : sort === "Harga tertinggi"
           ? b.estimatedCost - a.estimatedCost
-          : 0
+          : 0,
     );
-  }, [buildingRange, bedrooms, landRange, priceRange, query, sort, style, designs]);
+  }, [
+    buildingRange,
+    bedrooms,
+    landRange,
+    priceRange,
+    query,
+    sort,
+    style,
+    designs,
+  ]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount);
   const visible = filtered.slice(
     (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE
+    currentPage * PAGE_SIZE,
   );
 
   const update = (setter: (value: string) => void, value: string) => {
@@ -396,7 +408,7 @@ export default function CatalogGrid() {
                     </button>
                     {Array.from(
                       { length: pageCount },
-                      (_, index) => index + 1
+                      (_, index) => index + 1,
                     ).map((item) => (
                       <button
                         type="button"

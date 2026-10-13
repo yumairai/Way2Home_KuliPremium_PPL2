@@ -18,9 +18,11 @@ export type DesignFilters = {
 
 export function transformDesignToHouseDesign(
   row: Record<string, unknown>,
-  images: Array<{ url: string; urutan: number }> = []
+  images: Array<{ url: string; urutan: number }> = [],
 ): HouseDesign {
-  const sortedImages = [...images].sort((a, b) => (a.urutan || 0) - (b.urutan || 0));
+  const sortedImages = [...images].sort(
+    (a, b) => (a.urutan || 0) - (b.urutan || 0),
+  );
   const mainImage = sortedImages[0]?.url || "/images/katalog/house-dummy1.webp";
 
   return {
@@ -41,23 +43,28 @@ export function transformDesignToHouseDesign(
     highlights: row.highlights || [],
     image: mainImage,
     images: sortedImages.map((img) => img.url),
-    spesifikasi: typeof row.spesifikasi === "object" && row.spesifikasi !== null ? row.spesifikasi : {},
+    spesifikasi:
+      typeof row.spesifikasi === "object" && row.spesifikasi !== null
+        ? row.spesifikasi
+        : {},
   };
 }
 
 export async function getDesigns(
   supabase: SupabaseClient<Database>,
-  filters?: DesignFilters
+  filters?: DesignFilters,
 ): Promise<HouseDesign[]> {
   let query = supabase
     .from("designs")
-    .select(`
+    .select(
+      `
       *,
       design_images (
         url,
         urutan
       )
-    `)
+    `,
+    )
     .eq("is_active", true);
 
   if (filters?.style && filters.style !== "Semua gaya") {
@@ -67,40 +74,62 @@ export async function getDesigns(
   if (filters?.minPrice !== undefined && !isNaN(filters.minPrice)) {
     query = query.gte("estimasi_biaya", filters.minPrice);
   }
-  if (filters?.maxPrice !== undefined && !isNaN(filters.maxPrice) && isFinite(filters.maxPrice)) {
+  if (
+    filters?.maxPrice !== undefined &&
+    !isNaN(filters.maxPrice) &&
+    isFinite(filters.maxPrice)
+  ) {
     query = query.lte("estimasi_biaya", filters.maxPrice);
   }
 
   if (filters?.minLand !== undefined && !isNaN(filters.minLand)) {
     query = query.gte("luas_tanah", filters.minLand);
   }
-  if (filters?.maxLand !== undefined && !isNaN(filters.maxLand) && isFinite(filters.maxLand)) {
+  if (
+    filters?.maxLand !== undefined &&
+    !isNaN(filters.maxLand) &&
+    isFinite(filters.maxLand)
+  ) {
     query = query.lte("luas_tanah", filters.maxLand);
   }
 
   if (filters?.minBuilding !== undefined && !isNaN(filters.minBuilding)) {
     query = query.gte("luas_bangunan", filters.minBuilding);
   }
-  if (filters?.maxBuilding !== undefined && !isNaN(filters.maxBuilding) && isFinite(filters.maxBuilding)) {
+  if (
+    filters?.maxBuilding !== undefined &&
+    !isNaN(filters.maxBuilding) &&
+    isFinite(filters.maxBuilding)
+  ) {
     query = query.lte("luas_bangunan", filters.maxBuilding);
   }
 
   if (filters?.bedrooms && filters.bedrooms !== "Semua kamar") {
-    if (filters.bedrooms === "4 kamar atau lebih" || Number(filters.bedrooms) >= 4) {
+    if (
+      filters.bedrooms === "4 kamar atau lebih" ||
+      Number(filters.bedrooms) >= 4
+    ) {
       query = query.gte("jumlah_kamar_tidur", 4);
     } else {
-      const numBedrooms = typeof filters.bedrooms === "number" 
-        ? filters.bedrooms 
-        : parseInt(String(filters.bedrooms)[0], 10);
+      const numBedrooms =
+        typeof filters.bedrooms === "number"
+          ? filters.bedrooms
+          : parseInt(String(filters.bedrooms)[0], 10);
       if (!isNaN(numBedrooms)) {
         query = query.eq("jumlah_kamar_tidur", numBedrooms);
       }
     }
   }
 
-  if (filters?.sort === "Harga terendah" || filters?.sort === "harga_terendah") {
+  if (
+    filters?.sort === "Harga terendah" ||
+    filters?.sort === "harga_terendah"
+  ) {
     query = query.order("estimasi_biaya", { ascending: true });
-  } else if (filters?.sort === "Harga tertinggi" || filters?.sort === "harga_tertinggi") {
+  } else if (
+    filters?.sort === "Harga tertinggi" ||
+    filters?.sort === "harga_tertinggi"
+  ) {
     query = query.order("estimasi_biaya", { ascending: false });
   } else {
     query = query.order("created_at", { ascending: false });
@@ -113,8 +142,12 @@ export async function getDesigns(
     throw new Error("Gagal mengambil data katalog desain.");
   }
 
-  let results: HouseDesign[] = (data || []).map((row: Record<string, unknown>) =>
-    transformDesignToHouseDesign(row, (row.design_images as Array<{ url: string; urutan: number }>) || [])
+  let results: HouseDesign[] = (data || []).map(
+    (row: Record<string, unknown>) =>
+      transformDesignToHouseDesign(
+        row,
+        (row.design_images as Array<{ url: string; urutan: number }>) || [],
+      ),
   );
 
   if (filters?.query && filters.query.trim()) {
@@ -123,7 +156,7 @@ export async function getDesigns(
       (item: HouseDesign) =>
         item.name.toLowerCase().includes(q) ||
         item.style.toLowerCase().includes(q) ||
-        item.location.toLowerCase().includes(q)
+        item.location.toLowerCase().includes(q),
     );
   }
 
@@ -132,17 +165,19 @@ export async function getDesigns(
 
 export async function getDesignBySlug(
   supabase: SupabaseClient<Database>,
-  slug: string
+  slug: string,
 ): Promise<HouseDesign | null> {
   const { data, error } = await supabase
     .from("designs")
-    .select(`
+    .select(
+      `
       *,
       design_images (
         url,
         urutan
       )
-    `)
+    `,
+    )
     .eq("slug", slug)
     .eq("is_active", true)
     .maybeSingle();
@@ -156,5 +191,11 @@ export async function getDesignBySlug(
     return fallback ?? null;
   }
 
-  return transformDesignToHouseDesign(data as Record<string, unknown>, (data as Record<string, unknown>).design_images as Array<{ url: string; urutan: number }> || []);
+  return transformDesignToHouseDesign(
+    data as Record<string, unknown>,
+    ((data as Record<string, unknown>).design_images as Array<{
+      url: string;
+      urutan: number;
+    }>) || [],
+  );
 }

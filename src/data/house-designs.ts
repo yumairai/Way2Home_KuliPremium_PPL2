@@ -1,7 +1,19 @@
 ﻿import type { HouseDesign } from "@/types/house-design";
 
 const image = "/images/katalog/house-dummy1.webp";
-type DesignRow = [name: string, style: string, location: string, landArea: number, buildingArea: number, bedrooms: number, floors: number, estimatedCost: number, estimatedDuration: number, description: string, highlights: string[]];
+type DesignRow = [
+  name: string,
+  style: string,
+  location: string,
+  landArea: number,
+  buildingArea: number,
+  bedrooms: number,
+  floors: number,
+  estimatedCost: number,
+  estimatedDuration: number,
+  description: string,
+  highlights: string[],
+];
 const designs: DesignRow[] = [
   [
     "Nawasena",

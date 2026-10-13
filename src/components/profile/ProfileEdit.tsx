@@ -24,7 +24,10 @@ function Field({
 } & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <div>
-      <label htmlFor={id} className="flex items-center gap-2 text-sm font-semibold text-[#111e3f]">
+      <label
+        htmlFor={id}
+        className="flex items-center gap-2 text-sm font-semibold text-[#111e3f]"
+      >
         <span className="text-[#004796]">{icon}</span>
         {label}
       </label>
@@ -94,12 +97,20 @@ export default function ProfileEdit() {
           href="/dashboard"
           className="inline-flex items-center gap-2 text-sm font-semibold text-[#475569] transition hover:text-[#004796] transition-transform duration-300 hover:translate-x-2 active:scale-95"
         >
-          <span aria-hidden="true" className="text-[#004796] transition-transform group-hover:-translate-x-1">←</span>
+          <span
+            aria-hidden="true"
+            className="text-[#004796] transition-transform group-hover:-translate-x-1"
+          >
+            ←
+          </span>
           Kembali ke Dashboard
         </Link>
 
         {saved && (
-          <div role="status" className="mt-6 rounded-2xl border border-[#059669] bg-[#ecfdf5] p-4 text-sm font-semibold text-[#065f46]">
+          <div
+            role="status"
+            className="mt-6 rounded-2xl border border-[#059669] bg-[#ecfdf5] p-4 text-sm font-semibold text-[#065f46]"
+          >
             Profil berhasil diperbarui.
           </div>
         )}
@@ -107,7 +118,9 @@ export default function ProfileEdit() {
         <div className="mt-8 overflow-hidden rounded-[2rem] border border-[#dbe4f2] bg-white shadow-[0_24px_48px_rgba(17,30,63,0.06)]">
           <div className="p-8 md:p-12">
             <header className="text-center">
-              <h1 className="text-3xl font-bold tracking-[-0.03em] md:text-4xl">Edit Profile</h1>
+              <h1 className="text-3xl font-bold tracking-[-0.03em] md:text-4xl">
+                Edit Profile
+              </h1>
               <p className="mx-auto mt-3 max-w-md leading-7 text-[#64748b]">
                 Perbarui informasi personal dan preferensi akun Anda.
               </p>
@@ -117,7 +130,11 @@ export default function ProfileEdit() {
               <div className="relative inline-flex">
                 <div className="h-32 w-32 overflow-hidden rounded-full border-4 border-[#eef5ff] bg-[#f1f5f9]">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={avatarPreview} alt="Foto profil" className="h-full w-full object-cover" />
+                  <img
+                    src={avatarPreview}
+                    alt="Foto profil"
+                    className="h-full w-full object-cover"
+                  />
                 </div>
                 <button
                   type="button"
@@ -125,7 +142,17 @@ export default function ProfileEdit() {
                   aria-label="Ganti foto profil"
                   className="absolute bottom-0 left-24 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-[#004796] text-white shadow-lg transition hover:bg-[#045ec2] active:scale-90"
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
                     <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
                     <path d="m15 5 4 4" />
                   </svg>
@@ -135,11 +162,15 @@ export default function ProfileEdit() {
                   type="file"
                   accept="image/jpg,image/jpeg,image/png"
                   className="hidden"
-                  onChange={(event) => handleAvatarChange(event.target.files?.[0])}
+                  onChange={(event) =>
+                    handleAvatarChange(event.target.files?.[0])
+                  }
                 />
               </div>
               {avatarError ? (
-                <p className="text-sm font-semibold text-[#dc2626]">{avatarError}</p>
+                <p className="text-sm font-semibold text-[#dc2626]">
+                  {avatarError}
+                </p>
               ) : (
                 <p className="text-sm text-[#64748b]">jpg/png maks 2MB</p>
               )}
@@ -150,7 +181,17 @@ export default function ProfileEdit() {
                 id="profile-name"
                 label="Nama Lengkap"
                 icon={
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
                     <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
                     <circle cx="12" cy="7" r="4" />
                   </svg>
@@ -165,7 +206,17 @@ export default function ProfileEdit() {
                   id="profile-phone"
                   label="Nomor HP"
                   icon={
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
                       <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
                     </svg>
                   }
@@ -177,7 +228,17 @@ export default function ProfileEdit() {
                   id="profile-email"
                   label="Email"
                   icon={
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
                       <rect width="20" height="16" x="2" y="4" rx="2" />
                       <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
                     </svg>
@@ -189,9 +250,22 @@ export default function ProfileEdit() {
               </div>
 
               <div>
-                <label htmlFor="profile-address" className="flex items-center gap-2 text-sm font-semibold text-[#111e3f]">
+                <label
+                  htmlFor="profile-address"
+                  className="flex items-center gap-2 text-sm font-semibold text-[#111e3f]"
+                >
                   <span className="text-[#004796]">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
                       <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" />
                       <circle cx="12" cy="10" r="3" />
                     </svg>
@@ -216,7 +290,17 @@ export default function ProfileEdit() {
                 className="inline-flex min-h-14 cursor-pointer items-center gap-3 rounded-full bg-gradient-to-r from-[#004796] to-[#045ec2] px-10 text-base font-bold text-white shadow-[0_10px_25px_rgba(0,71,150,0.3)] transition hover:-translate-y-0.5 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Ubah Profile
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
                   <path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 0 2.8l-9.9 9.9a4 4 0 0 1-1.4.9l-4.3 1.2a1 1 0 0 1-1.2-1.2l1.2-4.3a4 4 0 0 1 .9-1.4l9.9-9.9a2 2 0 0 1 1.4-.6Z" />
                   <path d="M13 5.5 18.5 11" />
                 </svg>

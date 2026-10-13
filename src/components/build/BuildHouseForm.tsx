@@ -83,12 +83,13 @@ function UploadField({
 
   return (
     <label
-      className={`flex min-h-44 cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-6 text-center transition ${dragging
-        ? "border-[#045ec2] bg-[#eef5ff]"
-        : state
-          ? "border-[#059669] bg-[#ecfdf5]"
-          : "border-[#dbe4f2] bg-white hover:border-[#8fb9ed]"
-        }`}
+      className={`flex min-h-44 cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-6 text-center transition ${
+        dragging
+          ? "border-[#045ec2] bg-[#eef5ff]"
+          : state
+            ? "border-[#059669] bg-[#ecfdf5]"
+            : "border-[#dbe4f2] bg-white hover:border-[#8fb9ed]"
+      }`}
       onDragOver={(event) => {
         event.preventDefault();
         setDragging(true);
@@ -147,7 +148,9 @@ function UploadField({
 export default function BuildHouseForm({ design }: { design: HouseDesign }) {
   const [address, setAddress] = useState("");
   const [budget, setBudget] = useState("");
-  const [documents, setDocuments] = useState<Record<string, DocumentFile | null>>({
+  const [documents, setDocuments] = useState<
+    Record<string, DocumentFile | null>
+  >({
     sertifikat_tanah: null,
     ktp_pemilik: null,
     imb_pbg: null,
@@ -157,7 +160,9 @@ export default function BuildHouseForm({ design }: { design: HouseDesign }) {
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [existingProjectId, setExistingProjectId] = useState<string | null>(null);
+  const [existingProjectId, setExistingProjectId] = useState<string | null>(
+    null,
+  );
   const [notification, setNotification] = useState<{
     type: "success" | "error";
     text: string;
@@ -279,7 +284,9 @@ export default function BuildHouseForm({ design }: { design: HouseDesign }) {
       } else if (response.status === 409) {
         setNotification({
           type: "error",
-          text: resData.message || "Anda sudah memiliki proyek aktif untuk desain ini.",
+          text:
+            resData.message ||
+            "Anda sudah memiliki proyek aktif untuk desain ini.",
         });
         if (resData.projectId) {
           setExistingProjectId(resData.projectId);
@@ -297,12 +304,16 @@ export default function BuildHouseForm({ design }: { design: HouseDesign }) {
       } else {
         setNotification({
           type: "error",
-          text: resData.message || "Terjadi kesalahan saat mengajukan pembangunan.",
+          text:
+            resData.message || "Terjadi kesalahan saat mengajukan pembangunan.",
         });
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Terjadi kesalahan jaringan saat terhubung ke server.";
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Terjadi kesalahan jaringan saat terhubung ke server.";
       setNotification({
         type: "error",
         text: message,
@@ -331,10 +342,11 @@ export default function BuildHouseForm({ design }: { design: HouseDesign }) {
         {notification && (
           <div
             role="status"
-            className={`mt-8 rounded-2xl border p-4 text-sm font-semibold ${notification.type === "success"
-              ? "border-[#059669] bg-[#ecfdf5] text-[#065f46]"
-              : "border-[#dc2626] bg-[#fef2f2] text-[#991b1b]"
-              }`}
+            className={`mt-8 rounded-2xl border p-4 text-sm font-semibold ${
+              notification.type === "success"
+                ? "border-[#059669] bg-[#ecfdf5] text-[#065f46]"
+                : "border-[#dc2626] bg-[#fef2f2] text-[#991b1b]"
+            }`}
           >
             <p>{notification.text}</p>
             {existingProjectId && (
@@ -356,8 +368,9 @@ export default function BuildHouseForm({ design }: { design: HouseDesign }) {
               Pengajuan Terkirim!
             </h2>
             <p className="mt-3 text-[#047857]">
-              Terima kasih. Proyek Anda telah masuk ke antrean admin dengan status{" "}
-              <strong>Menunggu Pengawas</strong>. Tim kami akan memverifikasi dokumen Anda dalam 1x24 jam.
+              Terima kasih. Proyek Anda telah masuk ke antrean admin dengan
+              status <strong>Menunggu Pengawas</strong>. Tim kami akan
+              memverifikasi dokumen Anda dalam 1x24 jam.
             </p>
             <div className="mt-6">
               <Link
@@ -473,7 +486,8 @@ export default function BuildHouseForm({ design }: { design: HouseDesign }) {
               className={`w-full rounded-2xl border p-4 text-sm outline-none transition focus:ring-2 focus:ring-[#045ec2]/25 ${errors.budget ? "border-[#dc2626]" : "border-[#dbe4f2] focus:border-[#8fb9ed]"}`}
             />
             <p className="mt-2 text-xs text-[#64748b]">
-              Masukkan nominal budget dalam Rupiah (tanpa titik atau koma). Minimal sesuai estimasi biaya: {money(design.estimatedCost)}.
+              Masukkan nominal budget dalam Rupiah (tanpa titik atau koma).
+              Minimal sesuai estimasi biaya: {money(design.estimatedCost)}.
             </p>
             {errors.budget && (
               <p className="mt-2 text-sm font-semibold text-[#dc2626]">

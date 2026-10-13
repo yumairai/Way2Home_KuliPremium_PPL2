@@ -12,7 +12,8 @@ type Remaining = {
 
 function compute(deadlineAt: string): Remaining {
   const diff = new Date(deadlineAt).getTime() - Date.now();
-  if (diff <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0, expired: true };
+  if (diff <= 0)
+    return { days: 0, hours: 0, minutes: 0, seconds: 0, expired: true };
   return {
     days: Math.floor(diff / 86_400_000),
     hours: Math.floor(diff / 3_600_000) % 24,
@@ -24,7 +25,9 @@ function compute(deadlineAt: string): Remaining {
 
 export function useCountdown(deadlineAt?: string) {
   const [remaining, setRemaining] = useState<Remaining>(() =>
-    deadlineAt ? compute(deadlineAt) : { days: 0, hours: 0, minutes: 0, seconds: 0, expired: true },
+    deadlineAt
+      ? compute(deadlineAt)
+      : { days: 0, hours: 0, minutes: 0, seconds: 0, expired: true },
   );
 
   useEffect(() => {

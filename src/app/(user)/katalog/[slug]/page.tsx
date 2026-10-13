@@ -81,7 +81,9 @@ export default async function DesignDetailPage({
         </div>
         {design.highlights.length > 0 && (
           <section className="mt-10 rounded-[2rem] bg-[#111e3f] p-8 text-white md:p-10">
-            <h2 className="text-2xl font-bold">Yang menonjol dari desain ini</h2>
+            <h2 className="text-2xl font-bold">
+              Yang menonjol dari desain ini
+            </h2>
             <div className="mt-6 grid gap-4 sm:grid-cols-3">
               {design.highlights.map((highlight) => (
                 <div
