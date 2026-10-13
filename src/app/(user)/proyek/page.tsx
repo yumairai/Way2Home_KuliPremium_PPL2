@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { projects } from "@/data/proyek";
+import { createClient } from "@/utils/supabase/server";
+import { getUserProjects } from "@/services/project.service";
 import ProjectSidebar from "@/components/proyek/ProjectSidebar";
 import ProjectDetail from "@/components/proyek/ProjectDetail";
 import MilestoneSidebar from "@/components/proyek/MilestoneSidebar";
@@ -9,8 +10,10 @@ export const metadata = {
   description: "Kelola dan pantau progres pembangunan hunian impian Anda.",
 };
 
-export default function ProyekListPage() {
-  const project = projects[0];
+export default async function ProyekListPage() {
+  const supabase = await createClient();
+  const projects = await getUserProjects(supabase);
+  const project = projects[0] || null;
 
   return (
     <main className="min-h-screen bg-[#f7f9fc] pb-24 pt-32 text-[#111e3f]">

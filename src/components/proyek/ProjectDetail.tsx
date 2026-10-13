@@ -8,10 +8,10 @@ import ActionPanel from "./ActionPanel";
 import PaymentsSection from "./PaymentsSection";
 
 const STATUS_BADGE: Record<string, { label: string; style: string }> = {
-  "Menunggu Verifikasi": { label: "Menunggu", style: "bg-[#fffaf0] text-[#92400e]" },
+  "Verifikasi Dokumen": { label: "Verifikasi Dokumen", style: "bg-[#fffaf0] text-[#92400e]" },
   "Revisi Dokumen": { label: "Perlu Revisi", style: "bg-[#fef2f2] text-[#991b1b]" },
   "Alokasi Tim": { label: "Mengalokasikan Tim", style: "bg-[#eef5ff] text-[#004796]" },
-  "Kontrak Proyek": { label: "Menunggu Kontrak", style: "bg-[#eef5ff] text-[#004796]" },
+  "Finalisasi Kontrak": { label: "Menunggu Kontrak", style: "bg-[#eef5ff] text-[#004796]" },
   "Pembayaran DP": { label: "Menunggu DP", style: "bg-[#eef5ff] text-[#004796]" },
   "Proyek Aktif": { label: "Proyek Aktif", style: "bg-[#ecfdf5] text-[#065f46]" },
   Selesai: { label: "Selesai", style: "bg-[#f1f5f9] text-[#475569]" },

@@ -72,26 +72,56 @@ function getMilestone(
     };
   }
 
+  if (isCompleted(["Pembayaran DP"])) {
+    return {
+      pengajuan: step("completed", formatDate(project.submittedAt)),
+      verifikasi: step("completed", "Berhasil direview"),
+      tim: step("completed", "Tim dialokasikan"),
+      kontrak: step("completed", "Kontrak disetujui"),
+      dp: dpPaid
+        ? step("completed", "DP lunas")
+        : step("active", "Menunggu pembayaran DP"),
+      aktif: step("pending", "Belum dimulai"),
+      selesai: step("pending", "Belum dimulai"),
+    };
+  }
+
+  if (isCompleted(["Finalisasi Kontrak"])) {
+    return {
+      pengajuan: step("completed", formatDate(project.submittedAt)),
+      verifikasi: step("completed", "Berhasil direview"),
+      tim: step("completed", "Tim dialokasikan"),
+      kontrak: contractAgreed
+        ? step("completed", "Kontrak disetujui")
+        : step("active", "Menunggu tanda tangan"),
+      dp: step("pending", "Menunggu kontrak"),
+      aktif: step("pending", "Belum dimulai"),
+      selesai: step("pending", "Belum dimulai"),
+    };
+  }
+
+  if (isCompleted(["Alokasi Tim"])) {
+    return {
+      pengajuan: step("completed", formatDate(project.submittedAt)),
+      verifikasi: step("completed", "Berhasil direview"),
+      tim: teamAssigned
+        ? step("completed", "Mandor dialokasikan")
+        : step("active", "Menunggu alokasi"),
+      kontrak: step("pending", "Menunggu"),
+      dp: step("pending", "Menunggu kontrak"),
+      aktif: step("pending", "Belum dimulai"),
+      selesai: step("pending", "Belum dimulai"),
+    };
+  }
+
   return {
     pengajuan: step("completed", formatDate(project.submittedAt)),
     verifikasi: docApproved
       ? step("completed", "Berhasil direview")
       : step("active", project.documentStatus === "revision" ? "Butuh revisi" : "Menunggu review"),
-    tim: teamAssigned
-      ? step("completed", "Mandor dialokasikan")
-      : docApproved
-        ? step("active", "Menunggu alokasi")
-        : step("pending", "Menunggu"),
-    kontrak: !teamAssigned
-      ? step("pending", "Menunggu")
-      : contractAgreed
-        ? step("completed", "Kontrak disetujui")
-        : step("active", "Menunggu tanda tangan"),
-    dp: dpPaid
-      ? step("completed", "DP lunas")
-      : contractAgreed
-        ? step("active", "Menunggu pembayaran")
-        : step("pending", "Menunggu kontrak"),
+    tim: step("pending", "Menunggu verifikasi"),
+    kontrak: step("pending", "Menunggu"),
+    dp: step("pending", "Menunggu kontrak"),
     aktif: step("pending", "Belum dimulai"),
     selesai: step("pending", "Belum dimulai"),
   };

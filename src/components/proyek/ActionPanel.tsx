@@ -21,10 +21,10 @@ function getBanner(project: Project): Banner | null {
       style: "border-[#dc2626] bg-[#fef2f2] text-[#991b1b]",
     };
   }
-  if (project.documentStatus === "revision") {
+  if (project.documentStatus === "revision" || project.status === "Revisi Dokumen") {
     return {
       icon: "revision",
-      title: "Dokumen Ditolak",
+      title: "Dokumen Ditolak — Perlu Revisi",
       body: project.adminNote ?? "Dokumen Anda memerlukan perbaikan. Mohon unggah ulang dokumen yang sesuai.",
       style: "border-[#d97706] bg-[#fffaf0] text-[#92400e]",
     };
@@ -33,15 +33,15 @@ function getBanner(project: Project): Banner | null {
     return {
       icon: "clock",
       title: "Dokumen Sedang Direview",
-      body: "Mohon tunggu 1×24 jam.",
+      body: "Mohon tunggu 1×24 jam. Tim kami akan memverifikasi dokumen Anda.",
       style: "border-[#fcd47c] bg-[#fffaf0] text-[#92400e]",
     };
   }
   if (project.status === "Alokasi Tim") {
     return {
       icon: "clock",
-      title: "Pembayaran DP Berhasil",
-      body: "Mohon tunggu 1×24 jam untuk pengalokasian mandor dan pengawas proyek Anda.",
+      title: "Dokumen Disetujui — Alokasi Tim",
+      body: "Dokumen Anda telah diverifikasi. Mohon tunggu 1×24 jam untuk pengalokasian mandor dan pengawas proyek Anda.",
       style: "border-[#8fb9ed] bg-[#eef5ff] text-[#004796]",
     };
   }
@@ -185,7 +185,8 @@ export default function ActionPanel({ project }: { project: Project }) {
   const canCancel =
     !canceled &&
     !contractLocked &&
-    project.status !== "Selesai";
+    project.status !== "Selesai" &&
+    project.status !== "Finalisasi Kontrak";
 
   const activePayment = project.payments.find((p) => p.status === "aktif");
   const allInstallmentsPaid = !activePayment && dpPaid;

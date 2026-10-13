@@ -1,11 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getHouseDesign, houseDesigns } from "@/data/house-designs";
+import { createClient } from "@/utils/supabase/server";
+import { getDesignBySlug } from "@/services/design.service";
 
-export function generateStaticParams() {
-  return houseDesigns.map(({ slug }) => ({ slug }));
-}
 const money = (value: number) =>
   `Rp ${(value / 1000000).toLocaleString("id-ID")} juta`;
 
@@ -15,8 +13,11 @@ export default async function DesignDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const design = getHouseDesign(slug);
+  const supabase = await createClient();
+  const design = await getDesignBySlug(supabase, slug);
+
   if (!design) notFound();
+
   return (
     <main className="min-h-screen bg-[#f7f9fc] pb-24 pt-28 text-[#111e3f]">
       <div className="mx-auto max-w-screen-2xl px-6 lg:px-8">
@@ -66,7 +67,7 @@ export default async function DesignDetailPage({
                 {money(design.estimatedCost)}
               </p>
               <p className="mt-2 text-sm text-[#64748b]">
-                Durasi sekitar {design.estimatedDuration} bulan daerah {" "}
+                Durasi sekitar {design.estimatedDuration} bulan daerah{" "}
                 {design.location}
               </p>
             </div>
@@ -78,19 +79,21 @@ export default async function DesignDetailPage({
             </Link>
           </div>
         </div>
-        <section className="mt-10 rounded-[2rem] bg-[#111e3f] p-8 text-white md:p-10">
-          <h2 className="text-2xl font-bold">Yang menonjol dari desain ini</h2>
-          <div className="mt-6 grid gap-4 sm:grid-cols-3">
-            {design.highlights.map((highlight) => (
-              <div
-                key={highlight}
-                className="rounded-2xl border border-white/15 bg-white/10 p-4 text-sm text-white/85"
-              >
-                {highlight}
-              </div>
-            ))}
-          </div>
-        </section>
+        {design.highlights.length > 0 && (
+          <section className="mt-10 rounded-[2rem] bg-[#111e3f] p-8 text-white md:p-10">
+            <h2 className="text-2xl font-bold">Yang menonjol dari desain ini</h2>
+            <div className="mt-6 grid gap-4 sm:grid-cols-3">
+              {design.highlights.map((highlight) => (
+                <div
+                  key={highlight}
+                  className="rounded-2xl border border-white/15 bg-white/10 p-4 text-sm text-white/85"
+                >
+                  {highlight}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
       </div>
     </main>
   );

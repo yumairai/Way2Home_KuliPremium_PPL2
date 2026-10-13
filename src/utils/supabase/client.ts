@@ -1,15 +1,14 @@
 import { createBrowserClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/database.types";
 
-// Singleton: seluruh aplikasi berbagi satu instance browser client
-// agar session storage tidak terputus antar pemanggilan.
-let client: SupabaseClient | null = null;
+let client: SupabaseClient<Database> | null = null;
 
 export function createClient() {
   if (!client) {
-    client = createBrowserClient(
+    client = createBrowserClient<Database>(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
   }
   return client;
