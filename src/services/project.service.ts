@@ -16,7 +16,7 @@ const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "application/pdf"];
 
 export function validateBudget(
   budgetInput: number | string | undefined | null,
-  minCost: number
+  minCost: number,
 ): { valid: boolean; error?: string } {
   if (budgetInput === undefined || budgetInput === null || budgetInput === "") {
     return { valid: false, error: "Budget proyek wajib diisi." };
@@ -45,7 +45,7 @@ export function sanitizeFileName(name: string): string {
 
 export function getAndValidateExtension(
   fileName: string,
-  mimeType: string
+  mimeType: string,
 ): string | null {
   const allowedMap: Record<string, string[]> = {
     "image/jpeg": ["jpg", "jpeg"],
@@ -81,7 +81,7 @@ export function validateFile(file: File): string | null {
 
 export async function createProjectWithDocuments(
   supabase: SupabaseClient<Database>,
-  formData: FormData
+  formData: FormData,
 ): Promise<{ projectId: string; status: string }> {
   // 1. Auth & Role Check
   const { user } = await requireRole(supabase, "customer");
@@ -95,7 +95,11 @@ export async function createProjectWithDocuments(
     title: string;
     required: boolean;
   }> = [
-    { key: "sertifikat_tanah", title: "Sertifikat Tanah (SHM/HGB)", required: true },
+    {
+      key: "sertifikat_tanah",
+      title: "Sertifikat Tanah (SHM/HGB)",
+      required: true,
+    },
     { key: "ktp_pemilik", title: "KTP Pemilik", required: true },
     { key: "imb_pbg", title: "IMB/PBG", required: true },
     { key: "surat_kuasa", title: "Surat Kuasa (Jika Ada)", required: false },
@@ -126,7 +130,7 @@ export async function createProjectWithDocuments(
 
   const budgetValidation = validateBudget(
     budgetRaw ? String(budgetRaw) : undefined,
-    Number(design.estimasi_biaya)
+    Number(design.estimasi_biaya),
   );
   if (!budgetValidation.valid && budgetValidation.error) {
     validationErrors["budget"] = budgetValidation.error;
@@ -193,7 +197,10 @@ export async function createProjectWithDocuments(
       details: projectInsertErr?.details,
       hint: projectInsertErr?.hint,
     });
-    const errMsg = projectInsertErr?.message || projectInsertErr?.details || "Gagal membuat proyek.";
+    const errMsg =
+      projectInsertErr?.message ||
+      projectInsertErr?.details ||
+      "Gagal membuat proyek.";
     throw new ServiceError(errMsg, 500);
   }
 
@@ -219,7 +226,9 @@ export async function createProjectWithDocuments(
 
       if (uploadErr) {
         console.error(`Gagal upload dokumen ${item.key}:`, uploadErr);
-        throw new Error(`Gagal upload file ${item.title}: ${uploadErr.message}`);
+        throw new Error(
+          `Gagal upload file ${item.title}: ${uploadErr.message}`,
+        );
       }
 
       uploadedStoragePaths.push(storagePath);
@@ -273,7 +282,10 @@ export async function createProjectWithDocuments(
       .eq("id", projectId)
       .eq("status", "draft");
 
-    const errMessage = err instanceof Error ? err.message : "Gagal memproses pengajuan pembangunan.";
+    const errMessage =
+      err instanceof Error
+        ? err.message
+        : "Gagal memproses pengajuan pembangunan.";
     throw new ServiceError(errMessage, 500);
   }
 }
@@ -344,7 +356,7 @@ export async function deleteCancellableProject(
 
 export async function getSignedDocumentUrl(
   supabase: SupabaseClient<Database>,
-  documentId: string
+  documentId: string,
 ): Promise<string> {
   const { data: doc, error } = await supabase
     .from("project_documents")
@@ -367,40 +379,50 @@ export async function getSignedDocumentUrl(
   return signedData.signedUrl;
 }
 
-export function transformDBProjectToProject(row: Record<string, unknown>): Project {
+export function transformDBProjectToProject(
+  row: Record<string, unknown>,
+): Project {
   const design = (row.designs as Record<string, unknown>) || {};
-  const images = (design.design_images as Array<{ url: string; urutan: number }>) || [];
-  const sortedImages = [...images].sort((a, b) => (a.urutan || 0) - (b.urutan || 0));
+  const images =
+    (design.design_images as Array<{ url: string; urutan: number }>) || [];
+  const sortedImages = [...images].sort(
+    (a, b) => (a.urutan || 0) - (b.urutan || 0),
+  );
   const mainImage = sortedImages[0]?.url || "/images/katalog/house-dummy1.webp";
 
   const dbStatus = (row.status as string) || "draft";
   const statusMap: Record<string, ProjectStatus> = {
-    draft:                    "Verifikasi Dokumen",
-    verifikasi_dokumen:       "Verifikasi Dokumen",
-    revisi_dokumen:           "Revisi Dokumen",
-    alokasi_mandor_pengawas:  "Alokasi Tim",
-    finalisasi_kontrak:       "Finalisasi Kontrak",
-    pembayaran_dp:            "Pembayaran DP",
-    berjalan:                 "Proyek Aktif",
-    selesai:                  "Selesai",
-    batal:                    "Dibatalkan",
+    draft: "Verifikasi Dokumen",
+    verifikasi_dokumen: "Verifikasi Dokumen",
+    revisi_dokumen: "Revisi Dokumen",
+    alokasi_mandor_pengawas: "Alokasi Tim",
+    finalisasi_kontrak: "Finalisasi Kontrak",
+    pembayaran_dp: "Pembayaran DP",
+    berjalan: "Proyek Aktif",
+    selesai: "Selesai",
+    batal: "Dibatalkan",
   };
 
-  const projectStatus: ProjectStatus = statusMap[dbStatus] || "Verifikasi Dokumen";
+  const projectStatus: ProjectStatus =
+    statusMap[dbStatus] || "Verifikasi Dokumen";
 
   const docs = row.project_documents || [];
-  const hasRevision = dbStatus === "revisi_dokumen" || docs.some((d: Record<string, unknown>) => Boolean(d.catatan));
-  const isPendingVerification = dbStatus === "draft" || dbStatus === "verifikasi_dokumen";
+  const hasRevision =
+    dbStatus === "revisi_dokumen" ||
+    docs.some((d: Record<string, unknown>) => Boolean(d.catatan));
+  const isPendingVerification =
+    dbStatus === "draft" || dbStatus === "verifikasi_dokumen";
   const documentStatus: DocumentStatus = hasRevision
     ? "revision"
     : isPendingVerification
-    ? "pending"
-    : "approved";
+      ? "pending"
+      : "approved";
 
   const team: TeamMember[] = [];
   if (row.pengawas_profiles) {
     const pengawas = row.pengawas_profiles as Record<string, unknown>;
-    const pengawasProfile = (pengawas.profiles as Record<string, unknown>) || {};
+    const pengawasProfile =
+      (pengawas.profiles as Record<string, unknown>) || {};
     team.push({
       id: pengawas.id as string,
       name: (pengawasProfile.nama_lengkap as string) || "Pengawas Proyek",
@@ -413,9 +435,11 @@ export function transformDBProjectToProject(row: Record<string, unknown>): Proje
 
   if (Array.isArray(row.project_mandors)) {
     for (const item of row.project_mandors as Array<Record<string, unknown>>) {
-      const mandor = item.mandor_profiles as Record<string, unknown> | undefined;
+      const mandor = item.mandor_profiles as
+        Record<string, unknown> | undefined;
       if (mandor) {
-        const mandorProfile = (mandor.profiles as Record<string, unknown>) || {};
+        const mandorProfile =
+          (mandor.profiles as Record<string, unknown>) || {};
         team.push({
           id: mandor.id as string,
           name: (mandorProfile.nama_lengkap as string) || "Mandor Proyek",
@@ -445,12 +469,21 @@ export function transformDBProjectToProject(row: Record<string, unknown>): Proje
     version: (dbContracts?.versi as number) || 1,
     issuedAt: (dbContracts?.created_at as string) || (row.created_at as string),
     deadlineAt: dbContracts?.created_at
-      ? new Date(new Date(dbContracts.created_at as string).getTime() + 7 * 86400000).toISOString()
-      : new Date(new Date(row.created_at as string).getTime() + 7 * 86400000).toISOString(),
-    rejectionReasons: dbContracts?.catatan_revisi ? [dbContracts.catatan_revisi as string] : undefined,
+      ? new Date(
+          new Date(dbContracts.created_at as string).getTime() + 7 * 86400000,
+        ).toISOString()
+      : new Date(
+          new Date(row.created_at as string).getTime() + 7 * 86400000,
+        ).toISOString(),
+    rejectionReasons: dbContracts?.catatan_revisi
+      ? [dbContracts.catatan_revisi as string]
+      : undefined,
   };
 
-  const paymentStatusMap: Record<string, "lunas" | "menunggu" | "aktif" | "akan_datang"> = {
+  const paymentStatusMap: Record<
+    string,
+    "lunas" | "menunggu" | "aktif" | "akan_datang"
+  > = {
     lunas: "lunas",
     menunggu_verifikasi: "menunggu",
     menunggu_pembayaran: "aktif",
@@ -470,16 +503,17 @@ export function transformDBProjectToProject(row: Record<string, unknown>): Proje
 
   const scope: string[] = dbContracts?.ruang_lingkup
     ? (dbContracts.ruang_lingkup as string).split("\n").filter(Boolean)
-    : Array.isArray(design.highlights) && (design.highlights as unknown[]).length > 0
-    ? (design.highlights as string[])
-    : [
-        "Pekerjaan persiapan, penggalian, dan pondasi",
-        "Struktur beton bertulang",
-        "Dinding bata ringan, plester, dan acian",
-        "Rangka atap dan penutup genteng",
-        "Instalasi listrik dan plumbing",
-        "Finishing lantai dan dinding",
-      ];
+    : Array.isArray(design.highlights) &&
+        (design.highlights as unknown[]).length > 0
+      ? (design.highlights as string[])
+      : [
+          "Pekerjaan persiapan, penggalian, dan pondasi",
+          "Struktur beton bertulang",
+          "Dinding bata ringan, plester, dan acian",
+          "Rangka atap dan penutup genteng",
+          "Instalasi listrik dan plumbing",
+          "Finishing lantai dan dinding",
+        ];
 
   return {
     id: row.id as string,
@@ -491,7 +525,8 @@ export function transformDBProjectToProject(row: Record<string, unknown>): Proje
     landArea: Number(design.luas_tanah || 0),
     buildingArea: Number(design.luas_bangunan || 0),
     budget: Number(row.budget_proyek || design.estimasi_biaya || 0),
-    duration: Math.round(((design.estimasi_durasi_hari as number) || 0) / 30) || 8,
+    duration:
+      Math.round(((design.estimasi_durasi_hari as number) || 0) / 30) || 8,
     address: (row.alamat_proyek as string) || "Lokasi Belum Ditentukan",
     submittedAt: row.created_at as string,
     status: projectStatus,
@@ -504,7 +539,7 @@ export function transformDBProjectToProject(row: Record<string, unknown>): Proje
 }
 
 export async function getUserProjects(
-  supabase: SupabaseClient<Database>
+  supabase: SupabaseClient<Database>,
 ): Promise<Project[]> {
   const {
     data: { user },
@@ -513,7 +548,8 @@ export async function getUserProjects(
 
   let { data, error } = await supabase
     .from("projects")
-    .select(`
+    .select(
+      `
       *,
       designs (
         id,
@@ -555,7 +591,8 @@ export async function getUserProjects(
         status,
         tanggal_bayar
       )
-    `)
+    `,
+    )
     .eq("customer_id", user.id)
     .order("created_at", { ascending: false });
 
@@ -563,7 +600,8 @@ export async function getUserProjects(
     console.warn("[getUserProjects] Full query warning:", error?.message);
     const fallbackRes = await supabase
       .from("projects")
-      .select(`
+      .select(
+        `
         *,
         designs (
           id,
@@ -587,7 +625,8 @@ export async function getUserProjects(
           catatan,
           created_at
         )
-      `)
+      `,
+      )
       .eq("customer_id", user.id)
       .order("created_at", { ascending: false });
 
@@ -597,17 +636,22 @@ export async function getUserProjects(
 
   if (error || !data) {
     if (error) {
-      console.error("[getUserProjects] Error details:", JSON.stringify(error, null, 2));
+      console.error(
+        "[getUserProjects] Error details:",
+        JSON.stringify(error, null, 2),
+      );
     }
     return [];
   }
 
-  return data.map((row: Record<string, unknown>) => transformDBProjectToProject(row));
+  return data.map((row: Record<string, unknown>) =>
+    transformDBProjectToProject(row),
+  );
 }
 
 export async function getUserProjectById(
   supabase: SupabaseClient<Database>,
-  projectId: string
+  projectId: string,
 ): Promise<Project | null> {
   const {
     data: { user },
@@ -616,7 +660,8 @@ export async function getUserProjectById(
 
   let { data, error } = await supabase
     .from("projects")
-    .select(`
+    .select(
+      `
       *,
       designs (
         id,
@@ -658,7 +703,8 @@ export async function getUserProjectById(
         status,
         tanggal_bayar
       )
-    `)
+    `,
+    )
     .eq("id", projectId)
     .eq("customer_id", user.id)
     .maybeSingle();
@@ -667,7 +713,8 @@ export async function getUserProjectById(
     console.warn("[getUserProjectById] Full query warning:", error?.message);
     const fallbackRes = await supabase
       .from("projects")
-      .select(`
+      .select(
+        `
         *,
         designs (
           id,
@@ -691,7 +738,8 @@ export async function getUserProjectById(
           catatan,
           created_at
         )
-      `)
+      `,
+      )
       .eq("id", projectId)
       .eq("customer_id", user.id)
       .maybeSingle();
@@ -702,11 +750,13 @@ export async function getUserProjectById(
 
   if (error || !data) {
     if (error) {
-      console.error("[getUserProjectById] Error details:", JSON.stringify(error, null, 2));
+      console.error(
+        "[getUserProjectById] Error details:",
+        JSON.stringify(error, null, 2),
+      );
     }
     return null;
   }
 
   return transformDBProjectToProject(data);
 }
-

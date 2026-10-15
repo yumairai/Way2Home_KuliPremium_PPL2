@@ -20,13 +20,25 @@ export default async function ProyekListPage() {
       <div className="mx-auto max-w-screen-2xl px-6 lg:px-8">
         <header className="mb-10 flex flex-wrap items-end justify-between gap-6">
           <div>
-            <h1 className="text-3xl font-bold tracking-[-0.03em] md:text-4xl">Proyek Saya</h1>
+            <h1 className="text-3xl font-bold tracking-[-0.03em] md:text-4xl">
+              Proyek Saya
+            </h1>
             <p className="mt-2 text-base leading-7 text-[#64748b]">
               Kelola dan pantau progres pembangunan hunian impian Anda.
             </p>
           </div>
           <span className="inline-flex items-center gap-2 rounded-full border border-[#dbe4f2] bg-white px-4 py-2 text-sm font-bold text-[#475569]">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
               <circle cx="12" cy="12" r="10" />
               <path d="M12 16v-4" />
               <path d="M12 8h.01" />
@@ -48,14 +60,27 @@ export default async function ProyekListPage() {
         ) : (
           <div className="rounded-[1.75rem] border border-[#dbe4f2] bg-white py-20 text-center shadow-[0_12px_30px_rgba(17,30,63,0.06)]">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#eef5ff] text-[#004796]">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <svg
+                width="28"
+                height="28"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
                 <path d="M3 21V9l9-6 9 6v12" />
                 <path d="M9 21v-6h6v6" />
               </svg>
             </div>
-            <h2 className="mt-6 text-2xl font-bold">Anda belum memiliki proyek pembangunan rumah</h2>
+            <h2 className="mt-6 text-2xl font-bold">
+              Anda belum memiliki proyek pembangunan rumah
+            </h2>
             <p className="mx-auto mt-3 max-w-md text-[#64748b]">
-              Silakan pergi ke halaman rekomendasi rumah dan buat proyek Anda dari sana.
+              Silakan pergi ke halaman rekomendasi rumah dan buat proyek Anda
+              dari sana.
             </p>
             <Link
               href="/ai-planning-based"

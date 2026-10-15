@@ -5,7 +5,11 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { login } from "@/services/auth.service";
-import { authenticateDemoAccount, setDemoRole, type DemoRole } from "@/utils/demo-auth";
+import {
+  authenticateDemoAccount,
+  setDemoRole,
+  type DemoRole,
+} from "@/utils/demo-auth";
 
 const DEMO_HOME: Record<DemoRole, string> = {
   admin: "/admin",
@@ -127,7 +131,8 @@ function LoginForm() {
           {/* Success Message */}
           {registered && (
             <div className="mb-4 rounded-md border border-green-200 bg-green-100 px-3 py-2 text-center text-sm text-green-800">
-              Registrasi berhasil! Cek email kamu dan klik tautan verifikasi sebelum masuk. Jika belum terlihat, periksa folder spam.
+              Registrasi berhasil! Cek email kamu dan klik tautan verifikasi
+              sebelum masuk. Jika belum terlihat, periksa folder spam.
             </div>
           )}
 

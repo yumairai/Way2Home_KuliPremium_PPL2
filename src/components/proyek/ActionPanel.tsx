@@ -7,7 +7,15 @@ import { useCountdown, formatRemaining } from "@/hooks/useCountdown";
 import ContractModal from "./ContractModal";
 
 type Banner = {
-  icon: "check" | "clock" | "alert" | "revision" | "contract" | "expired" | "cancel" | "active";
+  icon:
+    | "check"
+    | "clock"
+    | "alert"
+    | "revision"
+    | "contract"
+    | "expired"
+    | "cancel"
+    | "active";
   title: string;
   body: string;
   style: string;
@@ -22,11 +30,16 @@ function getBanner(project: Project): Banner | null {
       style: "border-[#dc2626] bg-[#fef2f2] text-[#991b1b]",
     };
   }
-  if (project.documentStatus === "revision" || project.status === "Revisi Dokumen") {
+  if (
+    project.documentStatus === "revision" ||
+    project.status === "Revisi Dokumen"
+  ) {
     return {
       icon: "revision",
       title: "Dokumen Ditolak — Perlu Revisi",
-      body: project.adminNote ?? "Dokumen Anda memerlukan perbaikan. Mohon unggah ulang dokumen yang sesuai.",
+      body:
+        project.adminNote ??
+        "Dokumen Anda memerlukan perbaikan. Mohon unggah ulang dokumen yang sesuai.",
       style: "border-[#d97706] bg-[#fffaf0] text-[#92400e]",
     };
   }
@@ -54,7 +67,10 @@ function getBanner(project: Project): Banner | null {
       style: "border-[#8fb9ed] bg-[#eef5ff] text-[#004796]",
     };
   }
-  if (project.contract.status === "ditolak" || project.contract.status === "revisi") {
+  if (
+    project.contract.status === "ditolak" ||
+    project.contract.status === "revisi"
+  ) {
     return {
       icon: "revision",
       title: "Kontrak Sedang Direvisi",
@@ -70,7 +86,10 @@ function getBanner(project: Project): Banner | null {
       style: "border-[#64748b] bg-[#f1f5f9] text-[#475569]",
     };
   }
-  if (project.contract.status === "disetujui" && project.status === "Pembayaran DP") {
+  if (
+    project.contract.status === "disetujui" &&
+    project.status === "Pembayaran DP"
+  ) {
     return {
       icon: "check",
       title: "Kontrak Disetujui",
@@ -172,10 +191,13 @@ export default function ActionPanel({ project }: { project: Project }) {
   const [cancelError, setCancelError] = useState<string | null>(null);
 
   const contractCountdown = useCountdown(
-    project.contract.status === "menunggu" ? project.contract.deadlineAt : undefined,
+    project.contract.status === "menunggu"
+      ? project.contract.deadlineAt
+      : undefined,
   );
   const dpCountdown = useCountdown(
-    project.contract.status === "disetujui" && project.status === "Pembayaran DP"
+    project.contract.status === "disetujui" &&
+      project.status === "Pembayaran DP"
       ? project.payments.find((p) => p.periode === 0)?.dueDate
       : undefined,
   );
@@ -225,7 +247,17 @@ export default function ActionPanel({ project }: { project: Project }) {
           className={`flex items-start gap-4 rounded-2xl border p-5 ${banner.style}`}
         >
           <div className="mt-0.5 shrink-0">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
               {bannerIcon(banner.icon)}
             </svg>
           </div>
@@ -238,28 +270,39 @@ export default function ActionPanel({ project }: { project: Project }) {
                 {formatRemaining(contractCountdown)}
               </p>
             )}
-            {project.contract.status === "disetujui" && project.status === "Pembayaran DP" && (
-              <p className="mt-3 inline-block rounded-full bg-white/70 px-4 py-1.5 text-xs font-bold">
-                {formatRemaining(dpCountdown)}
-              </p>
-            )}
-            {(project.contract.status === "ditolak" || project.contract.status === "revisi") &&
+            {project.contract.status === "disetujui" &&
+              project.status === "Pembayaran DP" && (
+                <p className="mt-3 inline-block rounded-full bg-white/70 px-4 py-1.5 text-xs font-bold">
+                  {formatRemaining(dpCountdown)}
+                </p>
+              )}
+            {(project.contract.status === "ditolak" ||
+              project.contract.status === "revisi") &&
               project.contract.rejectionReasons &&
               project.contract.rejectionReasons.length > 0 && (
                 <div className="mt-3 rounded-xl bg-white/70 p-4">
-                  <p className="text-xs font-bold uppercase tracking-wider">Alasan Penolakan Anda</p>
+                  <p className="text-xs font-bold uppercase tracking-wider">
+                    Alasan Penolakan Anda
+                  </p>
                   <ul className="mt-2 space-y-1.5">
                     {project.contract.rejectionReasons.map((r) => (
-                      <li key={r} className="text-sm leading-6">“{r}”</li>
+                      <li key={r} className="text-sm leading-6">
+                        “{r}”
+                      </li>
                     ))}
                   </ul>
                 </div>
               )}
-            {(project.contract.status === "ditolak" || project.contract.status === "revisi") &&
+            {(project.contract.status === "ditolak" ||
+              project.contract.status === "revisi") &&
               project.contract.adminNotes && (
                 <div className="mt-3 rounded-xl bg-white/70 p-4">
-                  <p className="text-xs font-bold uppercase tracking-wider">Komentar Tim Way2Home</p>
-                  <p className="mt-1.5 text-sm leading-6">{project.contract.adminNotes}</p>
+                  <p className="text-xs font-bold uppercase tracking-wider">
+                    Komentar Tim Way2Home
+                  </p>
+                  <p className="mt-1.5 text-sm leading-6">
+                    {project.contract.adminNotes}
+                  </p>
                 </div>
               )}
           </div>
@@ -269,7 +312,9 @@ export default function ActionPanel({ project }: { project: Project }) {
       {canceled ? (
         <div className="flex items-center gap-3 rounded-2xl border border-[#e2e8f0] bg-white p-5">
           <span className="h-3 w-3 rounded-full bg-[#dc2626]" />
-          <p className="font-bold text-[#475569]">Proyek ini telah dibatalkan.</p>
+          <p className="font-bold text-[#475569]">
+            Proyek ini telah dibatalkan.
+          </p>
         </div>
       ) : (
         <div className="flex flex-wrap gap-3">

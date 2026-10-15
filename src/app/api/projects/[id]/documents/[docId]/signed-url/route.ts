@@ -5,7 +5,7 @@ import { ServiceError } from "@/services/access.service";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; docId: string }> }
+  { params }: { params: Promise<{ id: string; docId: string }> },
 ) {
   try {
     const { docId } = await params;
@@ -17,14 +17,14 @@ export async function GET(
     if (error instanceof ServiceError) {
       return NextResponse.json(
         { message: error.message },
-        { status: error.status }
+        { status: error.status },
       );
     }
 
     console.error("Error in GET signed-url:", error);
     return NextResponse.json(
       { message: "Gagal mengambil URL dokumen." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

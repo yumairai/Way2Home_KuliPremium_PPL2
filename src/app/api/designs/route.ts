@@ -10,12 +10,24 @@ export async function GET(request: NextRequest) {
     const filters = {
       query: searchParams.get("query") || searchParams.get("q") || undefined,
       style: searchParams.get("style") || undefined,
-      minPrice: searchParams.has("minPrice") ? Number(searchParams.get("minPrice")) : undefined,
-      maxPrice: searchParams.has("maxPrice") ? Number(searchParams.get("maxPrice")) : undefined,
-      minLand: searchParams.has("minLand") ? Number(searchParams.get("minLand")) : undefined,
-      maxLand: searchParams.has("maxLand") ? Number(searchParams.get("maxLand")) : undefined,
-      minBuilding: searchParams.has("minBuilding") ? Number(searchParams.get("minBuilding")) : undefined,
-      maxBuilding: searchParams.has("maxBuilding") ? Number(searchParams.get("maxBuilding")) : undefined,
+      minPrice: searchParams.has("minPrice")
+        ? Number(searchParams.get("minPrice"))
+        : undefined,
+      maxPrice: searchParams.has("maxPrice")
+        ? Number(searchParams.get("maxPrice"))
+        : undefined,
+      minLand: searchParams.has("minLand")
+        ? Number(searchParams.get("minLand"))
+        : undefined,
+      maxLand: searchParams.has("maxLand")
+        ? Number(searchParams.get("maxLand"))
+        : undefined,
+      minBuilding: searchParams.has("minBuilding")
+        ? Number(searchParams.get("minBuilding"))
+        : undefined,
+      maxBuilding: searchParams.has("maxBuilding")
+        ? Number(searchParams.get("maxBuilding"))
+        : undefined,
       bedrooms: searchParams.get("bedrooms") || undefined,
       sort: searchParams.get("sort") || undefined,
     };
@@ -23,7 +35,13 @@ export async function GET(request: NextRequest) {
     const designs = await getDesigns(supabase, filters);
     return NextResponse.json(designs);
   } catch (error: unknown) {
-    const err = error as { message?: string; code?: string; details?: string; hint?: string; stack?: string };
+    const err = error as {
+      message?: string;
+      code?: string;
+      details?: string;
+      hint?: string;
+      stack?: string;
+    };
     // Log detail error untuk debugging (termasuk kode dari Supabase)
     console.error("[GET /api/designs] Error:", {
       message: err?.message,
@@ -34,7 +52,7 @@ export async function GET(request: NextRequest) {
     });
     return NextResponse.json(
       { message: err?.message || "Gagal mengambil katalog desain." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

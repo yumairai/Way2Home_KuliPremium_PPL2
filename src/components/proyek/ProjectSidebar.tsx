@@ -22,10 +22,14 @@ export default function ProjectSidebar({
   return (
     <aside className="w-full shrink-0 xl:w-80">
       <div className="rounded-[1.5rem] border border-[#dbe4f2] bg-white p-6 shadow-[0_12px_30px_rgba(17,30,63,0.06)] xl:sticky xl:top-28">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-[#475569]">List Proyek</h2>
+        <h2 className="text-sm font-bold uppercase tracking-wider text-[#475569]">
+          List Proyek
+        </h2>
         <div className="mt-4 flex flex-col gap-2">
           {projects.length === 0 ? (
-            <p className="py-6 text-center text-sm text-[#64748b]">Tidak ada proyek</p>
+            <p className="py-6 text-center text-sm text-[#64748b]">
+              Tidak ada proyek
+            </p>
           ) : (
             projects.map((item) => {
               const isActive = String(item.id) === String(currentId);
@@ -55,7 +59,9 @@ export default function ProjectSidebar({
                   </svg>
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-semibold">{item.designName}</p>
-                    <p className="truncate text-xs text-[#64748b]">{item.location}</p>
+                    <p className="truncate text-xs text-[#64748b]">
+                      {item.location}
+                    </p>
                   </div>
                   <span
                     className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${

@@ -14,7 +14,13 @@ const KETENTUAN = [
   "Pembatalan proyek setelah kontrak ditandatangani akan dikenakan ketentuan pengembalian dana sesuai kebijakan yang berlaku.",
 ];
 
-function DocSection({ title, children }: { title: string; children: React.ReactNode }) {
+function DocSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <section className="mt-8">
       <h3 className="flex items-center gap-3 text-lg font-bold text-[#111e3f]">
@@ -30,7 +36,9 @@ function DataRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-6 border-b border-[#eef2f7] py-3 last:border-0">
       <span className="text-sm text-[#64748b]">{label}</span>
-      <span className="text-right text-sm font-semibold text-[#111e3f]">{value}</span>
+      <span className="text-right text-sm font-semibold text-[#111e3f]">
+        {value}
+      </span>
     </div>
   );
 }
@@ -58,7 +66,9 @@ export default function ContractModal({
   const [rejectMode, setRejectMode] = useState(false);
   const [reason, setReason] = useState("");
   const [toast, setToast] = useState("");
-  const [action, setAction] = useState<"menunggu" | "setuju" | "tolak">("menunggu");
+  const [action, setAction] = useState<"menunggu" | "setuju" | "tolak">(
+    "menunggu",
+  );
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -74,7 +84,9 @@ export default function ContractModal({
 
   const setuju = () => {
     setAction("setuju");
-    setToast("Kontrak berhasil ditandatangani. Silakan lakukan pembayaran Down Payment.");
+    setToast(
+      "Kontrak berhasil ditandatangani. Silakan lakukan pembayaran Down Payment.",
+    );
   };
 
   const tolak = () => {
@@ -85,8 +97,15 @@ export default function ContractModal({
   const sumPayments = project.payments.reduce((acc, p) => acc + p.amount, 0);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
-      <div className="absolute inset-0 bg-[#0f172a]/60 backdrop-blur-sm" onClick={onClose} />
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        className="absolute inset-0 bg-[#0f172a]/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
 
       <div className="relative flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-[1.75rem] bg-white shadow-[0_40px_80px_rgba(15,23,42,0.35)]">
         <div className="flex items-center justify-between border-b border-[#edf1f6] px-8 py-5">
@@ -102,7 +121,16 @@ export default function ContractModal({
             aria-label="Tutup kontrak"
             className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-[#dbe4f2] text-[#475569] transition hover:bg-[#f1f5f9] active:scale-90"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              aria-hidden="true"
+            >
               <path d="M18 6 6 18M6 6l12 12" />
             </svg>
           </button>
@@ -117,9 +145,12 @@ export default function ContractModal({
               height={60}
               className="mx-auto h-20 w-auto object-contain"
             />
-            <p className="mt-3 text-sm font-bold tracking-wide text-[#004796]">KONTRAK PEMBANGUNAN RUMAH</p>
+            <p className="mt-3 text-sm font-bold tracking-wide text-[#004796]">
+              KONTRAK PEMBANGUNAN RUMAH
+            </p>
             <p className="mt-1 text-xs text-[#64748b]">
-              Nomor: {project.contract.id} · Terbit: {formatDate(project.contract.issuedAt)}
+              Nomor: {project.contract.id} · Terbit:{" "}
+              {formatDate(project.contract.issuedAt)}
             </p>
           </div>
 
@@ -139,7 +170,10 @@ export default function ContractModal({
                 ["Tipe Rumah", project.designName],
                 ["Gaya Arsitektur", project.style],
                 ["Lokasi", project.location],
-                ["Area (Tanah/Bangunan)", `${project.landArea} m² / ${project.buildingArea} m²`],
+                [
+                  "Area (Tanah/Bangunan)",
+                  `${project.landArea} m² / ${project.buildingArea} m²`,
+                ],
                 ["Nilai Proyek", formatRupiah(project.budget)],
                 ["Durasi", `${project.duration} bulan`],
               ]}
@@ -149,8 +183,13 @@ export default function ContractModal({
           <DocSection title="Ruang Lingkup Pekerjaan">
             <ol className="space-y-2.5">
               {project.scope.map((item, index) => (
-                <li key={item} className="flex gap-3 text-sm leading-6 text-[#334155]">
-                  <span className="font-bold text-[#004796]">{String(index + 1).padStart(2, "0")}</span>
+                <li
+                  key={item}
+                  className="flex gap-3 text-sm leading-6 text-[#334155]"
+                >
+                  <span className="font-bold text-[#004796]">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
                   {item}
                 </li>
               ))}
@@ -159,24 +198,43 @@ export default function ContractModal({
 
           <DocSection title="Tahapan Pembayaran">
             <DataTable
-              rows={project.payments.map((p) => [p.label, formatRupiah(p.amount)])}
+              rows={project.payments.map((p) => [
+                p.label,
+                formatRupiah(p.amount),
+              ])}
             />
             <p className="mt-3 text-xs text-[#64748b]">
-              Total nilai proyek: <span className="font-bold text-[#111e3f]">{formatRupiah(sumPayments)}</span>. Down Payment dibayarkan dalam 7×24 jam setelah kontrak ditandatangani.
+              Total nilai proyek:{" "}
+              <span className="font-bold text-[#111e3f]">
+                {formatRupiah(sumPayments)}
+              </span>
+              . Down Payment dibayarkan dalam 7×24 jam setelah kontrak
+              ditandatangani.
             </p>
           </DocSection>
 
           <DocSection title="Tim Pelaksana">
             <div className="grid gap-4 sm:grid-cols-2">
               {project.team.map((member) => (
-                <div key={member.id} className="rounded-2xl border border-[#dbe4f2] bg-[#f7f9fc] p-5">
+                <div
+                  key={member.id}
+                  className="rounded-2xl border border-[#dbe4f2] bg-[#f7f9fc] p-5"
+                >
                   <div className="flex items-center gap-3">
                     <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#eef5ff] font-bold text-[#004796]">
-                      {member.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}
+                      {member.name
+                        .split(" ")
+                        .map((w) => w[0])
+                        .slice(0, 2)
+                        .join("")}
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-[#111e3f]">{member.name}</p>
-                      <p className="text-xs font-semibold text-[#045ec2]">{member.role}</p>
+                      <p className="text-sm font-bold text-[#111e3f]">
+                        {member.name}
+                      </p>
+                      <p className="text-xs font-semibold text-[#045ec2]">
+                        {member.role}
+                      </p>
                     </div>
                   </div>
                   <div className="mt-3 space-y-1 text-xs text-[#64748b]">
@@ -192,7 +250,10 @@ export default function ContractModal({
           <DocSection title="Ketentuan Proyek">
             <ol className="space-y-3">
               {KETENTUAN.map((item, index) => (
-                <li key={item} className="flex gap-3 text-sm leading-6 text-[#334155]">
+                <li
+                  key={item}
+                  className="flex gap-3 text-sm leading-6 text-[#334155]"
+                >
                   <span className="font-bold text-[#004796]">{index + 1}.</span>
                   {item}
                 </li>
@@ -201,11 +262,17 @@ export default function ContractModal({
           </DocSection>
 
           <div className="mt-10 rounded-2xl border border-[#dbe4f2] bg-[#f7f9fc] p-5 text-center">
-            <p className="text-xs font-semibold uppercase tracking-wider text-[#64748b]">Tanda Tangan</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-[#64748b]">
+              Tanda Tangan
+            </p>
             <div className="mt-4 grid gap-6 sm:grid-cols-2">
               <div>
-                <p className="text-sm font-bold text-[#111e3f]">Pihak Pertama</p>
-                <p className="mt-1 text-xs text-[#64748b]">PT Way2Home Konstruksi</p>
+                <p className="text-sm font-bold text-[#111e3f]">
+                  Pihak Pertama
+                </p>
+                <p className="mt-1 text-xs text-[#64748b]">
+                  PT Way2Home Konstruksi
+                </p>
               </div>
               <div>
                 <p className="text-sm font-bold text-[#111e3f]">Pihak Kedua</p>
@@ -225,7 +292,9 @@ export default function ContractModal({
                 className="mt-0.5 h-5 w-5 cursor-pointer accent-[#004796]"
               />
               <span className="text-sm leading-6 text-[#334155]">
-                Saya telah membaca dan memahami seluruh isi kontrak, termasuk ruang lingkup pekerjaan, nilai proyek, dan ketentuan yang berlaku.
+                Saya telah membaca dan memahami seluruh isi kontrak, termasuk
+                ruang lingkup pekerjaan, nilai proyek, dan ketentuan yang
+                berlaku.
               </span>
             </label>
 
@@ -285,7 +354,17 @@ export default function ContractModal({
               onClick={() => window.print()}
               className="flex items-center gap-2 rounded-full border border-[#dbe4f2] px-6 py-3 text-sm font-bold text-[#475569] transition hover:bg-[#f1f5f9]"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
                 <path d="M21 12v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3" />
                 <path d="M6 5h12" />
                 <path d="M6 17v4a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-4" />

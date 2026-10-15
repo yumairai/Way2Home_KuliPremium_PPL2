@@ -25,13 +25,17 @@ export default function DefaultNavbar() {
     if (!isProfileOpen) return;
 
     const handleOutsideClick = (event: PointerEvent) => {
-      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+      if (
+        profileRef.current &&
+        !profileRef.current.contains(event.target as Node)
+      ) {
         setIsProfileOpen(false);
       }
     };
 
     document.addEventListener("pointerdown", handleOutsideClick);
-    return () => document.removeEventListener("pointerdown", handleOutsideClick);
+    return () =>
+      document.removeEventListener("pointerdown", handleOutsideClick);
   }, [isProfileOpen]);
 
   const handleLogout = async () => {
@@ -219,17 +223,19 @@ export default function DefaultNavbar() {
 
       {/*MOBILE BACKDROP*/}
       <div
-        className={`fixed inset-0 top-20 z-[55] bg-slate-900/45 backdrop-blur-sm transition-opacity md:hidden ${isDrawerOpen
-          ? "pointer-events-auto opacity-100"
-          : "pointer-events-none opacity-0"
-          }`}
+        className={`fixed inset-0 top-20 z-[55] bg-slate-900/45 backdrop-blur-sm transition-opacity md:hidden ${
+          isDrawerOpen
+            ? "pointer-events-auto opacity-100"
+            : "pointer-events-none opacity-0"
+        }`}
         onClick={() => setIsDrawerOpen(false)}
       />
 
       {/*MOBILE DRAWER*/}
       <aside
-        className={`fixed left-0 top-20 z-[60] flex h-[calc(100vh-5rem)] w-[min(20rem,82vw)] flex-col bg-white p-4 shadow-[24px_0_48px_rgba(14,23,68,0.14)] transition-transform duration-300 md:hidden ${isDrawerOpen ? "translate-x-0" : "-translate-x-[102%]"
-          }`}
+        className={`fixed left-0 top-20 z-[60] flex h-[calc(100vh-5rem)] w-[min(20rem,82vw)] flex-col bg-white p-4 shadow-[24px_0_48px_rgba(14,23,68,0.14)] transition-transform duration-300 md:hidden ${
+          isDrawerOpen ? "translate-x-0" : "-translate-x-[102%]"
+        }`}
       >
         {/* Drawer Header */}
         <div className="flex items-center justify-between gap-4 border-b border-[#cac4cf]/65 pb-4">

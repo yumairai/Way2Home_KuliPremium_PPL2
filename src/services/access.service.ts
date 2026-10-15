@@ -14,7 +14,7 @@ export class ServiceError extends Error {
 }
 
 export async function requireUser(
-  supabase: SupabaseClient<Database>
+  supabase: SupabaseClient<Database>,
 ): Promise<User> {
   const {
     data: { user },
@@ -30,7 +30,7 @@ export async function requireUser(
 
 export async function requireRole(
   supabase: SupabaseClient<Database>,
-  expectedRole: UserRole
+  expectedRole: UserRole,
 ): Promise<{ user: User; role: UserRole }> {
   const user = await requireUser(supabase);
 
@@ -47,7 +47,7 @@ export async function requireRole(
   if (profile.role !== expectedRole) {
     throw new ServiceError(
       `Akses ditolak. Peran Anda (${profile.role}) tidak memiliki izin untuk tindakan ini.`,
-      403
+      403,
     );
   }
 
@@ -57,7 +57,7 @@ export async function requireRole(
 export async function assertProjectOwner(
   supabase: SupabaseClient<Database>,
   projectId: string,
-  userId: string
+  userId: string,
 ) {
   const { data: project, error } = await supabase
     .from("projects")
@@ -70,10 +70,7 @@ export async function assertProjectOwner(
   }
 
   if (project.customer_id !== userId) {
-    throw new ServiceError(
-      "Anda tidak memiliki hak akses ke proyek ini.",
-      403
-    );
+    throw new ServiceError("Anda tidak memiliki hak akses ke proyek ini.", 403);
   }
 
   return project;

@@ -22,17 +22,23 @@ function subscribe(callback: () => void) {
 function snapshot(): DemoRole | null {
   if (typeof window === "undefined") return null;
   const value = window.sessionStorage.getItem("way2home-demo-role");
-  return value === "admin" || value === "mandor" || value === "pengawas" ? value : null;
+  return value === "admin" || value === "mandor" || value === "pengawas"
+    ? value
+    : null;
 }
 
 export function useDemoRole() {
   return useSyncExternalStore(subscribe, snapshot, () => null);
 }
 
-export function authenticateDemoAccount(email: string, password: string): DemoRole | null {
+export function authenticateDemoAccount(
+  email: string,
+  password: string,
+): DemoRole | null {
   const normalizedEmail = email.trim().toLowerCase();
   const entry = Object.entries(DEMO_ACCOUNTS).find(
-    ([, account]) => account.email === normalizedEmail && account.password === password,
+    ([, account]) =>
+      account.email === normalizedEmail && account.password === password,
   );
   return (entry?.[0] as DemoRole | undefined) ?? null;
 }
