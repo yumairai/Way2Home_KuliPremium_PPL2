@@ -1,17 +1,19 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
 import { logout } from "@/services/auth.service";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { clearDemoRole, useDemoRole } from "@/utils/demo-auth";
 
 const navigation = [
-  { label: "Dashboard", href: "/admin", active: true },
+  { label: "Dashboard", href: "/admin" },
   {
     label: "Verifikasi dokumen",
     href: "/admin/verifikasi-dokumen",
     badge: "12",
   },
+  { label: "Verifikasi Mandor", href: "/admin/verifikasi-mandor", badge: "4" },
   { label: "Manajemen Pengawas", href: "/admin/manajemen-pengawas" },
 ];
 
@@ -21,6 +23,7 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, loading } = useAuthUser();
   const demoRole = useDemoRole();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -50,7 +53,7 @@ export default function AdminLayout({
     );
   const sidebar = (
     <aside className="flex h-full flex-col bg-[#10283d] text-white">
-      <a
+      <Link
         href="/admin"
         className="flex h-[82px] items-center gap-3 border-b border-white/10 px-7"
         aria-label="Way2Home Admin dashboard"
@@ -64,39 +67,33 @@ export default function AdminLayout({
             ADMINISTRATION
           </small>
         </span>
-      </a>
+      </Link>
       <div className="px-5 pt-7">
         <p className="px-3 text-[10px] font-bold uppercase tracking-[.18em] text-slate-500">
           Menu utama
         </p>
         <nav className="mt-3 space-y-1" aria-label="Navigasi admin">
-          {navigation.map((item) =>
-            item.href ? (
-              <a
-                key={item.label}
-                href={item.href}
-                aria-current={item.active ? "page" : undefined}
-                className={`flex h-11 items-center gap-3 rounded-xl px-3 text-sm ${item.active ? "border border-white/10 bg-white/10 font-semibold text-white" : "text-slate-300 hover:bg-white/[.06] hover:text-white"}`}
-              >
-                <span className="flex-1">{item.label}</span>
-                {item.badge && (
-                  <span className="rounded-md bg-[#e4a84d]/15 px-2 py-0.5 text-[10px] font-bold text-[#f3c476]">
-                    {item.badge}
-                  </span>
-                )}
-              </a>
-            ) : (
-              <button
-                key={item.label}
-                type="button"
-                disabled
-                title="Segera tersedia"
-                className="flex h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm text-slate-400 opacity-75"
-              >
-                <span className="flex-1">{item.label}</span>
-              </button>
-            ),
-          )}
+          {navigation.map((item) => (
+            <Link
+              key={item.label}
+              href={item.href}
+              aria-current={
+                pathname === item.href ||
+                (item.href !== "/admin" && pathname.startsWith(`${item.href}/`))
+                  ? "page"
+                  : undefined
+              }
+              onClick={() => setDrawerOpen(false)}
+              className={`flex h-11 items-center gap-3 rounded-xl px-3 text-sm ${pathname === item.href || (item.href !== "/admin" && pathname.startsWith(`${item.href}/`)) ? "border border-white/10 bg-white/10 font-semibold text-white" : "text-slate-300 hover:bg-white/[.06] hover:text-white"}`}
+            >
+              <span className="flex-1">{item.label}</span>
+              {item.badge && (
+                <span className="rounded-md bg-[#e4a84d]/15 px-2 py-0.5 text-[10px] font-bold text-[#f3c476]">
+                  {item.badge}
+                </span>
+              )}
+            </Link>
+          ))}
         </nav>
       </div>
       <div className="mt-auto border-t border-white/10 p-5">
@@ -116,7 +113,7 @@ export default function AdminLayout({
             className="text-xs text-slate-400 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c2e477]"
             aria-label="Keluar"
           >
-            ↗
+            Keluar
           </button>
         </div>
       </div>
@@ -156,7 +153,7 @@ export default function AdminLayout({
           </div>
           <div className="flex items-center gap-3">
             <span className="hidden text-xs text-slate-500 sm:block">
-              Senin, 13 Oktober 2026
+              Kamis, 15 Oktober 2026
             </span>
             <span className="grid h-9 w-9 place-items-center rounded-full bg-[#e7eef5] text-xs font-bold">
               {demoRole ? "AD" : user?.fullName?.slice(0, 2).toUpperCase()}
