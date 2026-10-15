@@ -15,11 +15,11 @@ Pengelolaan, verifikasi, dan keputusan tetap ada di sisi **Pengawas**.
 
 ## 1. Gambaran Role
 
-| Role | Hubungan dengan Mandor |
-|------|------------------------|
-| Admin | Memverifikasi pendaftaran Mandor (Pending / Disetujui / Ditolak). |
+| Role     | Hubungan dengan Mandor                                                                                                                     |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Admin    | Memverifikasi pendaftaran Mandor (Pending / Disetujui / Ditolak).                                                                          |
 | Pengawas | Memilih Mandor yang disetujui, menugaskan ke proyek, memberi instruksi, menerima laporan, memverifikasi progress, menindaklanjuti kendala. |
-| Customer | Tidak berinteraksi langsung dengan Mandor. |
+| Customer | Tidak berinteraksi langsung dengan Mandor.                                                                                                 |
 
 ---
 
@@ -41,9 +41,11 @@ Register Mitra
 ## 3. 🔴 Prioritas 1 — WAJIB
 
 ### 3.1 Register Mitra
+
 Mandor mendaftarkan diri.
 
 Data yang diisi:
+
 - Identitas
 - Keahlian
 - Pengalaman
@@ -51,7 +53,9 @@ Data yang diisi:
 - Portofolio
 
 ### 3.2 Verifikasi Admin
+
 Status pendaftaran Mandor:
+
 - **Pending** — menunggu review Admin
 - **Disetujui**
 - **Ditolak**
@@ -61,15 +65,19 @@ Status pendaftaran Mandor:
 > Verifikasi dilakukan oleh Admin (bukan bagian dari halaman Mandor), tapi status ini harus tersimpan dan terbaca oleh alur Mandor & Pengawas.
 
 ### 3.3 Login
+
 - Mandor login dengan akun masing-masing.
 - Akses halaman dibatasi khusus role Mandor.
 - Mandor yang belum disetujui (Pending/Ditolak) tidak mendapat akses ke fitur proyek.
 
 ### 3.4 Lihat Proyek
+
 Mandor melihat **daftar proyek yang ditugaskan kepadanya**.
 
 ### 3.5 Lihat Pekerjaan
+
 Mandor melihat:
+
 - Desain
 - Scope pekerjaan
 - Tahapan
@@ -79,7 +87,9 @@ Mandor melihat:
 Halaman ini **read-only**.
 
 ### 3.6 Lapor Progress
+
 Mandor mengirim:
+
 - Progress
 - Status pekerjaan
 - Keterangan
@@ -87,9 +97,11 @@ Mandor mengirim:
 > Laporan ini **belum menjadi status resmi** sampai diverifikasi Pengawas.
 
 ### 3.7 Lapor Kendala
+
 Mandor melaporkan kendala di lapangan.
 
 Contoh:
+
 > "Material belum tersedia sehingga pekerjaan struktur tertunda."
 
 Setelah dikirim, **Pengawas menerima laporan tersebut** (masuk ke alur Kelola Kendala di sisi Pengawas).
@@ -97,6 +109,7 @@ Setelah dikirim, **Pengawas menerima laporan tersebut** (masuk ke alur Kelola Ke
 ---
 
 ## 4. 🟡 Prioritas 2 — PENTING
+
 (Dikerjakan setelah Prioritas 1 selesai)
 
 - Upload foto progress
@@ -107,6 +120,7 @@ Setelah dikirim, **Pengawas menerima laporan tersebut** (masuk ke alur Kelola Ke
 ---
 
 ## 5. 🟢 Prioritas 3 — OPSIONAL
+
 (**Jangan dikerjakan** kecuali diminta eksplisit)
 
 - Chat dengan Pengawas
@@ -118,14 +132,14 @@ Setelah dikirim, **Pengawas menerima laporan tersebut** (masuk ke alur Kelola Ke
 
 ## 6. Ringkasan Halaman (Prioritas 1)
 
-| No | Halaman | Tujuan |
-|----|---------|--------|
-| 1 | Register Mitra | Pendaftaran Mandor |
-| 2 | Login | Autentikasi Mandor |
-| 3 | Daftar Proyek | Proyek yang ditugaskan |
-| 4 | Detail Pekerjaan | Desain, scope, tahapan, target, instruksi Pengawas (read-only) |
-| 5 | Form Lapor Progress | Kirim progress, status, keterangan |
-| 6 | Form Lapor Kendala | Kirim laporan kendala |
+| No  | Halaman             | Tujuan                                                         |
+| --- | ------------------- | -------------------------------------------------------------- |
+| 1   | Register Mitra      | Pendaftaran Mandor                                             |
+| 2   | Login               | Autentikasi Mandor                                             |
+| 3   | Daftar Proyek       | Proyek yang ditugaskan                                         |
+| 4   | Detail Pekerjaan    | Desain, scope, tahapan, target, instruksi Pengawas (read-only) |
+| 5   | Form Lapor Progress | Kirim progress, status, keterangan                             |
+| 6   | Form Lapor Kendala  | Kirim laporan kendala                                          |
 
 > Detail Pekerjaan boleh menjadi tempat tombol/akses ke form Lapor Progress & Lapor Kendala agar navigasi tetap sederhana.
 
