@@ -1,5 +1,8 @@
 import { createClient } from "@/utils/supabase/server";
-import { getUserProjects, getUserProjectById } from "@/services/project.service";
+import {
+  getUserProjects,
+  getUserProjectById,
+} from "@/services/project.service";
 import ProjectDetail from "@/components/proyek/ProjectDetail";
 import MilestoneSidebar from "@/components/proyek/MilestoneSidebar";
 import ProjectSidebar from "@/components/proyek/ProjectSidebar";
@@ -28,7 +31,9 @@ export default async function ProyekDetailPage({
       <div className="mx-auto max-w-screen-2xl px-6 lg:px-8">
         <header className="mb-10">
           <LinkBack />
-          <h1 className="mt-4 text-3xl font-bold tracking-[-0.03em] md:text-4xl">Proyek Saya</h1>
+          <h1 className="mt-4 text-3xl font-bold tracking-[-0.03em] md:text-4xl">
+            Proyek Saya
+          </h1>
           <p className="mt-2 text-base leading-7 text-[#64748b]">
             Kelola dan pantau progres pembangunan hunian impian Anda.
           </p>

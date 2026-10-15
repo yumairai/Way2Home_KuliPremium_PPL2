@@ -12,22 +12,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(result, { status: 201 });
   } catch (error: unknown) {
     if (error instanceof ServiceError) {
-      const errData = error.data as { errors?: Record<string, string>; projectId?: string } | undefined;
+      const errData = error.data as
+        { errors?: Record<string, string>; projectId?: string } | undefined;
       if (error.status === 422) {
         return NextResponse.json(
           { message: error.message, errors: errData?.errors || {} },
-          { status: 422 }
+          { status: 422 },
         );
       }
       if (error.status === 409) {
         return NextResponse.json(
           { message: error.message, projectId: errData?.projectId },
-          { status: 409 }
+          { status: 409 },
         );
       }
       return NextResponse.json(
         { message: error.message },
-        { status: error.status }
+        { status: error.status },
       );
     }
 
@@ -35,7 +36,7 @@ export async function POST(request: NextRequest) {
     const err = error as { message?: string };
     return NextResponse.json(
       { message: err?.message || "Terjadi kesalahan pada server." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
