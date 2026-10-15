@@ -278,6 +278,70 @@ export async function createProjectWithDocuments(
   }
 }
 
+export async function deleteCancellableProject(
+  supabase: SupabaseClient<Database>,
+  projectId: string
+): Promise<void> {
+  const { user } = await requireRole(supabase, "customer");
+  const cancellableStatuses: Database["public"]["Enums"]["project_status"][] = [
+    "draft",
+    "verifikasi_dokumen",
+    "revisi_dokumen",
+    "alokasi_mandor_pengawas",
+  ];
+
+  const { data: project, error: projectError } = await supabase
+    .from("projects")
+    .select("id, status")
+    .eq("id", projectId)
+    .eq("customer_id", user.id)
+    .maybeSingle();
+
+  if (projectError || !project) {
+    throw new ServiceError("Proyek tidak ditemukan.", 404);
+  }
+  const projectRow = project as unknown as {
+    status: Database["public"]["Enums"]["project_status"];
+  };
+  if (!cancellableStatuses.includes(projectRow.status)) {
+    throw new ServiceError("Proyek tidak dapat dibatalkan pada tahap ini.", 409);
+  }
+
+  const { data: documents, error: documentsError } = await supabase
+    .from("project_documents")
+    .select("url")
+    .eq("project_id", projectId);
+
+  if (documentsError) {
+    throw new ServiceError("Gagal menyiapkan penghapusan dokumen proyek.", 500);
+  }
+
+  const storagePaths = ((documents || []) as unknown as Array<{ url: string }>).map(
+    (document) => document.url
+  );
+  if (storagePaths.length > 0) {
+    const { error: storageError } = await supabase.storage
+      .from("project-documents")
+      .remove(storagePaths);
+    if (storageError) {
+      throw new ServiceError("Gagal menghapus dokumen proyek dari penyimpanan.", 500);
+    }
+  }
+
+  const { data: deletedProject, error: deleteError } = await supabase
+    .from("projects")
+    .delete()
+    .eq("id", projectId)
+    .eq("customer_id", user.id)
+    .in("status", cancellableStatuses)
+    .select("id")
+    .maybeSingle();
+
+  if (deleteError || !deletedProject) {
+    throw new ServiceError("Proyek gagal dihapus. Muat ulang halaman dan coba lagi.", 500);
+  }
+}
+
 export async function getSignedDocumentUrl(
   supabase: SupabaseClient<Database>,
   documentId: string

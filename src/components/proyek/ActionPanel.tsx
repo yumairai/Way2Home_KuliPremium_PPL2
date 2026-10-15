@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import type { Project } from "@/types/proyek";
 import { useCountdown, formatRemaining } from "@/hooks/useCountdown";
 import ContractModal from "./ContractModal";
@@ -163,10 +164,12 @@ function bannerIcon(icon: Banner["icon"]) {
 }
 
 export default function ActionPanel({ project }: { project: Project }) {
+  const router = useRouter();
   const banner = getBanner(project);
   const [modalOpen, setModalOpen] = useState(false);
-  const [cancelled, setCancelled] = useState(false);
   const [cancelConfirm, setCancelConfirm] = useState(false);
+  const [cancelSubmitting, setCancelSubmitting] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   const contractCountdown = useCountdown(
     project.contract.status === "menunggu" ? project.contract.deadlineAt : undefined,
@@ -177,10 +180,12 @@ export default function ActionPanel({ project }: { project: Project }) {
       : undefined,
   );
 
-  const canceled = project.status === "Dibatalkan" || cancelled;
+  const canceled = project.status === "Dibatalkan";
   const dpPaid = project.payments.find((p) => p.periode === 0)?.status === "lunas";
   const contractLocked =
     project.contract.status === "disetujui" || project.status === "Proyek Aktif" || dpPaid;
+  const canSignContract =
+    project.contract.status === "menunggu" && project.status === "Finalisasi Kontrak";
 
   const canCancel =
     !canceled &&
@@ -190,6 +195,25 @@ export default function ActionPanel({ project }: { project: Project }) {
 
   const activePayment = project.payments.find((p) => p.status === "aktif");
   const allInstallmentsPaid = !activePayment && dpPaid;
+
+  async function deleteProject() {
+    setCancelSubmitting(true);
+    setCancelError(null);
+
+    try {
+      const response = await fetch(`/api/projects/${project.id}`, { method: "DELETE" });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.message || "Proyek gagal dihapus.");
+      }
+
+      router.replace("/proyek");
+      router.refresh();
+    } catch (error) {
+      setCancelError(error instanceof Error ? error.message : "Terjadi kesalahan saat menghapus proyek.");
+      setCancelSubmitting(false);
+    }
+  }
 
   if (!banner && !canCancel && !activePayment && !allInstallmentsPaid) return null;
 
@@ -250,16 +274,24 @@ export default function ActionPanel({ project }: { project: Project }) {
       ) : (
         <div className="flex flex-wrap gap-3">
           {project.contract.status === "menunggu" && (
-            <button
-              type="button"
-              onClick={() => setModalOpen(true)}
-              className="flex min-h-14 cursor-pointer items-center gap-3 rounded-full bg-gradient-to-r from-[#004796] to-[#045ec2] px-8 font-bold text-white shadow-[0_10px_25px_rgba(0,71,150,0.3)] transition hover:-translate-y-0.5 hover:shadow-lg active:scale-95"
-            >
-              Baca & Tandatangani Kontrak
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 0 2.8l-9.9 9.9a4 4 0 0 1-1.4.9l-4.3 1.2a1 1 0 0 1-1.2-1.2l1.2-4.3a4 4 0 0 1 .9-1.4l9.9-9.9a2 2 0 0 1 1.4-.6Z" />
-              </svg>
-            </button>
+            <div>
+              <button
+                type="button"
+                onClick={() => setModalOpen(true)}
+                disabled={!canSignContract}
+                className={`flex min-h-14 items-center gap-3 rounded-full px-8 font-bold text-white transition ${canSignContract ? "cursor-pointer bg-gradient-to-r from-[#004796] to-[#045ec2] shadow-[0_10px_25px_rgba(0,71,150,0.3)] hover:-translate-y-0.5 hover:shadow-lg active:scale-95" : "cursor-not-allowed bg-[#94a3b8] opacity-70"}`}
+              >
+                Baca & Tandatangani Kontrak
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 0 2.8l-9.9 9.9a4 4 0 0 1-1.4.9l-4.3 1.2a1 1 0 0 1-1.2-1.2l1.2-4.3a4 4 0 0 1 .9-1.4l9.9-9.9a2 2 0 0 1 1.4-.6Z" />
+                </svg>
+              </button>
+              {!canSignContract && (
+                <p className="mt-2 text-sm text-[#64748b]">
+                  Tombol aktif setelah milestone mencapai Kontrak Proyek.
+                </p>
+              )}
+            </div>
           )}
 
           {project.contract.status === "kedaluwarsa" && (
@@ -295,26 +327,36 @@ export default function ActionPanel({ project }: { project: Project }) {
               <>
                 <button
                   type="button"
-                  onClick={() => {
-                    setCancelled(true);
-                    setCancelConfirm(false);
-                  }}
-                  className="flex min-h-14 cursor-pointer items-center gap-3 rounded-full bg-[#dc2626] px-8 font-bold text-white shadow-lg transition hover:bg-[#b91c1c] active:scale-95"
+                  onClick={deleteProject}
+                  disabled={cancelSubmitting}
+                  className="flex min-h-14 cursor-pointer items-center gap-3 rounded-full bg-[#dc2626] px-8 font-bold text-white shadow-lg transition hover:bg-[#b91c1c] active:scale-95 disabled:cursor-wait disabled:opacity-60"
                 >
-                  Konfirmasi Pembatalan
+                  {cancelSubmitting ? "Menghapus Proyek..." : "Hapus Proyek Permanen"}
                 </button>
                 <button
                   type="button"
-                  onClick={() => setCancelConfirm(false)}
+                  onClick={() => {
+                    setCancelConfirm(false);
+                    setCancelError(null);
+                  }}
+                  disabled={cancelSubmitting}
                   className="min-h-14 cursor-pointer rounded-full border border-[#dbe4f2] px-8 font-bold text-[#475569] transition hover:bg-[#f1f5f9]"
                 >
                   Urungkan
                 </button>
+                {cancelError && (
+                  <p role="alert" className="w-full text-sm font-medium text-[#b91c1c]">
+                    {cancelError}
+                  </p>
+                )}
               </>
             ) : (
               <button
                 type="button"
-                onClick={() => setCancelConfirm(true)}
+                onClick={() => {
+                  setCancelConfirm(true);
+                  setCancelError(null);
+                }}
                 className="min-h-14 cursor-pointer rounded-full border-2 border-[#dc2626] px-8 font-bold text-[#dc2626] transition hover:bg-[#fef2f2] active:scale-95"
               >
                 Batalkan Proyek
@@ -326,7 +368,7 @@ export default function ActionPanel({ project }: { project: Project }) {
       {modalOpen && (
         <ContractModal
           project={project}
-          interactive={project.contract.status === "menunggu"}
+          interactive={canSignContract}
           onClose={() => setModalOpen(false)}
         />
       )}
