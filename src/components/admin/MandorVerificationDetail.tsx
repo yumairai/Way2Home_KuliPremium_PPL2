@@ -108,6 +108,14 @@ export default function MandorVerificationDetail({ id }: { id: string }) {
                   {applicant.experience} tahun
                 </dd>
               </div>
+              <div className="sm:col-span-2">
+                <dt className="text-xs text-slate-500">
+                  Keterampilan yang dimiliki
+                </dt>
+                <dd className="mt-1 text-sm font-medium leading-6 text-[#29465e]">
+                  {applicant.skills}
+                </dd>
+              </div>
             </dl>
           </section>
           <section className="rounded-2xl border border-[#e3e9ef] bg-white p-5 md:p-6">

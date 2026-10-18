@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { logout as logoutUser } from "@/services/auth.service";
@@ -84,8 +85,15 @@ export default function MandorShell({
         onClick={() => setDrawer(false)}
         className="flex h-[76px] items-center gap-3 border-b border-white/10 px-6"
       >
-        <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#b6dc67] text-lg font-black text-[#10283d]">
-          W
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-1">
+          <Image
+            src="/images/logo-w2h.png"
+            alt="Logo Way2Home"
+            width={40}
+            height={40}
+            className="h-full w-full object-contain"
+            priority
+          />
         </span>
         <span>
           <b className="block text-[17px] tracking-tight">Way2Home</b>
@@ -131,21 +139,12 @@ export default function MandorShell({
             <b className="block truncate text-xs">Bima Saputra</b>
             <small className="text-[10px] text-slate-400">Mandor</small>
           </span>
-          <button
-            type="button"
-            onClick={logout}
-            disabled={leaving}
-            className="text-xs text-slate-400 hover:text-white"
-            aria-label="Keluar"
-          >
-            Keluar
-          </button>
         </div>
       </div>
     </aside>
   );
   return (
-    <div className="min-h-screen bg-[#f3f6fa] text-[#183047]">
+    <div className="mandor-interactions min-h-screen bg-[#f3f6fa] text-[#183047]">
       <div className="fixed inset-y-0 left-0 z-30 hidden w-[252px] lg:block">
         {navigation}
       </div>
@@ -191,6 +190,15 @@ export default function MandorShell({
                   ? "Perlu perbaikan"
                   : "Menunggu verifikasi"}
             </span>
+            <button
+              type="button"
+              onClick={logout}
+              disabled={leaving}
+              className="rounded-lg border border-[#d99a9a] bg-[#a94444] px-3 py-2 text-xs font-semibold text-white hover:bg-[#913838] disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label="Logout"
+            >
+              {leaving ? "Logout..." : "Logout"}
+            </button>
           </div>
         </header>
         <main id="main-content">{children}</main>

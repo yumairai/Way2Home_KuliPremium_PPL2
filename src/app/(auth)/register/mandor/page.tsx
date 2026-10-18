@@ -14,6 +14,7 @@ type FormErrors = Partial<
     | "expertise"
     | "experience"
     | "area"
+    | "skills"
     | "experienceSummary"
     | "previousProjects"
     | "cv"
@@ -34,6 +35,7 @@ export default function MandorRegisterPage() {
     expertise: "",
     experience: "",
     area: "",
+    skills: "",
     experienceSummary: "",
     previousProjects: "",
   });
@@ -97,6 +99,8 @@ export default function MandorRegisterPage() {
     )
       next.experience = "Masukkan pengalaman 0–60 tahun.";
     if (values.area.trim().length < 2) next.area = "Masukkan area kerja.";
+    if (values.skills.trim().length < 3)
+      next.skills = "Tuliskan keterampilan utama minimal 3 karakter.";
     if (values.experienceSummary.trim().length < 20)
       next.experienceSummary = "Ceritakan pengalaman minimal 20 karakter.";
     if (values.previousProjects.trim().length < 5)
@@ -249,6 +253,35 @@ export default function MandorRegisterPage() {
                     "Contoh: 5",
                   )}
                   {field("area", "Area kerja", "text", "Kota atau kabupaten")}
+                </div>
+                <div className="mt-4">
+                  <label
+                    htmlFor="mandor-skills"
+                    className="mb-1.5 block text-sm font-medium text-[#2B3361]"
+                  >
+                    Keterampilan yang dimiliki
+                  </label>
+                  <textarea
+                    id="mandor-skills"
+                    value={values.skills}
+                    onChange={(event) => setField("skills", event.target.value)}
+                    placeholder="Contoh: membaca gambar kerja, mengatur tim lapangan, pekerjaan bekisting"
+                    rows={2}
+                    maxLength={300}
+                    className={inputClass(errors.skills)}
+                    aria-describedby="mandor-skills-help"
+                  />
+                  <p
+                    id="mandor-skills-help"
+                    className="mt-1 text-xs text-slate-500"
+                  >
+                    Tulis keterampilan utama secara singkat.
+                  </p>
+                  {errors.skills && (
+                    <p className="mt-1 text-xs text-red-700" role="alert">
+                      {errors.skills}
+                    </p>
+                  )}
                 </div>
                 <div className="mt-4 grid gap-4">
                   <div>

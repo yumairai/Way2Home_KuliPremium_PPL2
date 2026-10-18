@@ -1,4 +1,4 @@
-﻿export type MandorApplication = {
+export type MandorApplication = {
   id: string;
   name: string;
   initials: string;
@@ -6,6 +6,7 @@
   phone: string;
   city: string;
   expertise: string;
+  skills: string;
   experience: number;
   submitted: string;
   cv: string;
@@ -22,6 +23,8 @@ export const mandorApplications: MandorApplication[] = [
     phone: "0812 3456 7890",
     city: "Bandung, Jawa Barat",
     expertise: "Pembangunan rumah",
+    skills:
+      "Membaca gambar kerja, mengatur tenaga lapangan, bekisting dan pengecoran",
     experience: 8,
     submitted: "15 Okt 2026, 09.42",
     cv: "/documents/cv-mandor-rizky.pdf",
@@ -37,6 +40,8 @@ export const mandorApplications: MandorApplication[] = [
     phone: "0813 2109 8765",
     city: "Bogor, Jawa Barat",
     expertise: "Finishing",
+    skills:
+      "Pemasangan keramik, pengecatan, plafon dan pemeriksaan hasil akhir",
     experience: 6,
     submitted: "15 Okt 2026, 08.16",
     cv: "/documents/cv-mandor-siti.pdf",
@@ -53,6 +58,7 @@ export const mandorApplications: MandorApplication[] = [
     phone: "0821 5566 7788",
     city: "Depok, Jawa Barat",
     expertise: "Struktur dan pondasi",
+    skills: "Pengukuran elevasi, pembesian, bekisting dan pengecoran struktur",
     experience: 11,
     submitted: "14 Okt 2026, 16.38",
     cv: "/documents/cv-mandor-fajar.pdf",
@@ -69,6 +75,8 @@ export const mandorApplications: MandorApplication[] = [
     phone: "0857 1122 3344",
     city: "Tangerang Selatan, Banten",
     expertise: "Pembangunan rumah",
+    skills:
+      "Mengatur tenaga kerja, membaca gambar, keselamatan dan kontrol mutu",
     experience: 5,
     submitted: "14 Okt 2026, 14.07",
     cv: "/documents/cv-mandor-dewi.pdf",

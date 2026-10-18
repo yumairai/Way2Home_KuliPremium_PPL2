@@ -1,5 +1,6 @@
-﻿"use client";
+"use client";
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { logout } from "@/services/auth.service";
@@ -46,8 +47,15 @@ export default function PengawasShell({
         href="/pengawas"
         className="flex h-[82px] items-center gap-3 border-b border-white/10 px-7"
       >
-        <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#b6dc67] text-lg font-black text-[#10283d]">
-          W
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-1">
+          <Image
+            src="/images/logo-w2h.png"
+            alt="Logo Way2Home"
+            width={40}
+            height={40}
+            className="h-full w-full object-contain"
+            priority
+          />
         </span>
         <span>
           <b className="block text-[17px] tracking-tight">Way2Home</b>
@@ -90,21 +98,12 @@ export default function PengawasShell({
             </b>
             <small className="text-[10px] text-slate-400">Pengawas</small>
           </span>
-          <button
-            type="button"
-            onClick={onLogout}
-            disabled={loggingOut}
-            aria-label="Keluar"
-            className="text-xs text-slate-400 hover:text-white"
-          >
-            ↗
-          </button>
         </div>
       </div>
     </aside>
   );
   return (
-    <div className="min-h-screen bg-[#f3f6fa] text-[#183047]">
+    <div className="pengawas-interactions min-h-screen bg-[#f3f6fa] text-[#183047]">
       <div className="fixed inset-y-0 left-0 z-30 hidden w-[252px] lg:block">
         {nav}
       </div>
@@ -146,9 +145,9 @@ export default function PengawasShell({
               type="button"
               onClick={onLogout}
               disabled={loggingOut}
-              className="text-xs font-semibold text-slate-600 hover:text-[#164d7b]"
+              className="rounded-lg border border-[#d99a9a] bg-[#a94444] px-3 py-2 text-xs font-semibold text-white hover:bg-[#913838] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {loggingOut ? "Keluar..." : "Keluar"}
+              {loggingOut ? "Logout..." : "Logout"}
             </button>
           </div>
         </header>
