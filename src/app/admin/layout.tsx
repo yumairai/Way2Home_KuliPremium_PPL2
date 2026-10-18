@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
 import { logout } from "@/services/auth.service";
 import { useAuthUser } from "@/hooks/useAuthUser";
@@ -58,8 +59,15 @@ export default function AdminLayout({
         className="flex h-[82px] items-center gap-3 border-b border-white/10 px-7"
         aria-label="Way2Home Admin dashboard"
       >
-        <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#b6dc67] text-lg font-black text-[#10283d]">
-          W
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-1">
+          <Image
+            src="/images/logo-w2h.png"
+            alt="Logo Way2Home"
+            width={40}
+            height={40}
+            className="h-full w-full object-contain"
+            priority
+          />
         </span>
         <span>
           <b className="block text-[17px] tracking-tight">Way2Home</b>
@@ -79,7 +87,7 @@ export default function AdminLayout({
               href={item.href}
               aria-current={
                 pathname === item.href ||
-                (item.href !== "/admin" && pathname.startsWith(`${item.href}/`))
+                  (item.href !== "/admin" && pathname.startsWith(`${item.href}/`))
                   ? "page"
                   : undefined
               }
@@ -103,24 +111,16 @@ export default function AdminLayout({
           </span>
           <span className="min-w-0 flex-1">
             <b className="block truncate text-xs">
-              {demoRole ? "Admin Demo" : user?.fullName}
+              {demoRole ? "Superadmin" : user?.fullName}
             </b>
             <small className="text-[10px] text-slate-400">Administrator</small>
           </span>
-          <button
-            onClick={onLogout}
-            disabled={loggingOut}
-            className="text-xs text-slate-400 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c2e477]"
-            aria-label="Keluar"
-          >
-            Keluar
-          </button>
         </div>
       </div>
     </aside>
   );
   return (
-    <div className="min-h-screen bg-[#f3f6fa] text-[#183047]">
+    <div className="admin-interactions min-h-screen bg-[#f3f6fa] text-[#183047]">
       <div className="fixed inset-y-0 left-0 z-30 hidden w-[252px] lg:block">
         {sidebar}
       </div>
@@ -161,9 +161,9 @@ export default function AdminLayout({
             <button
               onClick={onLogout}
               disabled={loggingOut}
-              className="hidden text-xs font-semibold text-slate-600 hover:text-[#164d7b] sm:block"
+              className="rounded-lg border border-[#d99a9a] bg-[#a94444] px-3 py-2 text-xs font-semibold text-white hover:bg-[#913838] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {loggingOut ? "Keluar..." : "Keluar"}
+              {loggingOut ? "Logout..." : "Logout"}
             </button>
           </div>
         </header>

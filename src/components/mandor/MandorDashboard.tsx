@@ -5,11 +5,13 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { mandorProjects, initialMandorRegistration } from "@/data/mandor";
 import { useMandorStatus } from "@/components/mandor/MandorShell";
+import { useProjectSync } from "@/utils/project-events";
 
 export default function MandorDashboard() {
   const { status } = useMandorStatus();
   const [filter, setFilter] = useState("Semua proyek");
   const [query, setQuery] = useState("");
+  const sync = useProjectSync();
   const projects = useMemo(
     () =>
       mandorProjects.filter(
@@ -27,13 +29,9 @@ export default function MandorDashboard() {
   const active = mandorProjects.filter(
     (project) => project.overallProgress < 100,
   ).length;
-  const waiting = mandorProjects.reduce(
-    (sum, project) =>
-      sum +
-      project.progressReports.filter((report) => report.review === "Menunggu")
-        .length,
-    0,
-  );
+  const waiting = sync.reports.filter(
+    (report) => report.decision === "Menunggu",
+  ).length;
   if (status !== "Disetujui") return <VerificationStatus />;
   return (
     <div className="mx-auto max-w-[1480px] space-y-7 px-4 py-6 sm:px-6 md:py-8">

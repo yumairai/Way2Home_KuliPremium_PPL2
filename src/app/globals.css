@@ -65,3 +65,142 @@ body {
   background: var(--background);
   color: var(--foreground);
 }
+
+/* Pengawas control feedback: keep motion subtle and honor system preferences. */
+.pengawas-interactions button:not(:disabled),
+.pengawas-interactions a[href] {
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    opacity 160ms ease;
+}
+
+.pengawas-interactions button:not(:disabled):hover,
+.pengawas-interactions a[href]:hover {
+  transform: translateY(-1px);
+}
+
+.pengawas-interactions button:not(:disabled):active,
+.pengawas-interactions a[href]:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.pengawas-interactions button:disabled {
+  cursor: not-allowed;
+}
+
+.pengawas-interactions button:focus-visible,
+.pengawas-interactions a[href]:focus-visible {
+  outline: 2px solid #7399b5;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pengawas-interactions button,
+  .pengawas-interactions a[href] {
+    transition: none;
+  }
+
+  .pengawas-interactions button:hover,
+  .pengawas-interactions button:active,
+  .pengawas-interactions a[href]:hover,
+  .pengawas-interactions a[href]:active {
+    transform: none;
+  }
+}
+
+.mandor-interactions button:not(:disabled),
+.mandor-interactions a[href] {
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    opacity 160ms ease;
+}
+
+.mandor-interactions button:not(:disabled):hover,
+.mandor-interactions a[href]:hover {
+  transform: translateY(-1px);
+}
+
+.mandor-interactions button:not(:disabled):active,
+.mandor-interactions a[href]:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.mandor-interactions button:disabled {
+  cursor: not-allowed;
+}
+
+.mandor-interactions button:focus-visible,
+.mandor-interactions a[href]:focus-visible {
+  outline: 2px solid #7399b5;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mandor-interactions button,
+  .mandor-interactions a[href] {
+    transition: none;
+  }
+
+  .mandor-interactions button:hover,
+  .mandor-interactions button:active,
+  .mandor-interactions a[href]:hover,
+  .mandor-interactions a[href]:active {
+    transform: none;
+  }
+}
+
+.admin-interactions button:not(:disabled),
+.admin-interactions a[href] {
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    opacity 160ms ease;
+}
+
+.admin-interactions button:not(:disabled):hover,
+.admin-interactions a[href]:hover {
+  transform: translateY(-1px);
+}
+
+.admin-interactions button:not(:disabled):active,
+.admin-interactions a[href]:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.admin-interactions button:disabled {
+  cursor: not-allowed;
+}
+
+.admin-interactions button:focus-visible,
+.admin-interactions a[href]:focus-visible {
+  outline: 2px solid #b6dc67;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-interactions button,
+  .admin-interactions a[href] {
+    transition: none;
+  }
+
+  .admin-interactions button:hover,
+  .admin-interactions button:active,
+  .admin-interactions a[href]:hover,
+  .admin-interactions a[href]:active {
+    transform: none;
+  }
+}

@@ -1,4 +1,4 @@
-﻿export type SupervisorProjectStatus =
+export type SupervisorProjectStatus =
   "Berjalan" | "Perlu perhatian" | "Selesai";
 export type SupervisorMilestone = {
   id: string;
@@ -19,10 +19,13 @@ export type SupervisorReport = {
   foreman: string;
   milestoneId: string;
   title: string;
+  subtaskTitle: string;
   note: string;
   submitted: string;
   progress: number;
   decision: "Menunggu" | "Disetujui" | "Perlu revisi";
+  photo: string | null;
+  weight: number;
 };
 export type SupervisorIssue = {
   id: string;
@@ -48,6 +51,7 @@ export type SupervisorProject = {
   value: number;
   supervisor: string;
   foreman: string | null;
+  foremen?: string[];
   needs: string;
   specifications: string[];
   contractId: string;
@@ -72,12 +76,13 @@ export type VerifiedForeman = {
   experience: number;
   area: string;
   portfolio: string;
+  phone: string;
   verified: boolean;
 };
-const constructionMilestones: SupervisorMilestone[] = [
+const constructionMilestones6: SupervisorMilestone[] = [
   {
     id: "m1",
-    name: "Persiapan & pondasi",
+    name: "Pekerjaan Persiapan & Fondasi",
     start: "2 Sep",
     end: "18 Sep",
     status: "Selesai",
@@ -85,24 +90,40 @@ const constructionMilestones: SupervisorMilestone[] = [
   },
   {
     id: "m2",
-    name: "Struktur bangunan",
+    name: "Pekerjaan Struktur Utama",
     start: "19 Sep",
     end: "20 Okt",
     status: "Berjalan",
-    progress: 68,
+    progress: 25,
   },
   {
     id: "m3",
-    name: "Dinding & atap",
+    name: "Pekerjaan Dinding & Penutup Atap",
     start: "21 Okt",
-    end: "18 Nov",
+    end: "4 Nov",
     status: "Menunggu",
     progress: 0,
   },
   {
     id: "m4",
-    name: "Finishing",
-    start: "19 Nov",
+    name: "Instalasi Jalur MEP",
+    start: "5 Nov",
+    end: "15 Nov",
+    status: "Menunggu",
+    progress: 0,
+  },
+  {
+    id: "m5",
+    name: "Pekerjaan Finishing",
+    start: "16 Nov",
+    end: "28 Nov",
+    status: "Menunggu",
+    progress: 0,
+  },
+  {
+    id: "m6",
+    name: "Lingkungan Luar & Serah Terima",
+    start: "29 Nov",
     end: "15 Des",
     status: "Menunggu",
     progress: 0,
@@ -118,7 +139,7 @@ export const supervisorProjects: SupervisorProject[] = [
     category: "Pembangunan rumah",
     address: "Jl. Cilandak Tengah No. 24, Jakarta Selatan",
     status: "Berjalan",
-    progress: 68,
+    progress: 20,
     deadline: "15 Des 2026",
     started: "2 Sep 2026",
     value: 895000000,
@@ -134,74 +155,66 @@ export const supervisorProjects: SupervisorProject[] = [
       "Kontrak #K-2026-084",
     ],
     contractId: "K-2026-084",
-    milestones: constructionMilestones,
+    milestones: constructionMilestones6,
     tasks: [
+      { id: "t1", milestoneId: "m1", title: "Pembersihan Lahan", done: true },
       {
-        id: "t1",
+        id: "t2",
         milestoneId: "m1",
-        title: "Pembersihan dan pengukuran lahan",
+        title: "Pengukuran (Bowplank)",
         done: true,
       },
-      { id: "t2", milestoneId: "m1", title: "Pengecoran pondasi", done: true },
-      {
-        id: "t3",
-        milestoneId: "m2",
-        title: "Pemasangan kolom utama",
-        done: true,
-      },
+      { id: "t3", milestoneId: "m1", title: "Galian Tanah", done: true },
       {
         id: "t4",
-        milestoneId: "m2",
-        title: "Pengecoran balok lantai",
-        done: false,
+        milestoneId: "m1",
+        title: "Pengecoran Fondasi & Sloof",
+        done: true,
       },
       {
         id: "t5",
         milestoneId: "m2",
-        title: "Pemeriksaan struktur",
-        done: false,
+        title: "Pengerjaan Kolom (Tiang)",
+        done: true,
       },
       {
         id: "t6",
-        milestoneId: "m3",
-        title: "Pemasangan dinding bata",
+        milestoneId: "m2",
+        title: "Pengerjaan Balok",
         done: false,
       },
+      { id: "t7", milestoneId: "m2", title: "Rangka Atap", done: false },
+      { id: "t8", milestoneId: "m3", title: "Pemasangan Bata", done: false },
     ],
     reports: [
       {
-        id: "r1",
+        id: "PR-2408-02",
         foreman: "Bima Saputra",
         milestoneId: "m2",
-        title: "Pengecoran balok lantai",
+        title: "Pengerjaan Balok",
+        subtaskTitle: "Pengerjaan Balok",
         note: "Pengecoran balok lantai selesai. Hasil pemeriksaan awal sesuai spesifikasi struktur.",
         submitted: "15 Okt 2026 · 08.35",
-        progress: 74,
+        progress: 25,
         decision: "Menunggu",
+        photo: null,
+        weight: 5,
       },
       {
-        id: "r2",
+        id: "PR-2408-01",
         foreman: "Bima Saputra",
         milestoneId: "m2",
-        title: "Pemasangan kolom utama",
-        note: "Pemasangan kolom selesai dan sudah dilakukan pengecekan tegak lurus.",
+        title: "Pengerjaan Kolom (Tiang)",
+        subtaskTitle: "Pengerjaan Kolom (Tiang)",
+        note: "Pemasangan kolom utama selesai dan sudah dilakukan pengecekan tegak lurus.",
         submitted: "12 Okt 2026 · 15.10",
-        progress: 68,
+        progress: 20,
         decision: "Disetujui",
+        photo: null,
+        weight: 5,
       },
     ],
-    issues: [
-      {
-        id: "i1",
-        title: "Keterlambatan pengiriman besi",
-        description:
-          "Material besi untuk balok lantai belum tiba sesuai jadwal pemasok.",
-        priority: "Tinggi",
-        state: "Baru",
-        reportDate: "14 Okt 2026",
-        followUp: "",
-      },
-    ],
+    issues: [],
     customerUpdates: [
       {
         id: "u1",
@@ -280,7 +293,7 @@ export const supervisorProjects: SupervisorProject[] = [
       "Kontrak #K-2026-091",
     ],
     contractId: "K-2026-091",
-    milestones: constructionMilestones.map((m) => ({
+    milestones: constructionMilestones6.map((m) => ({
       ...m,
       progress: m.id === "m1" ? 100 : m.id === "m2" ? 42 : 0,
       status:
@@ -368,7 +381,7 @@ export const supervisorProjects: SupervisorProject[] = [
       "Kontrak #K-2026-052",
     ],
     contractId: "K-2026-052",
-    milestones: constructionMilestones.map((m) => ({
+    milestones: constructionMilestones6.map((m) => ({
       ...m,
       status: "Selesai",
       progress: 100,
@@ -430,6 +443,7 @@ export const verifiedForemen: VerifiedForeman[] = [
     experience: 9,
     area: "Jakarta Selatan",
     portfolio: "12 proyek rumah tinggal",
+    phone: "+62 812-9000-1201",
     verified: true,
   },
   {
@@ -439,6 +453,7 @@ export const verifiedForemen: VerifiedForeman[] = [
     experience: 7,
     area: "Jakarta Selatan · Depok",
     portfolio: "9 proyek rumah tinggal",
+    phone: "+62 812-9000-1802",
     verified: true,
   },
   {
@@ -448,6 +463,7 @@ export const verifiedForemen: VerifiedForeman[] = [
     experience: 11,
     area: "Depok · Bogor",
     portfolio: "18 proyek rumah tinggal",
+    phone: "+62 812-9000-2403",
     verified: true,
   },
   {
@@ -457,6 +473,7 @@ export const verifiedForemen: VerifiedForeman[] = [
     experience: 6,
     area: "Jakarta · Bekasi",
     portfolio: "7 proyek rumah tinggal",
+    phone: "+62 812-9000-2904",
     verified: true,
   },
 ];
