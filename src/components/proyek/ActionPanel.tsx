@@ -212,8 +212,7 @@ export default function ActionPanel({ project }: { project: Project }) {
   const canCancel =
     !canceled &&
     !contractLocked &&
-    project.status !== "Selesai" &&
-    project.status !== "Finalisasi Kontrak";
+    project.status !== "Selesai";
 
   const activePayment = project.payments.find((p) => p.status === "aktif");
   const allInstallmentsPaid = !activePayment && dpPaid;
