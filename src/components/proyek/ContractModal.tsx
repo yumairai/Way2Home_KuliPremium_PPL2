@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import type { Project } from "@/types/proyek";
 import { formatDate, formatRupiah } from "@/utils/format";
+import { createClient } from "@/utils/supabase/client";
 
 const KETENTUAN = [
   "Pihak Kedua tidak dapat mengubah desain atau spesifikasi material setelah kontrak ditandatangani tanpa persetujuan tertulis dari pihak Way2Home.",
@@ -62,10 +64,13 @@ export default function ContractModal({
   interactive: boolean;
   onClose: () => void;
 }) {
+  const router = useRouter();
   const [checked, setChecked] = useState(false);
   const [rejectMode, setRejectMode] = useState(false);
   const [reason, setReason] = useState("");
   const [toast, setToast] = useState("");
+  const [approvalError, setApprovalError] = useState("");
+  const [approving, setApproving] = useState(false);
   const [action, setAction] = useState<"menunggu" | "setuju" | "tolak">(
     "menunggu",
   );
@@ -82,11 +87,36 @@ export default function ContractModal({
     };
   }, [onClose]);
 
-  const setuju = () => {
-    setAction("setuju");
-    setToast(
-      "Kontrak berhasil ditandatangani. Silakan lakukan pembayaran Down Payment.",
-    );
+  const setuju = async () => {
+    if (!interactive || !checked || approving) return;
+
+    setApproving(true);
+    setApprovalError("");
+    const supabase = createClient();
+    const rpcClient = supabase as unknown as {
+      rpc: (
+        functionName: string,
+        args: { pid: string },
+      ) => Promise<{ error: { message: string } | null }>;
+    };
+
+    try {
+      const { error } = await rpcClient.rpc("customer_sign_contract", {
+        pid: String(project.id),
+      });
+      if (error) throw new Error(error.message);
+
+      onClose();
+      router.refresh();
+    } catch (error) {
+      setApprovalError(
+        error instanceof Error
+          ? error.message
+          : "Gagal menyetujui kontrak. Silakan coba lagi.",
+      );
+    } finally {
+      setApproving(false);
+    }
   };
 
   const tolak = () => {
@@ -284,6 +314,14 @@ export default function ContractModal({
 
         {interactive && action === "menunggu" && (
           <div className="border-t border-[#edf1f6] bg-white px-8 py-5">
+            {approvalError && (
+              <p
+                role="alert"
+                className="mb-4 rounded-xl border border-[#fecaca] bg-[#fef2f2] px-4 py-3 text-sm font-semibold text-[#991b1b]"
+              >
+                {approvalError}
+              </p>
+            )}
             <label className="flex cursor-pointer items-start gap-3">
               <input
                 type="checkbox"
@@ -329,11 +367,11 @@ export default function ContractModal({
               <div className="mt-4 flex flex-wrap gap-3">
                 <button
                   type="button"
-                  disabled={!checked}
+                  disabled={!checked || approving}
                   onClick={setuju}
                   className="min-h-12 cursor-pointer rounded-full bg-gradient-to-r from-[#004796] to-[#045ec2] px-8 font-bold text-white shadow-[0_10px_25px_rgba(0,71,150,0.3)] transition hover:-translate-y-0.5 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Setuju & Tandatangani
+                  {approving ? "Menyimpan persetujuan..." : "Setuju & Tandatangani"}
                 </button>
                 <button
                   type="button"
