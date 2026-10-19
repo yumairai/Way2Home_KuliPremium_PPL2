@@ -1,10 +1,32 @@
 import { createClient } from "@/utils/supabase/client";
 
+export type AuthRole = "customer" | "admin" | "pengawas" | "mandor";
+
 export async function login(email: string, password: string) {
   const supabase = createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
-  if (!error) return { ok: true as const };
+  if (!error) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user?.id || "")
+      .maybeSingle();
+
+    if (profileError || !profile) {
+      await supabase.auth.signOut();
+      return {
+        ok: false as const,
+        message: "Profil akun belum memiliki role. Hubungi administrator.",
+      };
+    }
+
+    return { ok: true as const, role: profile.role as AuthRole };
+  }
 
   const message =
     error.message === "Invalid login credentials"

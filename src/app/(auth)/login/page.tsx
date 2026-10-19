@@ -4,14 +4,22 @@ import { FormEvent, Suspense, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { login } from "@/services/auth.service";
+import { login, type AuthRole } from "@/services/auth.service";
 import {
   authenticateDemoAccount,
+  clearDemoRole,
   setDemoRole,
   type DemoRole,
 } from "@/utils/demo-auth";
 
 const DEMO_HOME: Record<DemoRole, string> = {
+  admin: "/admin",
+  mandor: "/mandor",
+  pengawas: "/pengawas",
+};
+
+const ROLE_HOME: Record<AuthRole, string> = {
+  customer: "/dashboard",
   admin: "/admin",
   mandor: "/mandor",
   pengawas: "/pengawas",
@@ -75,7 +83,8 @@ function LoginForm() {
       return;
     }
 
-    router.replace("/dashboard");
+    clearDemoRole();
+    router.replace(ROLE_HOME[result.role]);
     router.refresh();
   };
 

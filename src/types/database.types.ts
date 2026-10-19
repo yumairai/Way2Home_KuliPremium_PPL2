@@ -73,6 +73,7 @@ export type Database = {
           slug?: string | null;
           spesifikasi?: Json;
         };
+        Relationships: [];
       };
       design_images: {
         Row: {
@@ -93,9 +94,12 @@ export type Database = {
           urutan?: number;
           url?: string;
         };
+        Relationships: [];
       };
       profiles: {
         Row: {
+          address: string | null;
+          avatar_url: string | null;
           created_at: string;
           full_name: string;
           id: string;
@@ -103,6 +107,8 @@ export type Database = {
           role: Database["public"]["Enums"]["user_role"];
         };
         Insert: {
+          address?: string | null;
+          avatar_url?: string | null;
           created_at?: string;
           full_name: string;
           id: string;
@@ -110,12 +116,15 @@ export type Database = {
           role?: Database["public"]["Enums"]["user_role"];
         };
         Update: {
+          address?: string | null;
+          avatar_url?: string | null;
           created_at?: string;
           full_name?: string;
           id?: string;
           phone?: string | null;
           role?: Database["public"]["Enums"]["user_role"];
         };
+        Relationships: [];
       };
       projects: {
         Row: {
@@ -154,6 +163,7 @@ export type Database = {
           requirement_id?: string | null;
           status?: Database["public"]["Enums"]["project_status"];
         };
+        Relationships: [];
       };
       project_documents: {
         Row: {
@@ -164,6 +174,7 @@ export type Database = {
           mime_type: string | null;
           nama_dokumen: string;
           project_id: string;
+          review_status: "pending" | "approved" | "rejected";
           ukuran_bytes: number | null;
           uploaded_by: string;
           url: string;
@@ -176,6 +187,7 @@ export type Database = {
           mime_type?: string | null;
           nama_dokumen: string;
           project_id: string;
+          review_status?: "pending" | "approved" | "rejected";
           ukuran_bytes?: number | null;
           uploaded_by: string;
           url: string;
@@ -188,10 +200,12 @@ export type Database = {
           mime_type?: string | null;
           nama_dokumen?: string;
           project_id?: string;
+          review_status?: "pending" | "approved" | "rejected";
           ukuran_bytes?: number | null;
           uploaded_by?: string;
           url?: string;
         };
+        Relationships: [];
       };
       mandor_profiles: {
         Row: {
@@ -339,6 +353,7 @@ export type Database = {
         };
       };
     };
+    Views: Record<string, never>;
     Functions: {
       get_available_mandor_ids: {
         Args: Record<PropertyKey, never>;
@@ -364,6 +379,7 @@ export type Database = {
       user_role: "customer" | "admin" | "pengawas" | "mandor";
       verifikasi_status: "pending" | "approved" | "rejected";
     };
+    CompositeTypes: Record<string, never>;
   };
 };
 

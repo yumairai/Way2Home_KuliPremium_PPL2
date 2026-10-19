@@ -290,6 +290,70 @@ export async function createProjectWithDocuments(
   }
 }
 
+export async function deleteCancellableProject(
+  supabase: SupabaseClient<Database>,
+  projectId: string
+): Promise<void> {
+  const { user } = await requireRole(supabase, "customer");
+  const cancellableStatuses: Database["public"]["Enums"]["project_status"][] = [
+    "draft",
+    "verifikasi_dokumen",
+    "revisi_dokumen",
+    "alokasi_mandor_pengawas",
+  ];
+
+  const { data: project, error: projectError } = await supabase
+    .from("projects")
+    .select("id, status")
+    .eq("id", projectId)
+    .eq("customer_id", user.id)
+    .maybeSingle();
+
+  if (projectError || !project) {
+    throw new ServiceError("Proyek tidak ditemukan.", 404);
+  }
+  const projectRow = project as unknown as {
+    status: Database["public"]["Enums"]["project_status"];
+  };
+  if (!cancellableStatuses.includes(projectRow.status)) {
+    throw new ServiceError("Proyek tidak dapat dibatalkan pada tahap ini.", 409);
+  }
+
+  const { data: documents, error: documentsError } = await supabase
+    .from("project_documents")
+    .select("url")
+    .eq("project_id", projectId);
+
+  if (documentsError) {
+    throw new ServiceError("Gagal menyiapkan penghapusan dokumen proyek.", 500);
+  }
+
+  const storagePaths = ((documents || []) as unknown as Array<{ url: string }>).map(
+    (document) => document.url
+  );
+  if (storagePaths.length > 0) {
+    const { error: storageError } = await supabase.storage
+      .from("project-documents")
+      .remove(storagePaths);
+    if (storageError) {
+      throw new ServiceError("Gagal menghapus dokumen proyek dari penyimpanan.", 500);
+    }
+  }
+
+  const { data: deletedProject, error: deleteError } = await supabase
+    .from("projects")
+    .delete()
+    .eq("id", projectId)
+    .eq("customer_id", user.id)
+    .in("status", cancellableStatuses)
+    .select("id")
+    .maybeSingle();
+
+  if (deleteError || !deletedProject) {
+    throw new ServiceError("Proyek gagal dihapus. Muat ulang halaman dan coba lagi.", 500);
+  }
+}
+
 export async function getSignedDocumentUrl(
   supabase: SupabaseClient<Database>,
   documentId: string,
@@ -345,7 +409,10 @@ export function transformDBProjectToProject(
   const docs = row.project_documents || [];
   const hasRevision =
     dbStatus === "revisi_dokumen" ||
-    docs.some((d: Record<string, unknown>) => Boolean(d.catatan));
+    docs.some(
+      (d: Record<string, unknown>) =>
+        d.review_status === "rejected" || Boolean(d.catatan),
+    );
   const isPendingVerification =
     dbStatus === "draft" || dbStatus === "verifikasi_dokumen";
   const documentStatus: DocumentStatus = hasRevision
@@ -467,6 +534,10 @@ export function transformDBProjectToProject(
     submittedAt: row.created_at as string,
     status: projectStatus,
     documentStatus,
+    adminNote:
+      Array.isArray(docs)
+        ? (docs as Array<Record<string, unknown>>).find((document) => Boolean(document.catatan))?.catatan as string | undefined
+        : undefined,
     team,
     contract,
     payments,
@@ -507,6 +578,7 @@ export async function getUserProjects(
         nama_dokumen,
         url,
         catatan,
+        review_status,
         created_at
       ),
       contracts (
@@ -559,6 +631,7 @@ export async function getUserProjects(
           nama_dokumen,
           url,
           catatan,
+          review_status,
           created_at
         )
       `,
@@ -619,6 +692,7 @@ export async function getUserProjectById(
         nama_dokumen,
         url,
         catatan,
+        review_status,
         created_at
       ),
       contracts (
@@ -672,6 +746,7 @@ export async function getUserProjectById(
           nama_dokumen,
           url,
           catatan,
+          review_status,
           created_at
         )
       `,
