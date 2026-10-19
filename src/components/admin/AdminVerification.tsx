@@ -1,11 +1,10 @@
 ﻿"use client";
-import { useMemo, useState } from "react";
-import Image from "next/image";
+import { useEffect, useMemo, useState } from "react";
 import {
-  verificationRequests,
   type VerificationDocumentStatus,
   type VerificationRequest,
 } from "@/data/admin-verification";
+import { useDemoRole } from "@/utils/demo-auth";
 
 const statusStyle: Record<VerificationDocumentStatus, string> = {
   Menunggu: "border-[#f0d8a8] bg-[#fff6e7] text-[#9a671f]",
@@ -27,12 +26,14 @@ function VerificationModal({
 }: {
   request: VerificationRequest;
   onClose: () => void;
-  onSave: (updated: VerificationRequest) => void;
+  onSave: (updated: VerificationRequest) => Promise<void>;
 }) {
   const [documents, setDocuments] = useState(request.documents);
   const [note, setNote] = useState(request.adminNote);
   const [selected, setSelected] = useState(0);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const pending = documents.filter(
     (document) => document.status === "Menunggu",
   ).length;
@@ -48,10 +49,17 @@ function VerificationModal({
         document.status === "Menunggu" ? { ...document, status } : document,
       ),
     );
-  const submit = () => {
-    onSave({ ...request, documents, adminNote: note });
-    setSaved(true);
-    window.setTimeout(onClose, 850);
+  const submit = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      await onSave({ ...request, documents, adminNote: note });
+      setSaved(true);
+      window.setTimeout(onClose, 850);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Gagal menyimpan hasil review.");
+      setSaving(false);
+    }
   };
   const active = documents[selected];
   return (
@@ -154,13 +162,20 @@ function VerificationModal({
             </div>
             <div className="grid min-h-[350px] flex-1 place-items-center overflow-hidden rounded-xl border border-[#d9e0e6] bg-[#dfe4e9] p-3">
               <div className="max-h-full max-w-full overflow-auto rounded-md bg-white shadow-md">
-                {/* Demo artwork stays local; no external document URL is requested. */}
-                {/* eslint-disable @next/next/no-img-element */}
-                <img
-                  src={active.dataUrl}
-                  alt={`Pratinjau demo: ${active.name}`}
-                  className="block max-h-[min(58vh,680px)] w-auto max-w-full object-contain"
-                />
+                {active.kind === "pdf" ? (
+                  <iframe
+                    src={active.dataUrl}
+                    title={`Pratinjau ${active.name}`}
+                    className="h-[min(58vh,680px)] w-[min(70vw,760px)]"
+                  />
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={active.dataUrl}
+                    alt={`Pratinjau: ${active.name}`}
+                    className="block max-h-[min(58vh,680px)] w-auto max-w-full object-contain"
+                  />
+                )}
               </div>
             </div>
           </section>
@@ -180,12 +195,11 @@ function VerificationModal({
                 </span>
               </div>
               <div className="relative h-[150px] bg-[#e5eaf0]">
-                <Image
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
                   src={request.house.image}
                   alt={`Desain rumah ${request.house.name}`}
-                  fill
-                  sizes="360px"
-                  className="object-cover"
+                  className="h-full w-full object-cover"
                 />
               </div>
               <div className="p-4">
@@ -226,6 +240,16 @@ function VerificationModal({
                       currency: "IDR",
                       maximumFractionDigits: 0,
                     }).format(request.house.estimatedCost)}
+                  </b>
+                </div>
+                <div className="mt-2 flex items-center justify-between rounded-lg bg-[#edf4f9] px-3 py-2">
+                  <span className="text-[10px] text-slate-600">Budget yang diajukan</span>
+                  <b className="text-xs text-[#183b57]">
+                    {new Intl.NumberFormat("id-ID", {
+                      style: "currency",
+                      currency: "IDR",
+                      maximumFractionDigits: 0,
+                    }).format(request.budget || 0)}
                   </b>
                 </div>
               </div>
@@ -272,15 +296,18 @@ function VerificationModal({
             </button>
             <button
               onClick={submit}
-              disabled={pending > 0 || saved}
+              disabled={pending > 0 || saved || saving}
               className="h-10 rounded-lg bg-[#183b57] px-5 text-xs font-semibold text-white hover:bg-[#234f70] disabled:cursor-not-allowed disabled:opacity-40"
             >
               {saved
                 ? "Tersimpan"
+                : saving
+                  ? "Menyimpan..."
                 : pending > 0
                   ? `Tinjau ${pending} dokumen lagi`
                   : "Simpan hasil review"}
             </button>
+            {error && <p role="alert" className="w-full text-right text-xs text-[#a75252]">{error}</p>}
           </div>
         </div>
       </section>
@@ -297,11 +324,42 @@ function Detail({ label, value }: { label: string; value: string }) {
 }
 
 export default function AdminVerification() {
-  const [requests, setRequests] = useState(verificationRequests);
+  const demoRole = useDemoRole();
+  const [requests, setRequests] = useState<VerificationRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedRequest, setSelectedRequest] =
     useState<VerificationRequest | null>(null);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("Semua status");
+  const visibleLoadError = demoRole
+    ? "Akun Admin Demo hanya untuk preview UI. Keluar, lalu login dengan akun admin Supabase untuk memuat dan memverifikasi pengajuan customer."
+    : loadError;
+  const isLoading = loading && !demoRole;
+
+  useEffect(() => {
+    if (demoRole) return;
+
+    let active = true;
+    fetch("/api/admin/document-verification")
+      .then(async (response) => {
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || "Gagal memuat pengajuan.");
+        return result.requests as VerificationRequest[];
+      })
+      .then((items) => {
+        if (active) setRequests(items);
+      })
+      .catch((error: unknown) => {
+        if (active) setLoadError(error instanceof Error ? error.message : "Gagal memuat pengajuan.");
+      })
+      .finally(() => { 
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [demoRole]);
   const filtered = useMemo(
     () =>
       requests.filter(
@@ -327,10 +385,19 @@ export default function AdminVerification() {
           .length,
       0,
     );
-  const save = (updated: VerificationRequest) =>
-    setRequests((current) =>
-      current.map((request) => (request.id === updated.id ? updated : request)),
-    );
+  const save = async (updated: VerificationRequest) => {
+    const response = await fetch(`/api/admin/document-verification/${updated.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        decisions: updated.documents.map(({ id, status }) => ({ id, status })),
+        adminNote: updated.adminNote,
+      }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message || "Gagal menyimpan hasil review.");
+    setRequests((current) => current.filter((request) => request.id !== updated.id));
+  };
   const summaries = [
     {
       label: "Total pengajuan",
@@ -364,7 +431,7 @@ export default function AdminVerification() {
             Verifikasi dokumen
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Periksa dokumen proyek dan kecocokan rumah katalog pemohon.
+              Periksa dokumen, budget, dan desain yang diajukan customer.
           </p>
         </div>
       </section>
@@ -418,7 +485,12 @@ export default function AdminVerification() {
             </label>
           </div>
         </div>
-        <div className="overflow-x-auto">
+          {visibleLoadError && (
+            <p role="alert" className="border-b border-[#f2d4d4] bg-[#fff6f6] px-6 py-3 text-xs text-[#a75252]">
+              {visibleLoadError}
+            </p>
+          )}
+          <div className="overflow-x-auto">
           <table className="w-full min-w-[1000px] text-left text-xs">
             <thead>
               <tr className="bg-[#f8fafc] text-[10px] font-semibold text-slate-500">
@@ -489,13 +561,19 @@ export default function AdminVerification() {
                   </tr>
                 );
               })}
-              {filtered.length === 0 && (
+              {!isLoading && !visibleLoadError && filtered.length === 0 && (
                 <tr>
-                  <td
-                    colSpan={8}
-                    className="px-6 py-12 text-center text-slate-500"
-                  >
-                    Tidak ada pengajuan yang cocok dengan pencarian atau filter.
+                  <td colSpan={8} className="px-6 py-12 text-center text-slate-500">
+                    {requests.length === 0
+                      ? "Belum ada pengajuan dokumen untuk diverifikasi."
+                      : "Tidak ada pengajuan yang cocok dengan pencarian atau filter."}
+                  </td>
+                </tr>
+              )}
+              {isLoading && (
+                <tr>
+                  <td colSpan={8} className="px-6 py-12 text-center text-slate-500">
+                    Memuat pengajuan customer...
                   </td>
                 </tr>
               )}
@@ -504,14 +582,14 @@ export default function AdminVerification() {
         </div>
         <div className="flex flex-col gap-2 border-t border-[#edf0f4] px-5 py-3 text-[10px] text-slate-400 sm:flex-row sm:justify-between">
           <span>
-            Menampilkan {filtered.length} dari {requests.length} pengajuan demo
+            Menampilkan {filtered.length} dari {requests.length} pengajuan
           </span>
-          <span>Semua keputusan hanya tersimpan selama sesi halaman.</span>
+          <span>Keputusan review tersimpan pada data proyek customer.</span>
         </div>
       </section>
       <p className="text-[10px] leading-5 text-slate-400">
-        Berkas, pemohon, status, dan detail katalog pada halaman ini merupakan
-        data demonstrasi. Keputusan review belum dikirim ke server.
+        Daftar hanya menampilkan proyek customer yang masih berada pada tahap
+        verifikasi dokumen.
       </p>
       {selectedRequest && (
         <VerificationModal

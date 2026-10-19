@@ -409,7 +409,10 @@ export function transformDBProjectToProject(
   const docs = row.project_documents || [];
   const hasRevision =
     dbStatus === "revisi_dokumen" ||
-    docs.some((d: Record<string, unknown>) => Boolean(d.catatan));
+    docs.some(
+      (d: Record<string, unknown>) =>
+        d.review_status === "rejected" || Boolean(d.catatan),
+    );
   const isPendingVerification =
     dbStatus === "draft" || dbStatus === "verifikasi_dokumen";
   const documentStatus: DocumentStatus = hasRevision
@@ -531,6 +534,10 @@ export function transformDBProjectToProject(
     submittedAt: row.created_at as string,
     status: projectStatus,
     documentStatus,
+    adminNote:
+      Array.isArray(docs)
+        ? (docs as Array<Record<string, unknown>>).find((document) => Boolean(document.catatan))?.catatan as string | undefined
+        : undefined,
     team,
     contract,
     payments,
@@ -571,6 +578,7 @@ export async function getUserProjects(
         nama_dokumen,
         url,
         catatan,
+        review_status,
         created_at
       ),
       contracts (
@@ -623,6 +631,7 @@ export async function getUserProjects(
           nama_dokumen,
           url,
           catatan,
+          review_status,
           created_at
         )
       `,
@@ -683,6 +692,7 @@ export async function getUserProjectById(
         nama_dokumen,
         url,
         catatan,
+        review_status,
         created_at
       ),
       contracts (
@@ -736,6 +746,7 @@ export async function getUserProjectById(
           nama_dokumen,
           url,
           catatan,
+          review_status,
           created_at
         )
       `,

@@ -15,6 +15,7 @@ export type VerificationRequest = {
   email: string;
   submittedAt: string;
   adminNote: string;
+  budget?: number;
   house: HouseDesign;
   documents: VerificationDocument[];
 };
