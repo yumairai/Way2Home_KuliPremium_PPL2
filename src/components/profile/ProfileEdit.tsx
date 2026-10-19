@@ -2,14 +2,19 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
+import { createClient } from "@/utils/supabase/client";
 
 const MAX_AVATAR_SIZE = 2 * 1024 * 1024;
+const DEFAULT_AVATAR = "/images/aset/avatar.jpg";
 
-const DEFAULT_USER = {
-  name: "Budi Santoso",
-  phone: "081234567890",
-  email: "budi.santoso@email.com",
-  address: "Jl. Merdeka No. 123, Bandung, Jawa Barat",
+type ProfileData = {
+  userId: string;
+  name: string;
+  phone: string;
+  email: string;
+  address: string;
+  avatarPath: string | null;
+  avatarUrl: string | null;
 };
 
 function Field({
@@ -34,28 +39,35 @@ function Field({
       <input
         id={id}
         {...props}
-        className="mt-2 w-full rounded-xl border border-[#dbe4f2] bg-white px-4 py-3 text-sm font-medium text-[#111e3f] outline-none transition focus:border-[#8fb9ed] focus:ring-2 focus:ring-[#045ec2]/20"
+        className="mt-2 w-full rounded-xl border border-[#dbe4f2] bg-white px-4 py-3 text-sm font-medium text-[#111e3f] outline-none transition focus:border-[#8fb9ed] focus:ring-2 focus:ring-[#045ec2]/20 disabled:cursor-not-allowed disabled:bg-[#f1f5f9] disabled:text-[#64748b] disabled:focus:border-[#dbe4f2] disabled:focus:ring-0"
       />
     </div>
   );
 }
 
-export default function ProfileEdit() {
+export default function ProfileEdit({
+  initialProfile,
+}: {
+  initialProfile: ProfileData;
+}) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [name, setName] = useState(DEFAULT_USER.name);
-  const [phone, setPhone] = useState(DEFAULT_USER.phone);
-  const [email, setEmail] = useState(DEFAULT_USER.email);
-  const [address, setAddress] = useState(DEFAULT_USER.address);
-  const [avatarPreview, setAvatarPreview] = useState("/images/aset/avatar.jpg");
+  const [original, setOriginal] = useState(initialProfile);
+  const [name, setName] = useState(initialProfile.name);
+  const [phone, setPhone] = useState(initialProfile.phone);
+  const [address, setAddress] = useState(initialProfile.address);
+  const [avatarPreview, setAvatarPreview] = useState(
+    initialProfile.avatarUrl || DEFAULT_AVATAR,
+  );
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarError, setAvatarError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const dirty =
-    name !== DEFAULT_USER.name ||
-    phone !== DEFAULT_USER.phone ||
-    email !== DEFAULT_USER.email ||
-    address !== DEFAULT_USER.address ||
+    name !== original.name ||
+    phone !== original.phone ||
+    address !== original.address ||
     avatarFile !== null;
 
   const handleAvatarChange = (file?: File) => {
@@ -75,10 +87,98 @@ export default function ProfileEdit() {
     setAvatarFile(file);
   };
 
-  const handleSubmit = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+  const handleSubmit = async () => {
+    if (!name.trim()) {
+      setSaveError("Nama lengkap wajib diisi.");
+      return;
+    }
+
+    setSaving(true);
+    setSaveError("");
+    setSaved(false);
+    const supabase = createClient();
+    let uploadedAvatarPath: string | null = null;
+
+    try {
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+      if (authError || !user || user.id !== initialProfile.userId) {
+        throw new Error("Sesi login tidak valid. Silakan login kembali.");
+      }
+
+      if (avatarFile) {
+        const extension = avatarFile.type === "image/png" ? "png" : "jpg";
+        uploadedAvatarPath = `${user.id}/${crypto.randomUUID()}.${extension}`;
+        const { error: uploadError } = await supabase.storage
+          .from("avatars")
+          .upload(uploadedAvatarPath, avatarFile, {
+            contentType: avatarFile.type,
+            upsert: false,
+          });
+        if (uploadError) {
+          throw new Error(`Foto profil gagal diunggah: ${uploadError.message}`);
+        }
+      }
+
+      const { data: updatedProfile, error: updateError } = await supabase
+        .from("profiles")
+        .update({
+          full_name: name.trim(),
+          phone: phone.trim() || null,
+          address: address.trim() || null,
+          ...(uploadedAvatarPath ? { avatar_url: uploadedAvatarPath } : {}),
+        })
+        .eq("id", user.id)
+        .select("id")
+        .maybeSingle();
+
+      if (updateError || !updatedProfile) {
+        if (uploadedAvatarPath) {
+          await supabase.storage.from("avatars").remove([uploadedAvatarPath]);
+        }
+        throw new Error(
+          updateError?.message || "Profil tidak ditemukan atau tidak dapat diperbarui.",
+        );
+      }
+
+      let nextAvatarUrl = original.avatarUrl;
+      if (uploadedAvatarPath) {
+        const { data: signedAvatar } = await supabase.storage
+          .from("avatars")
+          .createSignedUrl(uploadedAvatarPath, 3600);
+        nextAvatarUrl = signedAvatar?.signedUrl || null;
+        if (original.avatarPath) {
+          const { error: removeError } = await supabase.storage
+            .from("avatars")
+            .remove([original.avatarPath]);
+          if (removeError) {
+            console.error("Gagal menghapus avatar lama:", removeError.message);
+          }
+        }
+      }
+
+      const nextProfile = {
+        ...original,
+        name: name.trim(),
+        phone: phone.trim(),
+        address: address.trim(),
+        avatarPath: uploadedAvatarPath || original.avatarPath,
+        avatarUrl: nextAvatarUrl,
+      };
+      setOriginal(nextProfile);
+      setAvatarPreview(nextAvatarUrl || DEFAULT_AVATAR);
+      setAvatarFile(null);
+      setSaved(true);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (error) {
+      setSaveError(
+        error instanceof Error ? error.message : "Profil gagal diperbarui.",
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -112,6 +212,14 @@ export default function ProfileEdit() {
             className="mt-6 rounded-2xl border border-[#059669] bg-[#ecfdf5] p-4 text-sm font-semibold text-[#065f46]"
           >
             Profil berhasil diperbarui.
+          </div>
+        )}
+        {saveError && (
+          <div
+            role="alert"
+            className="mt-6 rounded-2xl border border-[#fecaca] bg-[#fef2f2] p-4 text-sm font-semibold text-[#991b1b]"
+          >
+            {saveError}
           </div>
         )}
 
@@ -198,7 +306,10 @@ export default function ProfileEdit() {
                 }
                 type="text"
                 value={name}
-                onChange={(event) => setName(event.target.value)}
+                onChange={(event) => {
+                  setName(event.target.value);
+                  setSaved(false);
+                }}
               />
 
               <div className="grid gap-8 sm:grid-cols-2">
@@ -222,7 +333,10 @@ export default function ProfileEdit() {
                   }
                   type="tel"
                   value={phone}
-                  onChange={(event) => setPhone(event.target.value)}
+                  onChange={(event) => {
+                    setPhone(event.target.value);
+                    setSaved(false);
+                  }}
                 />
                 <Field
                   id="profile-email"
@@ -244,8 +358,8 @@ export default function ProfileEdit() {
                     </svg>
                   }
                   type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
+                  value={initialProfile.email}
+                  disabled
                 />
               </div>
 
@@ -276,7 +390,10 @@ export default function ProfileEdit() {
                   id="profile-address"
                   rows={3}
                   value={address}
-                  onChange={(event) => setAddress(event.target.value)}
+                  onChange={(event) => {
+                    setAddress(event.target.value);
+                    setSaved(false);
+                  }}
                   className="mt-2 w-full resize-y rounded-xl border border-[#dbe4f2] bg-white px-4 py-3 text-sm font-medium text-[#111e3f] outline-none transition focus:border-[#8fb9ed] focus:ring-2 focus:ring-[#045ec2]/20"
                 />
               </div>
@@ -285,11 +402,11 @@ export default function ProfileEdit() {
             <div className="mt-12 text-center">
               <button
                 type="button"
-                disabled={!dirty}
+                disabled={!dirty || saving}
                 onClick={handleSubmit}
                 className="inline-flex min-h-14 cursor-pointer items-center gap-3 rounded-full bg-gradient-to-r from-[#004796] to-[#045ec2] px-10 text-base font-bold text-white shadow-[0_10px_25px_rgba(0,71,150,0.3)] transition hover:-translate-y-0.5 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Ubah Profile
+                {saving ? "Menyimpan..." : "Simpan Perubahan"}
                 <svg
                   width="18"
                   height="18"
