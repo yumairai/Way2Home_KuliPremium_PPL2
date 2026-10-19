@@ -193,8 +193,157 @@ export type Database = {
           url?: string;
         };
       };
+      mandor_profiles: {
+        Row: {
+          id: string;
+          keahlian: string[];
+          pengalaman_tahun: number | null;
+          area_kerja: string | null;
+          portofolio_url: string | null;
+          status: Database["public"]["Enums"]["verifikasi_status"];
+          created_at: string;
+        };
+        Insert: {
+          id: string;
+          keahlian?: string[];
+          pengalaman_tahun?: number | null;
+          area_kerja?: string | null;
+          portofolio_url?: string | null;
+          status?: Database["public"]["Enums"]["verifikasi_status"];
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          keahlian?: string[];
+          pengalaman_tahun?: number | null;
+          area_kerja?: string | null;
+          portofolio_url?: string | null;
+          status?: Database["public"]["Enums"]["verifikasi_status"];
+          created_at?: string;
+        };
+      };
+      pengawas_profiles: {
+        Row: {
+          id: string;
+          spesialisasi: string | null;
+          aktif: boolean;
+        };
+        Insert: {
+          id: string;
+          spesialisasi?: string | null;
+          aktif?: boolean;
+        };
+        Update: {
+          id?: string;
+          spesialisasi?: string | null;
+          aktif?: boolean;
+        };
+      };
+      project_mandors: {
+        Row: {
+          project_id: string;
+          mandor_id: string;
+          assigned_by: string | null;
+          assigned_at: string;
+        };
+        Insert: {
+          project_id: string;
+          mandor_id: string;
+          assigned_by?: string | null;
+          assigned_at?: string;
+        };
+        Update: {
+          project_id?: string;
+          mandor_id?: string;
+          assigned_by?: string | null;
+          assigned_at?: string;
+        };
+      };
+      contracts: {
+        Row: {
+          id: string;
+          project_id: string;
+          ruang_lingkup: string;
+          spesifikasi: Json;
+          nilai_kontrak: number;
+          tanggal_mulai: string | null;
+          tanggal_selesai_estimasi: string | null;
+          tanggung_jawab: Json | null;
+          ketentuan_perubahan: string | null;
+          status: Database["public"]["Enums"]["contract_status"];
+          signed_customer_at: string | null;
+          signed_pengawas_at: string | null;
+          signed_mandor_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          ruang_lingkup: string;
+          spesifikasi?: Json;
+          nilai_kontrak: number;
+          tanggal_mulai?: string | null;
+          tanggal_selesai_estimasi?: string | null;
+          tanggung_jawab?: Json | null;
+          ketentuan_perubahan?: string | null;
+          status?: Database["public"]["Enums"]["contract_status"];
+          signed_customer_at?: string | null;
+          signed_pengawas_at?: string | null;
+          signed_mandor_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          ruang_lingkup?: string;
+          spesifikasi?: Json;
+          nilai_kontrak?: number;
+          tanggal_mulai?: string | null;
+          tanggal_selesai_estimasi?: string | null;
+          tanggung_jawab?: Json | null;
+          ketentuan_perubahan?: string | null;
+          status?: Database["public"]["Enums"]["contract_status"];
+          signed_customer_at?: string | null;
+          signed_pengawas_at?: string | null;
+          signed_mandor_at?: string | null;
+          created_at?: string;
+        };
+      };
+      payment_stages: {
+        Row: {
+          id: string;
+          project_id: string;
+          nama_tahap: string;
+          urutan: number;
+          nominal: number;
+          status: Database["public"]["Enums"]["payment_status"];
+          tanggal_bayar: string | null;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          nama_tahap: string;
+          urutan: number;
+          nominal: number;
+          status?: Database["public"]["Enums"]["payment_status"];
+          tanggal_bayar?: string | null;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          nama_tahap?: string;
+          urutan?: number;
+          nominal?: number;
+          status?: Database["public"]["Enums"]["payment_status"];
+          tanggal_bayar?: string | null;
+        };
+      };
     };
     Functions: {
+      get_available_mandor_ids: {
+        Args: Record<PropertyKey, never>;
+        Returns: string[];
+      };
       submit_project: { Args: { pid: string }; Returns: undefined };
     };
     Enums: {

@@ -2,8 +2,33 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { useAuthUser } from "@/hooks/useAuthUser";
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const { user, loading } = useAuthUser();
+
+  useEffect(() => {
+    if (!user || user.role === "customer") return;
+    router.replace(
+      user.role === "admin"
+        ? "/admin"
+        : user.role === "pengawas"
+          ? "/pengawas"
+          : "/mandor",
+    );
+  }, [router, user]);
+
+  if (loading || (user && user.role !== "customer")) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-[#f7f9fc] text-[#475569]">
+        Memuat halaman...
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-[#fffbfe] pb-20 pt-32 text-[#1c1b1f]">
       {/*HERO SECTION*/}

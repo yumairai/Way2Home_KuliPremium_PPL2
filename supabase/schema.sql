@@ -355,6 +355,8 @@ create policy "pengawas_select" on pengawas_profiles
 create policy "pengawas_admin_write" on pengawas_profiles
   for all using (get_my_role() = 'admin') with check (get_my_role() = 'admin');
 
+grant select on public.pengawas_profiles to authenticated;
+
 -- ============================================================
 -- RLS: DESIGNS & IMAGES
 -- ============================================================
@@ -410,6 +412,10 @@ create policy "project_mandors_pengawas_manage" on project_mandors
     (is_project_pengawas(project_id) or get_my_role() = 'admin')
     and exists (select 1 from mandor_profiles mp where mp.id = mandor_id and mp.status = 'approved')
   );
+
+grant select, update on public.projects to authenticated;
+grant select on public.pengawas_profiles, public.mandor_profiles to authenticated;
+grant select, insert, update, delete on public.project_mandors to authenticated;
 
 -- ============================================================
 -- RLS: CONTRACTS
