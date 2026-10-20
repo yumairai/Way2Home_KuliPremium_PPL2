@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useEffect, useMemo, useState } from "react";
 import {
   type VerificationDocumentStatus,
@@ -64,7 +64,7 @@ function VerificationModal({
   const active = documents[selected];
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-[#0c1b2b]/65 p-0 backdrop-blur-[3px] sm:p-5"
+      className="fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-[#0c1b2b]/65 p-0 backdrop-blur-[3px] sm:p-5"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -73,7 +73,7 @@ function VerificationModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="verification-modal-title"
-        className="flex h-full w-full max-w-[1440px] flex-col overflow-hidden bg-[#f4f6f8] shadow-2xl sm:h-[min(92vh,900px)] sm:rounded-2xl"
+        className="flex min-h-0 h-[100dvh] w-full max-w-[1440px] flex-col overflow-hidden bg-[#f4f6f8] shadow-2xl sm:h-[min(92dvh,900px)] sm:rounded-2xl"
       >
         <header className="flex shrink-0 items-center justify-between border-b border-[#e7ebef] bg-white px-5 py-4 md:px-7">
           <div>
@@ -97,8 +97,8 @@ function VerificationModal({
           </button>
         </header>
         <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto xl:grid-cols-[250px_minmax(320px,1fr)_360px] xl:overflow-hidden">
-          <aside className="flex flex-col border-b border-[#e4e9ee] bg-white xl:border-b-0 xl:border-r">
-            <div className="p-4">
+          <aside className="flex min-w-0 flex-col border-b border-[#e4e9ee] bg-white xl:min-h-0 xl:overflow-y-auto xl:border-b-0 xl:border-r">
+            <div className="shrink-0 p-4">
               <p className="text-xs font-bold text-[#243d53]">
                 Dokumen pemohon
               </p>
@@ -106,7 +106,7 @@ function VerificationModal({
                 Pilih berkas untuk melihat pratinjau.
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-2 px-3 pb-3 xl:block xl:space-y-1 xl:px-2">
+            <div className="grid min-w-0 grid-cols-2 gap-2 px-3 pb-3 xl:block xl:space-y-1 xl:px-2">
               {documents.map((document, index) => (
                 <button
                   key={document.id}
@@ -149,7 +149,7 @@ function VerificationModal({
               </button>
             </div>
           </aside>
-          <section className="flex min-h-[440px] flex-col bg-[#e9edf1] p-4 md:p-6">
+          <section className="flex min-h-[280px] min-w-0 flex-col bg-[#e9edf1] p-4 md:min-h-[360px] md:p-6 xl:min-h-0">
             <div className="mb-3 flex items-center justify-between">
               <div>
                 <p className="text-xs font-bold text-[#263d53]">
@@ -160,7 +160,7 @@ function VerificationModal({
                 </p>
               </div>
             </div>
-            <div className="grid min-h-[350px] flex-1 place-items-center overflow-hidden rounded-xl border border-[#d9e0e6] bg-[#dfe4e9] p-3">
+            <div className="grid min-h-[220px] flex-1 place-items-center overflow-auto rounded-xl border border-[#d9e0e6] bg-[#dfe4e9] p-3 md:min-h-[280px] xl:min-h-0">
               <div className="max-h-full max-w-full overflow-auto rounded-md bg-white shadow-md">
                 {active.kind === "pdf" ? (
                   <iframe
@@ -179,7 +179,7 @@ function VerificationModal({
               </div>
             </div>
           </section>
-          <aside className="space-y-4 border-t border-[#e4e9ee] bg-white p-4 md:p-5 xl:overflow-y-auto xl:border-l xl:border-t-0">
+          <aside className="min-h-0 space-y-4 border-t border-[#e4e9ee] bg-white p-4 md:p-5 xl:overflow-y-auto xl:border-l xl:border-t-0">
             <section className="overflow-hidden rounded-xl border border-[#e4e9ee]">
               <div className="flex items-center justify-between px-4 py-3">
                 <div>
