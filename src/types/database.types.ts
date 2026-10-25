@@ -448,6 +448,7 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      customer_sign_contract: { Args: { pid: string }; Returns: undefined };
       get_available_mandor_ids: {
         Args: Record<PropertyKey, never>;
         Returns: string[];

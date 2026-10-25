@@ -300,6 +300,7 @@ export async function deleteCancellableProject(
     "verifikasi_dokumen",
     "revisi_dokumen",
     "alokasi_mandor_pengawas",
+    "finalisasi_kontrak",
   ];
 
   const { data: project, error: projectError } = await supabase
@@ -317,6 +318,28 @@ export async function deleteCancellableProject(
   };
   if (!cancellableStatuses.includes(projectRow.status)) {
     throw new ServiceError("Proyek tidak dapat dibatalkan pada tahap ini.", 409);
+  }
+
+  if (projectRow.status === "finalisasi_kontrak") {
+    const { data: contract, error: contractError } = await supabase
+      .from("contracts")
+      .select("status, signed_customer_at")
+      .eq("project_id", projectId)
+      .maybeSingle();
+
+    if (contractError) {
+      throw new ServiceError("Gagal memeriksa status kontrak proyek.", 500);
+    }
+    if (
+      contract?.signed_customer_at ||
+      contract?.status === "aktif" ||
+      contract?.status === "selesai"
+    ) {
+      throw new ServiceError(
+        "Proyek tidak dapat dibatalkan setelah kontrak disetujui.",
+        409,
+      );
+    }
   }
 
   const { data: documents, error: documentsError } = await supabase
@@ -472,6 +495,8 @@ export function transformDBProjectToProject(
     menunggu_ttd: "menunggu",
     aktif: "disetujui",
     approved: "disetujui",
+    aktif: "disetujui",
+    selesai: "disetujui",
     rejected: "ditolak",
     revision: "revisi",
   };

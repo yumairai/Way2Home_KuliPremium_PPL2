@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import type { Project } from "@/types/proyek";
 import { formatDate, formatRupiah } from "@/utils/format";
 
@@ -121,17 +121,17 @@ export default function ContractModal({
     project.payments.length > 0
       ? project.payments
       : [
-          { label: "Down Payment (30%)", amount: Math.round(project.budget * 0.3) },
-          { label: "Cicilan 1 (25%)", amount: Math.round(project.budget * 0.25) },
-          { label: "Cicilan 2 (25%)", amount: Math.round(project.budget * 0.25) },
-          {
-            label: "Cicilan 3 (20%)",
-            amount:
-              project.budget -
-              Math.round(project.budget * 0.3) -
-              Math.round(project.budget * 0.25) * 2,
-          },
-        ];
+        { label: "Down Payment (30%)", amount: Math.round(project.budget * 0.3) },
+        { label: "Cicilan 1 (25%)", amount: Math.round(project.budget * 0.25) },
+        { label: "Cicilan 2 (25%)", amount: Math.round(project.budget * 0.25) },
+        {
+          label: "Cicilan 3 (20%)",
+          amount:
+            project.budget -
+            Math.round(project.budget * 0.3) -
+            Math.round(project.budget * 0.25) * 2,
+        },
+      ];
   const sumPayments = paymentPlan.reduce((acc, payment) => acc + payment.amount, 0);
 
   return (
@@ -322,6 +322,14 @@ export default function ContractModal({
 
         {interactive && action === "menunggu" && (
           <div className="border-t border-[#edf1f6] bg-white px-8 py-5">
+            {error && (
+              <p
+                role="alert"
+                className="mb-4 rounded-xl border border-[#fecaca] bg-[#fef2f2] px-4 py-3 text-sm font-semibold text-[#991b1b]"
+              >
+                {error}
+              </p>
+            )}
             <label className="flex cursor-pointer items-start gap-3">
               <input
                 type="checkbox"
@@ -379,7 +387,7 @@ export default function ContractModal({
                   onClick={setuju}
                   className="min-h-12 cursor-pointer rounded-full bg-gradient-to-r from-[#004796] to-[#045ec2] px-8 font-bold text-white shadow-[0_10px_25px_rgba(0,71,150,0.3)] transition hover:-translate-y-0.5 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                {submitting ? "Memfinalisasi..." : "Setuju & Tandatangani"}
+                  {submitting ? "Memfinalisasi..." : "Setuju & Tandatangani"}
                 </button>
                 <button
                   type="button"
@@ -392,15 +400,6 @@ export default function ContractModal({
               </div>
             )}
           </div>
-        )}
-
-        {error && (
-          <p
-            role="alert"
-            className="border-t border-[#fecaca] bg-[#fef2f2] px-8 py-3 text-sm font-medium text-[#991b1b]"
-          >
-            {error}
-          </p>
         )}
 
         {!interactive && (
