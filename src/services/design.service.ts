@@ -26,26 +26,29 @@ export function transformDesignToHouseDesign(
   const mainImage = sortedImages[0]?.url || "/images/katalog/house-dummy1.webp";
 
   return {
-    id: row.id,
-    slug: row.slug || row.id,
-    name: row.nama,
-    style: row.gaya_arsitektur,
-    location: row.lokasi || "Jawa Barat",
+    id: row.id as string | undefined,
+    slug: (row.slug as string) || (row.id as string),
+    name: row.nama as string,
+    style: row.gaya_arsitektur as string,
+    location: (row.lokasi as string) || "Jawa Barat",
     landArea: Number(row.luas_tanah || 0),
     buildingArea: Number(row.luas_bangunan || 0),
-    bedrooms: row.jumlah_kamar_tidur || 0,
-    bathrooms: row.jumlah_kamar_mandi || 0,
-    floors: row.jumlah_lantai || 1,
+    bedrooms: Number(row.jumlah_kamar_tidur || 0),
+    bathrooms: Number(row.jumlah_kamar_mandi || 0),
+    floors: Number(row.jumlah_lantai || 1),
     estimatedCost: Number(row.estimasi_biaya || 0),
-    estimatedDuration: Math.round((row.estimasi_durasi_hari || 0) / 30),
-    estimatedDurationDays: row.estimasi_durasi_hari,
-    description: row.deskripsi || "",
-    highlights: row.highlights || [],
+    estimatedDuration: Math.round(Number(row.estimasi_durasi_hari || 0) / 30),
+    estimatedDurationDays:
+      row.estimasi_durasi_hari != null
+        ? Number(row.estimasi_durasi_hari)
+        : undefined,
+    description: (row.deskripsi as string) || "",
+    highlights: (row.highlights as string[]) || [],
     image: mainImage,
     images: sortedImages.map((img) => img.url),
     spesifikasi:
       typeof row.spesifikasi === "object" && row.spesifikasi !== null
-        ? row.spesifikasi
+        ? (row.spesifikasi as Record<string, unknown>)
         : {},
   };
 }

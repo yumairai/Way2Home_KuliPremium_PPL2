@@ -495,7 +495,6 @@ export function transformDBProjectToProject(
     menunggu_ttd: "menunggu",
     aktif: "disetujui",
     approved: "disetujui",
-    aktif: "disetujui",
     selesai: "disetujui",
     rejected: "ditolak",
     revision: "revisi",

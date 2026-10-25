@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useMemo, useState } from "react";
 import {
   adminMetrics,
@@ -6,18 +6,6 @@ import {
   revenueTrend,
   type AdminProjectStatus,
 } from "@/data/admin-dashboard";
-const iconMarkup: Record<string, string> = {
-  users: "♙",
-  buildings: "⌂",
-  files: "▤",
-  check: "✓",
-};
-const toneClasses: Record<string, string> = {
-  blue: "bg-[#e8f1fb] text-[#276394]",
-  navy: "bg-[#e9edf4] text-[#36506b]",
-  amber: "bg-[#fbf1df] text-[#a97121]",
-  green: "bg-[#e8f3e8] text-[#43815a]",
-};
 const statusClasses: Record<AdminProjectStatus, string> = {
   Berjalan: "bg-[#edf4fc] text-[#356794]",
   Menunggu: "bg-[#fbf2e3] text-[#a56a19]",
