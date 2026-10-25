@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import type { Project } from "@/types/proyek";
 import { formatDate, formatRupiah } from "@/utils/format";
-import { createClient } from "@/utils/supabase/client";
 
 const KETENTUAN = [
   "Pihak Kedua tidak dapat mengubah desain atau spesifikasi material setelah kontrak ditandatangani tanpa persetujuan tertulis dari pihak Way2Home.",
@@ -69,8 +68,8 @@ export default function ContractModal({
   const [rejectMode, setRejectMode] = useState(false);
   const [reason, setReason] = useState("");
   const [toast, setToast] = useState("");
-  const [approvalError, setApprovalError] = useState("");
-  const [approving, setApproving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [action, setAction] = useState<"menunggu" | "setuju" | "tolak">(
     "menunggu",
   );
@@ -87,35 +86,29 @@ export default function ContractModal({
     };
   }, [onClose]);
 
-  const setuju = async () => {
-    if (!interactive || !checked || approving) return;
-
-    setApproving(true);
-    setApprovalError("");
-    const supabase = createClient();
-    const rpcClient = supabase as unknown as {
-      rpc: (
-        functionName: string,
-        args: { pid: string },
-      ) => Promise<{ error: { message: string } | null }>;
-    };
+  async function setuju() {
+    setError(null);
+    setSubmitting(true);
 
     try {
-      const { error } = await rpcClient.rpc("customer_sign_contract", {
-        pid: String(project.id),
-      });
-      if (error) throw new Error(error.message);
+      const response = await fetch(
+        `/api/projects/${project.id}/sign-contract`,
+        { method: "POST" },
+      );
+      const result = (await response.json()) as { message?: string };
+      if (!response.ok) {
+        throw new Error(result.message || "Gagal memfinalisasi kontrak.");
+      }
 
       onClose();
       router.refresh();
-    } catch (error) {
-      setApprovalError(
-        error instanceof Error
-          ? error.message
-          : "Gagal menyetujui kontrak. Silakan coba lagi.",
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Terjadi kesalahan saat memfinalisasi kontrak.",
       );
-    } finally {
-      setApproving(false);
+      setSubmitting(false);
     }
   };
 
@@ -124,7 +117,22 @@ export default function ContractModal({
     setToast("Penolakan Anda telah diteruskan ke tim Way2Home.");
   };
 
-  const sumPayments = project.payments.reduce((acc, p) => acc + p.amount, 0);
+  const paymentPlan =
+    project.payments.length > 0
+      ? project.payments
+      : [
+        { label: "Down Payment (30%)", amount: Math.round(project.budget * 0.3) },
+        { label: "Cicilan 1 (25%)", amount: Math.round(project.budget * 0.25) },
+        { label: "Cicilan 2 (25%)", amount: Math.round(project.budget * 0.25) },
+        {
+          label: "Cicilan 3 (20%)",
+          amount:
+            project.budget -
+            Math.round(project.budget * 0.3) -
+            Math.round(project.budget * 0.25) * 2,
+        },
+      ];
+  const sumPayments = paymentPlan.reduce((acc, payment) => acc + payment.amount, 0);
 
   return (
     <div
@@ -188,7 +196,7 @@ export default function ContractModal({
             <DataTable
               rows={[
                 ["Pihak Pertama", "PT Way2Home Konstruksi"],
-                ["Pihak Kedua", "Budi Santoso"],
+                ["Pihak Kedua", project.customerName || "Customer"],
                 ["Alamat Proyek", project.address],
               ]}
             />
@@ -228,7 +236,7 @@ export default function ContractModal({
 
           <DocSection title="Tahapan Pembayaran">
             <DataTable
-              rows={project.payments.map((p) => [
+              rows={paymentPlan.map((p) => [
                 p.label,
                 formatRupiah(p.amount),
               ])}
@@ -314,19 +322,23 @@ export default function ContractModal({
 
         {interactive && action === "menunggu" && (
           <div className="border-t border-[#edf1f6] bg-white px-8 py-5">
-            {approvalError && (
+            {error && (
               <p
                 role="alert"
                 className="mb-4 rounded-xl border border-[#fecaca] bg-[#fef2f2] px-4 py-3 text-sm font-semibold text-[#991b1b]"
               >
-                {approvalError}
+                {error}
               </p>
             )}
             <label className="flex cursor-pointer items-start gap-3">
               <input
                 type="checkbox"
                 checked={checked}
-                onChange={(event) => setChecked(event.target.checked)}
+                disabled={submitting}
+                onChange={(event) => {
+                  setChecked(event.target.checked);
+                  setError(null);
+                }}
                 className="mt-0.5 h-5 w-5 cursor-pointer accent-[#004796]"
               />
               <span className="text-sm leading-6 text-[#334155]">
@@ -340,7 +352,11 @@ export default function ContractModal({
               <div className="mt-4">
                 <textarea
                   value={reason}
-                  onChange={(event) => setReason(event.target.value)}
+                  disabled={submitting}
+                  onChange={(event) => {
+                    setReason(event.target.value);
+                    setError(null);
+                  }}
                   rows={3}
                   placeholder="Jelaskan alasan Anda menolak kontrak ini"
                   className="w-full resize-y rounded-xl border border-[#dbe4f2] px-4 py-3 text-sm outline-none transition focus:border-[#8fb9ed] focus:ring-2 focus:ring-[#045ec2]/20"
@@ -348,7 +364,7 @@ export default function ContractModal({
                 <div className="mt-3 flex flex-wrap gap-3">
                   <button
                     type="button"
-                    disabled={!checked || !reason.trim()}
+                    disabled={!checked || !reason.trim() || submitting}
                     onClick={tolak}
                     className="min-h-12 cursor-pointer rounded-full bg-[#dc2626] px-8 font-bold text-white shadow-lg transition hover:bg-[#b91c1c] disabled:cursor-not-allowed disabled:opacity-50"
                   >
@@ -367,14 +383,15 @@ export default function ContractModal({
               <div className="mt-4 flex flex-wrap gap-3">
                 <button
                   type="button"
-                  disabled={!checked || approving}
+                  disabled={!checked || submitting}
                   onClick={setuju}
                   className="min-h-12 cursor-pointer rounded-full bg-gradient-to-r from-[#004796] to-[#045ec2] px-8 font-bold text-white shadow-[0_10px_25px_rgba(0,71,150,0.3)] transition hover:-translate-y-0.5 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {approving ? "Menyimpan persetujuan..." : "Setuju & Tandatangani"}
+                  {submitting ? "Memfinalisasi..." : "Setuju & Tandatangani"}
                 </button>
                 <button
                   type="button"
+                  disabled={submitting}
                   onClick={() => setRejectMode(true)}
                   className="min-h-12 cursor-pointer rounded-full border-2 border-[#dc2626] px-8 font-bold text-[#dc2626] transition hover:bg-[#fef2f2]"
                 >

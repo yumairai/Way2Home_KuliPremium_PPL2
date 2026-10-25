@@ -7,7 +7,12 @@ import type { ProjectTracking } from "@/types/project-tracking";
 export type DocumentStatus = "pending" | "revision" | "approved";
 
 export type ContractStatus =
-  "menunggu" | "disetujui" | "ditolak" | "revisi" | "kedaluwarsa";
+  | "belum_tersedia"
+  | "menunggu"
+  | "disetujui"
+  | "ditolak"
+  | "revisi"
+  | "kedaluwarsa";
 
 export type ProjectStatus =
   | "Verifikasi Dokumen"
@@ -55,10 +60,12 @@ export type TeamMember = {
 };
 
 export type Payment = {
+  stageId?: string;
   periode: number;
   label: string;
   amount: number;
   dueDate: string;
+  paidAt?: string;
   status: "lunas" | "menunggu" | "aktif" | "akan_datang";
 };
 
@@ -82,6 +89,7 @@ export type Project = {
   landArea: number;
   buildingArea: number;
   budget: number;
+  customerName?: string;
   duration: number;
   address: string;
   submittedAt: string;

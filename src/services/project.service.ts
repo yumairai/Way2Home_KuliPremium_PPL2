@@ -429,7 +429,9 @@ export function transformDBProjectToProject(
   const projectStatus: ProjectStatus =
     statusMap[dbStatus] || "Verifikasi Dokumen";
 
-  const docs = row.project_documents || [];
+  const docs = Array.isArray(row.project_documents)
+    ? (row.project_documents as Array<Record<string, unknown>>)
+    : [];
   const hasRevision =
     dbStatus === "revisi_dokumen" ||
     docs.some(
@@ -481,9 +483,17 @@ export function transformDBProjectToProject(
   const dbContracts = Array.isArray(row.contracts)
     ? (row.contracts as Array<Record<string, unknown>>)[0]
     : (row.contracts as Record<string, unknown> | undefined);
+  const contractSpecification = dbContracts?.spesifikasi as
+    | Record<string, unknown>
+    | undefined;
+  const contractCustomer = contractSpecification?.customer as
+    | Record<string, unknown>
+    | undefined;
   const contractStatusMap: Record<string, ContractStatus> = {
     draft: "menunggu",
     sent: "menunggu",
+    menunggu_ttd: "menunggu",
+    aktif: "disetujui",
     approved: "disetujui",
     aktif: "disetujui",
     selesai: "disetujui",
@@ -492,8 +502,10 @@ export function transformDBProjectToProject(
   };
 
   const contract: Contract = {
-    id: (dbContracts?.id as string) || `CTR-${String(row.id).slice(0, 8)}`,
-    status: contractStatusMap[dbContracts?.status as string] || "menunggu",
+    id: (dbContracts?.id as string) || "",
+    status: dbContracts
+      ? contractStatusMap[dbContracts.status as string] || "menunggu"
+      : "belum_tersedia",
     version: (dbContracts?.versi as number) || 1,
     issuedAt: (dbContracts?.created_at as string) || (row.created_at as string),
     deadlineAt: dbContracts?.created_at
@@ -508,26 +520,35 @@ export function transformDBProjectToProject(
       : undefined,
   };
 
-  const paymentStatusMap: Record<
-    string,
-    "lunas" | "menunggu" | "aktif" | "akan_datang"
-  > = {
-    lunas: "lunas",
-    menunggu_verifikasi: "menunggu",
-    menunggu_pembayaran: "aktif",
-    belum: "akan_datang",
-  };
-
   const dbPayments = Array.isArray(row.payment_stages)
     ? (row.payment_stages as Array<Record<string, unknown>>)
     : [];
-  const payments: Payment[] = dbPayments.map((p) => ({
-    periode: (p.urutan as number) || 0,
-    label: (p.nama_tahap as string) || `Tahap ${p.urutan}`,
-    amount: Number(p.nominal || 0),
-    dueDate: (p.tanggal_bayar as string) || (row.created_at as string),
-    status: paymentStatusMap[p.status as string] || "akan_datang",
-  }));
+  const sortedPayments = [...dbPayments].sort(
+    (a, b) => Number(a.urutan) - Number(b.urutan),
+  );
+  let nextUnpaidPaymentAvailable = true;
+  const payments: Payment[] = sortedPayments.map((p) => {
+    const periode = Number(p.urutan);
+    const isPaid = p.status === "lunas";
+    const isAvailable =
+      nextUnpaidPaymentAvailable &&
+      ((projectStatus === "Pembayaran DP" && periode === 0) ||
+        (projectStatus === "Proyek Aktif" && periode > 0));
+
+    if (!isPaid) {
+      nextUnpaidPaymentAvailable = false;
+    }
+
+    return {
+      stageId: p.id as string,
+      periode,
+      label: (p.nama_tahap as string) || `Tahap ${p.urutan}`,
+      amount: Number(p.nominal || 0),
+      dueDate: (p.tanggal_jatuh_tempo as string) || "",
+      paidAt: (p.tanggal_bayar as string) || undefined,
+      status: isPaid ? "lunas" : isAvailable ? "aktif" : "akan_datang",
+    };
+  });
 
   const scope: string[] = dbContracts?.ruang_lingkup
     ? (dbContracts.ruang_lingkup as string).split("\n").filter(Boolean)
@@ -552,7 +573,16 @@ export function transformDBProjectToProject(
     style: (design.gaya_arsitektur as string) || "Modern",
     landArea: Number(design.luas_tanah || 0),
     buildingArea: Number(design.luas_bangunan || 0),
-    budget: Number(row.budget_proyek || design.estimasi_biaya || 0),
+    budget: Number(
+      dbContracts?.nilai_kontrak ||
+        row.budget_proyek ||
+        design.estimasi_biaya ||
+        0,
+    ),
+    customerName:
+      typeof contractCustomer?.nama === "string"
+        ? contractCustomer.nama
+        : undefined,
     duration:
       Math.round(((design.estimasi_durasi_hari as number) || 0) / 30) || 8,
     address: (row.alamat_proyek as string) || "Lokasi Belum Ditentukan",
@@ -622,7 +652,8 @@ export async function getUserProjects(
         urutan,
         nominal,
         status,
-        tanggal_bayar
+        tanggal_bayar,
+        tanggal_jatuh_tempo
       )
     `,
     )
@@ -658,6 +689,25 @@ export async function getUserProjects(
           catatan,
           review_status,
           created_at
+        ),
+        contracts (
+          id,
+          ruang_lingkup,
+          spesifikasi,
+          nilai_kontrak,
+          tanggal_mulai,
+          tanggal_selesai_estimasi,
+          status,
+          created_at
+        ),
+        payment_stages (
+          id,
+          nama_tahap,
+          urutan,
+          nominal,
+          status,
+          tanggal_bayar,
+          tanggal_jatuh_tempo
         )
       `,
       )
@@ -736,7 +786,8 @@ export async function getUserProjectById(
         urutan,
         nominal,
         status,
-        tanggal_bayar
+        tanggal_bayar,
+        tanggal_jatuh_tempo
       )
     `,
     )
@@ -773,6 +824,25 @@ export async function getUserProjectById(
           catatan,
           review_status,
           created_at
+        ),
+        contracts (
+          id,
+          ruang_lingkup,
+          spesifikasi,
+          nilai_kontrak,
+          tanggal_mulai,
+          tanggal_selesai_estimasi,
+          status,
+          created_at
+        ),
+        payment_stages (
+          id,
+          nama_tahap,
+          urutan,
+          nominal,
+          status,
+          tanggal_bayar,
+          tanggal_jatuh_tempo
         )
       `,
       )

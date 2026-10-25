@@ -94,7 +94,15 @@ export type Database = {
           urutan?: number;
           url?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "design_images_design_id_fkey";
+            columns: ["design_id"];
+            isOneToOne: false;
+            referencedRelation: "designs";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       profiles: {
         Row: {
@@ -163,7 +171,29 @@ export type Database = {
           requirement_id?: string | null;
           status?: Database["public"]["Enums"]["project_status"];
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "projects_customer_id_fkey";
+            columns: ["customer_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "projects_design_id_fkey";
+            columns: ["design_id"];
+            isOneToOne: false;
+            referencedRelation: "designs";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "projects_pengawas_id_fkey";
+            columns: ["pengawas_id"];
+            isOneToOne: false;
+            referencedRelation: "pengawas_profiles";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       project_documents: {
         Row: {
@@ -205,7 +235,15 @@ export type Database = {
           uploaded_by?: string;
           url?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "project_documents_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       mandor_profiles: {
         Row: {
@@ -235,6 +273,15 @@ export type Database = {
           status?: Database["public"]["Enums"]["verifikasi_status"];
           created_at?: string;
         };
+        Relationships: [
+          {
+            foreignKeyName: "mandor_profiles_id_fkey";
+            columns: ["id"];
+            isOneToOne: true;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       pengawas_profiles: {
         Row: {
@@ -252,6 +299,15 @@ export type Database = {
           spesialisasi?: string | null;
           aktif?: boolean;
         };
+        Relationships: [
+          {
+            foreignKeyName: "pengawas_profiles_id_fkey";
+            columns: ["id"];
+            isOneToOne: true;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       project_mandors: {
         Row: {
@@ -272,6 +328,22 @@ export type Database = {
           assigned_by?: string | null;
           assigned_at?: string;
         };
+        Relationships: [
+          {
+            foreignKeyName: "project_mandors_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "project_mandors_mandor_id_fkey";
+            columns: ["mandor_id"];
+            isOneToOne: false;
+            referencedRelation: "mandor_profiles";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       contracts: {
         Row: {
@@ -322,6 +394,15 @@ export type Database = {
           signed_mandor_at?: string | null;
           created_at?: string;
         };
+        Relationships: [
+          {
+            foreignKeyName: "contracts_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: true;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       payment_stages: {
         Row: {
@@ -332,6 +413,7 @@ export type Database = {
           nominal: number;
           status: Database["public"]["Enums"]["payment_status"];
           tanggal_bayar: string | null;
+          tanggal_jatuh_tempo: string | null;
         };
         Insert: {
           id?: string;
@@ -341,6 +423,7 @@ export type Database = {
           nominal: number;
           status?: Database["public"]["Enums"]["payment_status"];
           tanggal_bayar?: string | null;
+          tanggal_jatuh_tempo?: string | null;
         };
         Update: {
           id?: string;
@@ -350,7 +433,17 @@ export type Database = {
           nominal?: number;
           status?: Database["public"]["Enums"]["payment_status"];
           tanggal_bayar?: string | null;
+          tanggal_jatuh_tempo?: string | null;
         };
+        Relationships: [
+          {
+            foreignKeyName: "payment_stages_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+        ];
       };
     };
     Views: Record<string, never>;
@@ -361,6 +454,7 @@ export type Database = {
         Returns: string[];
       };
       submit_project: { Args: { pid: string }; Returns: undefined };
+      sign_project_contract: { Args: { pid: string }; Returns: undefined };
     };
     Enums: {
       contract_status: "draft" | "menunggu_ttd" | "aktif" | "selesai";
