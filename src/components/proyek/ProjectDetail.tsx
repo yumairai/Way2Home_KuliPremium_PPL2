@@ -42,6 +42,16 @@ export default function ProjectDetail({ project }: { project: Project }) {
     style: "bg-[#f1f5f9] text-[#475569]",
   };
 
+  // Show payments section when:
+  // - Status is "Pembayaran DP" (customer needs to pay DP)
+  // - Status is "Proyek Aktif" (ongoing installment payments)
+  // - Status is "Selesai" (view payment history)
+  const showPayments =
+    project.payments.length > 0 &&
+    (project.status === "Pembayaran DP" ||
+      project.status === "Proyek Aktif" ||
+      project.status === "Selesai");
+
   return (
     <div className="flex flex-col gap-5">
       <section className="overflow-hidden rounded-[1.5rem] border border-[#dbe4f2] bg-white shadow-[0_12px_30px_rgba(17,30,63,0.06)]">
@@ -123,7 +133,7 @@ export default function ProjectDetail({ project }: { project: Project }) {
         </Link>
       )}
 
-      {project.status === "Proyek Aktif" && (
+      {showPayments && (
         <PaymentsSection project={project} />
       )}
     </div>

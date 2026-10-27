@@ -103,10 +103,11 @@ export type Database = {
         };
         Relationships: [
           {
-            foreignKeyName: "design_images_design_id_fkey",
-            columns: ["design_id"],
-            referencedRelation: "designs",
-            referencedColumns: ["id"],
+            foreignKeyName: "design_images_design_id_fkey";
+            columns: ["design_id"];
+            isOneToOne: false;
+            referencedRelation: "designs";
+            referencedColumns: ["id"];
           },
         ];
       };
@@ -179,22 +180,25 @@ export type Database = {
         };
         Relationships: [
           {
-            foreignKeyName: "projects_customer_id_fkey",
-            columns: ["customer_id"],
-            referencedRelation: "profiles",
-            referencedColumns: ["id"],
+            foreignKeyName: "projects_customer_id_fkey";
+            columns: ["customer_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "projects_design_id_fkey",
-            columns: ["design_id"],
-            referencedRelation: "designs",
-            referencedColumns: ["id"],
+            foreignKeyName: "projects_design_id_fkey";
+            columns: ["design_id"];
+            isOneToOne: false;
+            referencedRelation: "designs";
+            referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "projects_pengawas_id_fkey",
-            columns: ["pengawas_id"],
-            referencedRelation: "pengawas_profiles",
-            referencedColumns: ["id"],
+            foreignKeyName: "projects_pengawas_id_fkey";
+            columns: ["pengawas_id"];
+            isOneToOne: false;
+            referencedRelation: "pengawas_profiles";
+            referencedColumns: ["id"];
           },
         ];
       };
@@ -286,10 +290,11 @@ export type Database = {
         };
         Relationships: [
           {
-            foreignKeyName: "mandor_profiles_id_fkey",
-            columns: ["id"],
-            referencedRelation: "profiles",
-            referencedColumns: ["id"],
+            foreignKeyName: "mandor_profiles_id_fkey";
+            columns: ["id"];
+            isOneToOne: true;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
           },
         ];
       };
@@ -311,10 +316,11 @@ export type Database = {
         };
         Relationships: [
           {
-            foreignKeyName: "pengawas_profiles_id_fkey",
-            columns: ["id"],
-            referencedRelation: "profiles",
-            referencedColumns: ["id"],
+            foreignKeyName: "pengawas_profiles_id_fkey";
+            columns: ["id"];
+            isOneToOne: true;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
           },
         ];
       };
@@ -339,17 +345,19 @@ export type Database = {
         };
         Relationships: [
           {
-            foreignKeyName: "project_mandors_project_id_fkey",
-            columns: ["project_id"],
-            referencedRelation: "projects",
-            referencedColumns: ["id"],
+            foreignKeyName: "project_mandors_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "project_mandors_mandor_id_fkey",
-            columns: ["mandor_id"],
-            referencedRelation: "mandor_profiles",
-            referencedColumns: ["id"],
-          },
+            foreignKeyName: "project_mandors_mandor_id_fkey";
+            columns: ["mandor_id"];
+            isOneToOne: false;
+            referencedRelation: "mandor_profiles";
+            referencedColumns: ["id"];
+          }, 
           {
             foreignKeyName: "project_mandors_assigned_by_fkey",
             columns: ["assigned_by"],
@@ -409,10 +417,11 @@ export type Database = {
         };
         Relationships: [
           {
-            foreignKeyName: "contracts_project_id_fkey",
-            columns: ["project_id"],
-            referencedRelation: "projects",
-            referencedColumns: ["id"],
+            foreignKeyName: "contracts_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: true;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
           },
         ];
       };
@@ -425,6 +434,7 @@ export type Database = {
           nominal: number;
           status: Database["public"]["Enums"]["payment_status"];
           tanggal_bayar: string | null;
+          tanggal_jatuh_tempo: string | null;
         };
         Insert: {
           id?: string;
@@ -434,6 +444,7 @@ export type Database = {
           nominal: number;
           status?: Database["public"]["Enums"]["payment_status"];
           tanggal_bayar?: string | null;
+          tanggal_jatuh_tempo?: string | null;
         };
         Update: {
           id?: string;
@@ -985,6 +996,7 @@ export type Database = {
         Relationships: [];
       };
       submit_project: { Args: { pid: string }; Returns: undefined };
+      sign_project_contract: { Args: { pid: string }; Returns: undefined };
     };
     Enums: {
       contract_status: "draft" | "menunggu_ttd" | "aktif" | "selesai";

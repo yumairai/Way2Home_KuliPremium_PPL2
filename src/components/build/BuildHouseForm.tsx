@@ -456,38 +456,44 @@ export default function BuildHouseForm({ design }: { design: HouseDesign }) {
               htmlFor="budgetProyek"
               className="mb-3 block text-sm font-bold uppercase tracking-wider text-[#475569]"
             >
-              Rencana Budget Proyek (Rp)
+              Rencana Budget Proyek
             </label>
-            <input
-              id="budgetProyek"
-              type="number"
-              value={budget}
-              onChange={(event) => {
-                setBudget(event.target.value);
-                if (submitAttempted) {
-                  const val = Number(event.target.value);
-                  if (!event.target.value) {
-                    setErrors((prev) => ({
-                      ...prev,
-                      budget: "Budget proyek wajib diisi.",
-                    }));
-                  } else if (isNaN(val) || val < design.estimatedCost) {
-                    setErrors((prev) => ({
-                      ...prev,
-                      budget: `Budget proyek tidak boleh kurang dari estimasi biaya desain (${money(design.estimatedCost)}).`,
-                    }));
-                  } else {
-                    setErrors((prev) => ({ ...prev, budget: "" }));
+            <div className="relative flex items-center">
+              <span className="pointer-events-none absolute left-4 text-sm font-bold text-[#475569]">
+                Rp
+              </span>
+              <input
+                id="budgetProyek"
+                type="text"
+                inputMode="numeric"
+                value={budget ? Number(budget).toLocaleString("id-ID") : ""}
+                onChange={(event) => {
+                  const raw = event.target.value.replace(/\D/g, "");
+                  setBudget(raw);
+                  if (submitAttempted) {
+                    const val = Number(raw);
+                    if (!raw) {
+                      setErrors((prev) => ({
+                        ...prev,
+                        budget: "Budget proyek wajib diisi.",
+                      }));
+                    } else if (isNaN(val) || val < design.estimatedCost) {
+                      setErrors((prev) => ({
+                        ...prev,
+                        budget: `Budget proyek tidak boleh kurang dari estimasi biaya desain (${money(design.estimatedCost)}).`,
+                      }));
+                    } else {
+                      setErrors((prev) => ({ ...prev, budget: "" }));
+                    }
                   }
-                }
-              }}
-              placeholder={`Minimal ${money(design.estimatedCost)} (contoh: ${design.estimatedCost})`}
-              aria-invalid={Boolean(errors.budget)}
-              className={`w-full rounded-2xl border p-4 text-sm outline-none transition focus:ring-2 focus:ring-[#045ec2]/25 ${errors.budget ? "border-[#dc2626]" : "border-[#dbe4f2] focus:border-[#8fb9ed]"}`}
-            />
+                }}
+                placeholder={`Minimal ${Number(design.estimatedCost).toLocaleString("id-ID")} (sesuai estimasi desain)`}
+                aria-invalid={Boolean(errors.budget)}
+                className={`w-full rounded-2xl border p-4 pl-12 text-sm font-medium outline-none transition focus:ring-2 focus:ring-[#045ec2]/25 ${errors.budget ? "border-[#dc2626]" : "border-[#dbe4f2] focus:border-[#8fb9ed]"}`}
+              />
+            </div>
             <p className="mt-2 text-xs text-[#64748b]">
-              Masukkan nominal budget dalam Rupiah (tanpa titik atau koma).
-              Minimal sesuai estimasi biaya: {money(design.estimatedCost)}.
+              Nominal akan otomatis diformat dengan pemisah ribuan. Minimal sesuai estimasi biaya: {money(design.estimatedCost)}.
             </p>
             {errors.budget && (
               <p className="mt-2 text-sm font-semibold text-[#dc2626]">
