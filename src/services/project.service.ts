@@ -429,7 +429,7 @@ export function transformDBProjectToProject(
   const projectStatus: ProjectStatus =
     statusMap[dbStatus] || "Verifikasi Dokumen";
 
-  const docs = row.project_documents || [];
+  const docs = (row.project_documents as Array<Record<string, unknown>>) || [];
   const hasRevision =
     dbStatus === "revisi_dokumen" ||
     docs.some(
@@ -664,7 +664,9 @@ export async function getUserProjects(
       .eq("customer_id", user.id)
       .order("created_at", { ascending: false });
 
-    data = fallbackRes.data;
+    // Jalur cadangan memilih kolom lebih ringan (tanpa contracts/payment_stages);
+    // transformator menganggapnya opsional.
+    data = fallbackRes.data as typeof data;
     error = fallbackRes.error;
   }
 
@@ -780,7 +782,9 @@ export async function getUserProjectById(
       .eq("customer_id", user.id)
       .maybeSingle();
 
-    data = fallbackRes.data;
+    // Jalur cadangan memilih kolom lebih ringan; kontrak & tahap pembayaran
+    // diambil terpisah pada langkah berikutnya.
+    data = fallbackRes.data as typeof data;
     error = fallbackRes.error;
   }
 

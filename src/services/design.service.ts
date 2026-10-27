@@ -47,7 +47,7 @@ export function transformDesignToHouseDesign(
       typeof row.spesifikasi === "object" && row.spesifikasi !== null
         ? row.spesifikasi
         : {},
-  };
+  } as HouseDesign;
 }
 
 export async function getDesigns(

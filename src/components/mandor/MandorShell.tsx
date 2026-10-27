@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { logout as logoutUser } from "@/services/auth.service";
+import { apiGet, apiPost } from "@/lib/api";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { clearDemoRole, useDemoRole } from "@/utils/demo-auth";
 import {
@@ -12,35 +13,61 @@ import {
   type MandorRegistrationStatus,
 } from "@/data/mandor";
 
-const demoStatusKey = "way2home-mandor-registration-status";
-const demoReasonKey = "way2home-mandor-rejection-reason";
+type RegistrationStatus = {
+  status: MandorRegistrationStatus;
+  reason: string | null;
+};
 
+/**
+ * Status verifikasi pendaftaran mandor, dibaca langsung dari
+ * `mandor_profiles.status` + `mandor_profiles.catatan_verifikasi`.
+ *
+ * `resubmit()` mengajukan ulang pendaftaran (status kembali ke pending).
+ */
 export function useMandorStatus() {
-  const [status, setStatus] = useState<MandorRegistrationStatus>(() => {
-    if (typeof window === "undefined") return initialMandorRegistration.status;
-    const saved = window.sessionStorage.getItem(demoStatusKey);
-    return saved === "Menunggu" || saved === "Disetujui" || saved === "Ditolak"
-      ? saved
-      : initialMandorRegistration.status;
-  });
-  const [reason, setReason] = useState(() => {
-    if (typeof window === "undefined")
-      return initialMandorRegistration.rejectionReason;
-    return (
-      window.sessionStorage.getItem(demoReasonKey) ??
-      initialMandorRegistration.rejectionReason
-    );
-  });
-  const setDemoStatus = (
-    next: MandorRegistrationStatus,
-    nextReason = reason,
-  ) => {
-    window.sessionStorage.setItem(demoStatusKey, next);
-    window.sessionStorage.setItem(demoReasonKey, nextReason);
-    setStatus(next);
-    setReason(nextReason);
-  };
-  return { status, reason, setDemoStatus };
+  const [status, setStatus] = useState<MandorRegistrationStatus>("Menunggu");
+  const [reason, setReason] = useState<string>(
+    initialMandorRegistration.rejectionReason,
+  );
+  const [loading, setLoading] = useState(true);
+
+  const resubmit = useCallback(async () => {
+    try {
+      const result = await apiPost<{ status: MandorRegistrationStatus }>(
+        "/api/mandor/registration",
+      );
+      setStatus(result.status);
+      setReason(initialMandorRegistration.rejectionReason);
+    } catch (error) {
+      console.error("[useMandorStatus] resubmit:", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    apiGet<RegistrationStatus>("/api/mandor/registration")
+      .then((result) => {
+        if (!active) return;
+        setStatus(result.status);
+        setReason(
+          result.reason ?? initialMandorRegistration.rejectionReason,
+        );
+      })
+      .catch((error) => {
+        if (!active) return;
+        console.error("[useMandorStatus]", error);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  return { status, reason, loading, resubmit };
 }
 
 export default function MandorShell({

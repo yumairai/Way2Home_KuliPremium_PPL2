@@ -3,16 +3,18 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { mandorProjects } from "@/data/mandor";
 import { useMandorStatus } from "@/components/mandor/MandorShell";
+import { useMandorProjects } from "@/hooks/useMandorProjects";
 
 export default function MandorProjectList() {
-  const { status } = useMandorStatus();
+  const { status, loading: statusLoading } = useMandorStatus();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("Semua proyek");
+  const { projects: allProjects, loading: projectsLoading } =
+    useMandorProjects();
   const projects = useMemo(
     () =>
-      mandorProjects.filter(
+      allProjects.filter(
         (project) =>
           `${project.id} ${project.title} ${project.location}`
             .toLowerCase()
@@ -22,8 +24,16 @@ export default function MandorProjectList() {
               ? project.overallProgress < 100
               : project.overallProgress === 100)),
       ),
-    [query, filter],
+    [allProjects, query, filter],
   );
+  if (statusLoading || projectsLoading)
+    return (
+      <main className="mx-auto max-w-4xl px-5 py-10">
+        <p className="rounded-2xl border border-[#e3e9ef] bg-white p-10 text-center text-sm text-slate-500">
+          Memuat halaman...
+        </p>
+      </main>
+    );
   if (status !== "Disetujui")
     return (
       <main className="mx-auto max-w-4xl px-5 py-10">

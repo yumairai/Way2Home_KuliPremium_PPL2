@@ -73,7 +73,14 @@ export type Database = {
           slug?: string | null;
           spesifikasi?: Json;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "designs_created_by_fkey",
+            columns: ["created_by"],
+            referencedRelation: "profiles",
+            referencedColumns: ["id"],
+          },
+        ];
       };
       design_images: {
         Row: {
@@ -94,7 +101,14 @@ export type Database = {
           urutan?: number;
           url?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "design_images_design_id_fkey",
+            columns: ["design_id"],
+            referencedRelation: "designs",
+            referencedColumns: ["id"],
+          },
+        ];
       };
       profiles: {
         Row: {
@@ -163,7 +177,26 @@ export type Database = {
           requirement_id?: string | null;
           status?: Database["public"]["Enums"]["project_status"];
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "projects_customer_id_fkey",
+            columns: ["customer_id"],
+            referencedRelation: "profiles",
+            referencedColumns: ["id"],
+          },
+          {
+            foreignKeyName: "projects_design_id_fkey",
+            columns: ["design_id"],
+            referencedRelation: "designs",
+            referencedColumns: ["id"],
+          },
+          {
+            foreignKeyName: "projects_pengawas_id_fkey",
+            columns: ["pengawas_id"],
+            referencedRelation: "pengawas_profiles",
+            referencedColumns: ["id"],
+          },
+        ];
       };
       project_documents: {
         Row: {
@@ -205,7 +238,20 @@ export type Database = {
           uploaded_by?: string;
           url?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "project_documents_project_id_fkey",
+            columns: ["project_id"],
+            referencedRelation: "projects",
+            referencedColumns: ["id"],
+          },
+          {
+            foreignKeyName: "project_documents_uploaded_by_fkey",
+            columns: ["uploaded_by"],
+            referencedRelation: "profiles",
+            referencedColumns: ["id"],
+          },
+        ];
       };
       mandor_profiles: {
         Row: {
@@ -215,6 +261,7 @@ export type Database = {
           area_kerja: string | null;
           portofolio_url: string | null;
           status: Database["public"]["Enums"]["verifikasi_status"];
+          catatan_verifikasi: string | null;
           created_at: string;
         };
         Insert: {
@@ -224,6 +271,7 @@ export type Database = {
           area_kerja?: string | null;
           portofolio_url?: string | null;
           status?: Database["public"]["Enums"]["verifikasi_status"];
+          catatan_verifikasi?: string | null;
           created_at?: string;
         };
         Update: {
@@ -233,8 +281,17 @@ export type Database = {
           area_kerja?: string | null;
           portofolio_url?: string | null;
           status?: Database["public"]["Enums"]["verifikasi_status"];
+          catatan_verifikasi?: string | null;
           created_at?: string;
         };
+        Relationships: [
+          {
+            foreignKeyName: "mandor_profiles_id_fkey",
+            columns: ["id"],
+            referencedRelation: "profiles",
+            referencedColumns: ["id"],
+          },
+        ];
       };
       pengawas_profiles: {
         Row: {
@@ -252,6 +309,14 @@ export type Database = {
           spesialisasi?: string | null;
           aktif?: boolean;
         };
+        Relationships: [
+          {
+            foreignKeyName: "pengawas_profiles_id_fkey",
+            columns: ["id"],
+            referencedRelation: "profiles",
+            referencedColumns: ["id"],
+          },
+        ];
       };
       project_mandors: {
         Row: {
@@ -272,6 +337,26 @@ export type Database = {
           assigned_by?: string | null;
           assigned_at?: string;
         };
+        Relationships: [
+          {
+            foreignKeyName: "project_mandors_project_id_fkey",
+            columns: ["project_id"],
+            referencedRelation: "projects",
+            referencedColumns: ["id"],
+          },
+          {
+            foreignKeyName: "project_mandors_mandor_id_fkey",
+            columns: ["mandor_id"],
+            referencedRelation: "mandor_profiles",
+            referencedColumns: ["id"],
+          },
+          {
+            foreignKeyName: "project_mandors_assigned_by_fkey",
+            columns: ["assigned_by"],
+            referencedRelation: "profiles",
+            referencedColumns: ["id"],
+          },
+        ];
       };
       contracts: {
         Row: {
@@ -322,6 +407,14 @@ export type Database = {
           signed_mandor_at?: string | null;
           created_at?: string;
         };
+        Relationships: [
+          {
+            foreignKeyName: "contracts_project_id_fkey",
+            columns: ["project_id"],
+            referencedRelation: "projects",
+            referencedColumns: ["id"],
+          },
+        ];
       };
       payment_stages: {
         Row: {
@@ -351,6 +444,536 @@ export type Database = {
           status?: Database["public"]["Enums"]["payment_status"];
           tanggal_bayar?: string | null;
         };
+        Relationships: [
+          {
+            foreignKeyName: "payment_stages_project_id_fkey",
+            columns: ["project_id"],
+            referencedRelation: "projects",
+            referencedColumns: ["id"],
+          },
+        ];
+      };
+      project_stages: {
+        Row: {
+          id: string;
+          project_id: string;
+          nama_tahap: string;
+          urutan: number;
+          progress_percentage: number;
+          status: string;
+          keterangan: string | null;
+          updated_by: string | null;
+          updated_at: string;
+          tanggal_mulai: string | null;
+          tanggal_selesai: string | null;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          nama_tahap: string;
+          urutan: number;
+          progress_percentage?: number;
+          status?: string;
+          keterangan?: string | null;
+          updated_by?: string | null;
+          updated_at?: string;
+          tanggal_mulai?: string | null;
+          tanggal_selesai?: string | null;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          nama_tahap?: string;
+          urutan?: number;
+          progress_percentage?: number;
+          status?: string;
+          keterangan?: string | null;
+          updated_by?: string | null;
+          updated_at?: string;
+          tanggal_mulai?: string | null;
+          tanggal_selesai?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "project_stages_project_id_fkey",
+            columns: ["project_id"],
+            referencedRelation: "projects",
+            referencedColumns: ["id"],
+          },
+          {
+            foreignKeyName: "project_stages_updated_by_fkey",
+            columns: ["updated_by"],
+            referencedRelation: "profiles",
+            referencedColumns: ["id"],
+          },
+        ];
+      };
+      project_subtasks: {
+        Row: {
+          id: string;
+          project_stage_id: string;
+          judul: string;
+          bobot: number;
+          urutan: number;
+          target_selesai: string | null;
+          selesai: boolean;
+          completed_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_stage_id: string;
+          judul: string;
+          bobot?: number;
+          urutan?: number;
+          target_selesai?: string | null;
+          selesai?: boolean;
+          completed_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_stage_id?: string;
+          judul?: string;
+          bobot?: number;
+          urutan?: number;
+          target_selesai?: string | null;
+          selesai?: boolean;
+          completed_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "project_subtasks_project_stage_id_fkey",
+            columns: ["project_stage_id"],
+            referencedRelation: "project_stages",
+            referencedColumns: ["id"],
+          },
+        ];
+      };
+      progress_reports: {
+        Row: {
+          id: string;
+          project_stage_id: string;
+          project_subtask_id: string | null;
+          mandor_id: string;
+          persentase: number;
+          keterangan: string | null;
+          foto_url: string | null;
+          status: Database["public"]["Enums"]["report_status"];
+          keputusan: "menunggu" | "disetujui" | "perlu_revisi";
+          feedback: string | null;
+          revisi_ke: number;
+          verified_by: string | null;
+          verified_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_stage_id: string;
+          project_subtask_id?: string | null;
+          mandor_id: string;
+          persentase: number;
+          keterangan?: string | null;
+          foto_url?: string | null;
+          status?: Database["public"]["Enums"]["report_status"];
+          keputusan?: "menunggu" | "disetujui" | "perlu_revisi";
+          feedback?: string | null;
+          revisi_ke?: number;
+          verified_by?: string | null;
+          verified_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_stage_id?: string;
+          project_subtask_id?: string | null;
+          mandor_id?: string;
+          persentase?: number;
+          keterangan?: string | null;
+          foto_url?: string | null;
+          status?: Database["public"]["Enums"]["report_status"];
+          keputusan?: "menunggu" | "disetujui" | "perlu_revisi";
+          feedback?: string | null;
+          revisi_ke?: number;
+          verified_by?: string | null;
+          verified_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "progress_reports_project_stage_id_fkey",
+            columns: ["project_stage_id"],
+            referencedRelation: "project_stages",
+            referencedColumns: ["id"],
+          },
+          {
+            foreignKeyName: "progress_reports_project_subtask_id_fkey",
+            columns: ["project_subtask_id"],
+            referencedRelation: "project_subtasks",
+            referencedColumns: ["id"],
+          },
+          {
+            foreignKeyName: "progress_reports_mandor_id_fkey",
+            columns: ["mandor_id"],
+            referencedRelation: "mandor_profiles",
+            referencedColumns: ["id"],
+          },
+          {
+            foreignKeyName: "progress_reports_verified_by_fkey",
+            columns: ["verified_by"],
+            referencedRelation: "pengawas_profiles",
+            referencedColumns: ["id"],
+          },
+        ];
+      };
+      kendala: {
+        Row: {
+          id: string;
+          project_id: string;
+          project_stage_id: string | null;
+          project_subtask_id: string | null;
+          reported_by: string;
+          deskripsi: string;
+          kategori: string | null;
+          kondisi_pekerjaan: string | null;
+          status: Database["public"]["Enums"]["kendala_status"];
+          tindak_lanjut: string | null;
+          dampak_biaya: number | null;
+          dampak_waktu_hari: number | null;
+          visible_to_customer: boolean;
+          informasi_tambahan: string | null;
+          lampiran: string | null;
+          lampiran_nama: string | null;
+          created_at: string;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          project_stage_id?: string | null;
+          project_subtask_id?: string | null;
+          reported_by: string;
+          deskripsi: string;
+          kategori?: string | null;
+          kondisi_pekerjaan?: string | null;
+          status?: Database["public"]["Enums"]["kendala_status"];
+          tindak_lanjut?: string | null;
+          dampak_biaya?: number | null;
+          dampak_waktu_hari?: number | null;
+          visible_to_customer?: boolean;
+          informasi_tambahan?: string | null;
+          lampiran?: string | null;
+          lampiran_nama?: string | null;
+          created_at?: string;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          project_stage_id?: string | null;
+          project_subtask_id?: string | null;
+          reported_by?: string;
+          deskripsi?: string;
+          kategori?: string | null;
+          kondisi_pekerjaan?: string | null;
+          status?: Database["public"]["Enums"]["kendala_status"];
+          tindak_lanjut?: string | null;
+          dampak_biaya?: number | null;
+          dampak_waktu_hari?: number | null;
+          visible_to_customer?: boolean;
+          informasi_tambahan?: string | null;
+          lampiran?: string | null;
+          lampiran_nama?: string | null;
+          created_at?: string;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "kendala_project_id_fkey",
+            columns: ["project_id"],
+            referencedRelation: "projects",
+            referencedColumns: ["id"],
+          },
+          {
+            foreignKeyName: "kendala_project_stage_id_fkey",
+            columns: ["project_stage_id"],
+            referencedRelation: "project_stages",
+            referencedColumns: ["id"],
+          },
+          {
+            foreignKeyName: "kendala_project_subtask_id_fkey",
+            columns: ["project_subtask_id"],
+            referencedRelation: "project_subtasks",
+            referencedColumns: ["id"],
+          },
+          {
+            foreignKeyName: "kendala_reported_by_fkey",
+            columns: ["reported_by"],
+            referencedRelation: "mandor_profiles",
+            referencedColumns: ["id"],
+          },
+        ];
+      };
+      foreman_notes: {
+        Row: {
+          id: string;
+          project_id: string;
+          mandor_id: string;
+          catatan: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          mandor_id: string;
+          catatan: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          mandor_id?: string;
+          catatan?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "foreman_notes_project_id_fkey",
+            columns: ["project_id"],
+            referencedRelation: "projects",
+            referencedColumns: ["id"],
+          },
+          {
+            foreignKeyName: "foreman_notes_mandor_id_fkey",
+            columns: ["mandor_id"],
+            referencedRelation: "mandor_profiles",
+            referencedColumns: ["id"],
+          },
+        ];
+      };
+      issue_resolutions: {
+        Row: {
+          id: string;
+          project_id: string;
+          kendala_id: string;
+          solusi: string;
+          sumber: "Pengawas" | "Analisis AI";
+          analisis_ai: Json | null;
+          status: string;
+          butuh_persetujuan: boolean;
+          alasan_persetujuan: string | null;
+          bukti: string | null;
+          umpan_balik_customer: string | null;
+          persetujuan_customer:
+            | "tidak_diminta"
+            | "menunggu"
+            | "disetujui"
+            | "ditolak";
+          disetujui_oleh: string | null;
+          disetujui_pada: string | null;
+          keputusan_final: boolean;
+          created_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          kendala_id: string;
+          solusi: string;
+          sumber?: "Pengawas" | "Analisis AI";
+          analisis_ai?: Json | null;
+          status?: string;
+          butuh_persetujuan?: boolean;
+          alasan_persetujuan?: string | null;
+          bukti?: string | null;
+          umpan_balik_customer?: string | null;
+          persetujuan_customer?:
+            | "tidak_diminta"
+            | "menunggu"
+            | "disetujui"
+            | "ditolak";
+          disetujui_oleh?: string | null;
+          disetujui_pada?: string | null;
+          keputusan_final?: boolean;
+          created_by: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          kendala_id?: string;
+          solusi?: string;
+          sumber?: "Pengawas" | "Analisis AI";
+          analisis_ai?: Json | null;
+          status?: string;
+          butuh_persetujuan?: boolean;
+          alasan_persetujuan?: string | null;
+          bukti?: string | null;
+          umpan_balik_customer?: string | null;
+          persetujuan_customer?:
+            | "tidak_diminta"
+            | "menunggu"
+            | "disetujui"
+            | "ditolak";
+          disetujui_oleh?: string | null;
+          disetujui_pada?: string | null;
+          keputusan_final?: boolean;
+          created_by?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "issue_resolutions_project_id_fkey",
+            columns: ["project_id"],
+            referencedRelation: "projects",
+            referencedColumns: ["id"],
+          },
+          {
+            foreignKeyName: "issue_resolutions_kendala_id_fkey",
+            columns: ["kendala_id"],
+            referencedRelation: "kendala",
+            referencedColumns: ["id"],
+          },
+          {
+            foreignKeyName: "issue_resolutions_created_by_fkey",
+            columns: ["created_by"],
+            referencedRelation: "profiles",
+            referencedColumns: ["id"],
+          },
+        ];
+      };
+      resolution_discussions: {
+        Row: {
+          id: string;
+          resolution_id: string;
+          penulis: "Pengawas" | "Customer";
+          pesan: string;
+          created_by: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          resolution_id: string;
+          penulis: "Pengawas" | "Customer";
+          pesan: string;
+          created_by: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          resolution_id?: string;
+          penulis?: "Pengawas" | "Customer";
+          pesan?: string;
+          created_by?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "resolution_discussions_resolution_id_fkey",
+            columns: ["resolution_id"],
+            referencedRelation: "issue_resolutions",
+            referencedColumns: ["id"],
+          },
+          {
+            foreignKeyName: "resolution_discussions_created_by_fkey",
+            columns: ["created_by"],
+            referencedRelation: "profiles",
+            referencedColumns: ["id"],
+          },
+        ];
+      };
+      progress_documentation: {
+        Row: {
+          id: string;
+          project_stage_id: string | null;
+          project_id: string | null;
+          uploaded_by: string;
+          url: string;
+          catatan: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_stage_id?: string | null;
+          project_id?: string | null;
+          uploaded_by: string;
+          url: string;
+          catatan?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_stage_id?: string | null;
+          project_id?: string | null;
+          uploaded_by?: string;
+          url?: string;
+          catatan?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "progress_documentation_project_stage_id_fkey",
+            columns: ["project_stage_id"],
+            referencedRelation: "project_stages",
+            referencedColumns: ["id"],
+          },
+          {
+            foreignKeyName: "progress_documentation_project_id_fkey",
+            columns: ["project_id"],
+            referencedRelation: "projects",
+            referencedColumns: ["id"],
+          },
+          {
+            foreignKeyName: "progress_documentation_uploaded_by_fkey",
+            columns: ["uploaded_by"],
+            referencedRelation: "profiles",
+            referencedColumns: ["id"],
+          },
+        ];
+      };
+      project_updates: {
+        Row: {
+          id: string;
+          project_id: string;
+          pengawas_id: string;
+          judul: string;
+          isi: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          pengawas_id: string;
+          judul: string;
+          isi: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          pengawas_id?: string;
+          judul?: string;
+          isi?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "project_updates_project_id_fkey",
+            columns: ["project_id"],
+            referencedRelation: "projects",
+            referencedColumns: ["id"],
+          },
+          {
+            foreignKeyName: "project_updates_pengawas_id_fkey",
+            columns: ["pengawas_id"],
+            referencedRelation: "pengawas_profiles",
+            referencedColumns: ["id"],
+          },
+        ];
       };
     };
     Views: Record<string, never>;
@@ -359,6 +982,7 @@ export type Database = {
       get_available_mandor_ids: {
         Args: Record<PropertyKey, never>;
         Returns: string[];
+        Relationships: [];
       };
       submit_project: { Args: { pid: string }; Returns: undefined };
     };

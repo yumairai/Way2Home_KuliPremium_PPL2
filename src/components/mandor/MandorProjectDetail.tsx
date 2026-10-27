@@ -5,24 +5,19 @@ import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import {
-  mandorProjects,
   type MandorIssueReport,
   type MandorMilestone,
   type MandorProgressReport,
+  type MandorProject,
 } from "@/data/mandor";
 import { useMandorStatus } from "@/components/mandor/MandorShell";
-import {
-  addForemanNote,
-  addIssueReport,
-  addSyncedReport,
-  compressImage,
-  useProjectSync,
-  type ApprovedSubtask,
-  type ForemanNote,
-  type SyncedReport,
-} from "@/utils/project-events";
+import { useMandorProject } from "@/hooks/useMandorProjects";
+import { apiPost, errorMessage } from "@/lib/api";
+import { compressImage } from "@/utils/image";
 
 type Tab = "Ringkasan" | "Laporan progress" | "Kendala";
+type ApprovedSubtask = { milestoneId: string; subtaskTitle: string };
+type ForemanNote = { id: string; note: string; submitted: string };
 const reviewClass: Record<string, string> = {
   Menunggu: "bg-[#fff4e2] text-[#98651e]",
   Disetujui: "bg-[#edf6ef] text-[#4d7d56]",
@@ -71,15 +66,24 @@ const formatNow = () =>
   }).format(new Date());
 
 export default function MandorProjectDetail({ id }: { id: string }) {
-  const { status } = useMandorStatus();
-  const [project, setProject] = useState(() =>
-    mandorProjects.find((item) => item.id === id),
-  );
+  const { status, loading: statusLoading } = useMandorStatus();
+  const {
+    project,
+    loading: projectLoading,
+    reload,
+  } = useMandorProject(id);
   const [tab, setTab] = useState<Tab>("Ringkasan");
   const [progressOpen, setProgressOpen] = useState(false);
   const [issueOpen, setIssueOpen] = useState(false);
   const [toast, setToast] = useState("");
-  const sync = useProjectSync();
+  if (statusLoading || projectLoading)
+    return (
+      <main className="mx-auto max-w-4xl px-5 py-10">
+        <p className="rounded-2xl border border-[#e3e9ef] bg-white p-10 text-center text-sm text-slate-500">
+          Memuat halaman...
+        </p>
+      </main>
+    );
   if (!project) notFound();
   if (status !== "Disetujui")
     return (
@@ -101,82 +105,80 @@ export default function MandorProjectDetail({ id }: { id: string }) {
       </main>
     );
 
-  const seededReports: SyncedReport[] = sync.reports.filter(
-    (report) => report.projectId === id,
-  );
-  const approvedSubtasks = sync.approvedSubtasks.filter(
-    (item) => item.projectId === id,
-  );
-  const approvedWeight = project.milestones.reduce(
-    (sum, milestone) =>
-      sum +
-      milestone.subtasks
-        .filter((task) => isApproved(task, milestone, approvedSubtasks))
-        .reduce((subtotal, task) => subtotal + task.weight, 0),
-    0,
-  );
-  const officialProgress = Math.max(project.overallProgress, approvedWeight);
+  // Subtask sudah ditandai `done` oleh backend saat pengawas memverifikasi,
+  // sehingga daftar persetujuan tambahan tidak diperlukan lagi.
+  const approvedSubtasks: ApprovedSubtask[] = [];
+  const officialProgress = project.overallProgress;
   const reportDecision = (reportId: string): MandorProgressReport["review"] =>
-    sync.reports.find((report) => report.id === reportId)?.decision ??
+    project.progressReports.find((report) => report.id === reportId)?.review ??
     "Menunggu";
 
-  const addProgress = (report: MandorProgressReport) => {
-    addSyncedReport({
-      id: report.id,
-      projectId: id,
-      foreman: "Bima Saputra",
-      milestoneId: report.milestoneId,
-      milestoneTitle: report.milestoneTitle,
-      subtaskTitle: report.subtaskTitle,
-      note: report.note,
-      photo: report.photo,
-      submitted: report.submitted,
-      decision: "Menunggu",
-      weight: report.weight,
-    });
-    setProgressOpen(false);
-    setToast("Laporan progress terkirim dan menunggu verifikasi pengawas.");
-    window.setTimeout(() => setToast(""), 4000);
-  };
-  const addIssue = (report: MandorIssueReport) => {
-    const scopedReport = { ...report, projectId: id };
-    addIssueReport(scopedReport);
-    setProject((current) =>
-      current
-        ? { ...current, issueReports: [scopedReport, ...current.issueReports] }
-        : current,
-    );
-    setIssueOpen(false);
-    setToast("Laporan kendala terkirim kepada pengawas.");
-    window.setTimeout(() => setToast(""), 4000);
-  };
-  const submitNote = (note: string) => {
-    const next: ForemanNote = {
-      id: `CN-${Date.now()}`,
-      projectId: id,
-      foreman: "Bima Saputra",
-      note,
-      submitted: formatNow(),
-    };
-    addForemanNote(next);
-    setToast("Catatan untuk pengawas terkirim.");
-    window.setTimeout(() => setToast(""), 4000);
+  const showError = (message: string) => {
+    setToast(message);
+    window.setTimeout(() => setToast(""), 5000);
   };
 
-  const weightedReports = seededReports
-    .map((report) => ({
-      id: report.id,
-      milestoneId: report.milestoneId,
-      milestoneTitle: report.milestoneTitle,
-      subtaskTitle: report.subtaskTitle,
-      note: report.note,
-      photo: report.photo,
-      submitted: report.submitted,
-      review: report.decision,
-      feedback: "",
-      weight: report.weight,
-    }))
-    .sort((a, b) => b.submitted.localeCompare(a.submitted));
+  const addProgress = async (
+    report: MandorProgressReport,
+    subtaskId: string,
+  ) => {
+    try {
+      await apiPost(`/api/mandor/projects/${id}/progress`, {
+        project_subtask_id: subtaskId,
+        keterangan: report.note,
+        foto_url: report.photo,
+      });
+      await reload();
+      setProgressOpen(false);
+      setToast("Laporan progress terkirim dan menunggu verifikasi pengawas.");
+      window.setTimeout(() => setToast(""), 4000);
+    } catch (error) {
+      showError(errorMessage(error, "Gagal mengirim laporan progress."));
+    }
+  };
+
+  const addIssue = async (
+    report: MandorIssueReport,
+    ids: { stageId: string; subtaskId: string },
+  ) => {
+    try {
+      await apiPost(`/api/mandor/projects/${id}/kendala`, {
+        project_stage_id: ids.stageId,
+        project_subtask_id: ids.subtaskId,
+        kategori: report.category,
+        deskripsi: report.description,
+        kondisi_pekerjaan: report.workCondition,
+        dampak_waktu_hari: report.estimatedDelayDays,
+        informasi_tambahan: report.additionalInfo,
+        lampiran: report.attachment,
+        lampiran_nama: report.attachmentName,
+      });
+      await reload();
+      setIssueOpen(false);
+      setToast("Laporan kendala terkirim kepada pengawas.");
+      window.setTimeout(() => setToast(""), 4000);
+    } catch (error) {
+      showError(errorMessage(error, "Gagal mengirim laporan kendala."));
+    }
+  };
+
+  const submitNote = async (note: string) => {
+    try {
+      await apiPost(`/api/mandor/projects/${id}/notes`, { catatan: note });
+      await reload();
+      setToast("Catatan untuk pengawas terkirim.");
+      window.setTimeout(() => setToast(""), 4000);
+    } catch (error) {
+      showError(errorMessage(error, "Gagal mengirim catatan."));
+    }
+  };
+
+  const weightedReports = project.progressReports;
+  const pendingMilestones = new Set(
+    project.progressReports
+      .filter((report) => report.review === "Menunggu")
+      .map((report) => report.milestoneTitle),
+  );
 
   return (
     <main className="mx-auto max-w-[1480px] space-y-5 px-4 py-5 sm:px-6 md:py-7">
@@ -367,10 +369,7 @@ export default function MandorProjectDetail({ id }: { id: string }) {
                 {project.supervisor}
               </p>
             </section>
-            <NotesCard
-              notes={sync.notes.filter((note) => note.projectId === id)}
-              onSubmit={submitNote}
-            />
+            <NotesCard notes={project.notes} onSubmit={submitNote} />
             <section className="rounded-2xl border border-[#e3e9ef] bg-white p-5">
               <h2 className="text-base font-bold text-[#263d53]">
                 Informasi penugasan
@@ -403,9 +402,7 @@ export default function MandorProjectDetail({ id }: { id: string }) {
         <Reports
           reports={weightedReports}
           reviewFor={reportDecision}
-          pendingMilestones={
-            new Set(sync.reports.map((report) => report.milestoneTitle))
-          }
+          pendingMilestones={pendingMilestones}
         />
       )}
       {tab === "Kendala" && <Issues reports={project.issueReports} />}
@@ -692,10 +689,13 @@ function ProgressModal({
   onClose,
   onSubmit,
 }: {
-  project: (typeof mandorProjects)[number];
+  project: MandorProject;
   approvedSubtasks: ApprovedSubtask[];
   onClose: () => void;
-  onSubmit: (report: MandorProgressReport) => void;
+  onSubmit: (
+    report: MandorProgressReport,
+    subtaskId: string,
+  ) => void | Promise<void>;
 }) {
   const firstOpen = project.milestones.find(
     (milestone) =>
@@ -736,18 +736,25 @@ function ProgressModal({
           }
           setSending(true);
           idCounter.current += 1;
-          onSubmit({
-            id: `PR-${project.id}-${idCounter.current}`,
-            milestoneId: milestone.id,
-            milestoneTitle: milestone.title,
-            subtaskTitle: subtask.title,
-            note: note.trim(),
-            photo,
-            submitted: formatNow(),
-            review: "Menunggu",
-            feedback: "",
-            weight: subtask.weight,
-          });
+          try {
+            await onSubmit(
+              {
+                id: `PR-${project.id}-${idCounter.current}`,
+                milestoneId: milestone.id,
+                milestoneTitle: milestone.title,
+                subtaskTitle: subtask.title,
+                note: note.trim(),
+                photo,
+                submitted: formatNow(),
+                review: "Menunggu",
+                feedback: "",
+                weight: subtask.weight,
+              },
+              subtask.id,
+            );
+          } finally {
+            setSending(false);
+          }
         }}
       >
         <p className="mb-4 rounded-xl bg-[#f5f8fb] p-4 text-xs leading-5 text-slate-600">
@@ -885,10 +892,13 @@ function IssueModal({
   onClose,
   onSubmit,
 }: {
-  project: (typeof mandorProjects)[number];
+  project: MandorProject;
   approvedSubtasks: ApprovedSubtask[];
   onClose: () => void;
-  onSubmit: (report: MandorIssueReport) => void;
+  onSubmit: (
+    report: MandorIssueReport,
+    ids: { stageId: string; subtaskId: string },
+  ) => void | Promise<void>;
 }) {
   const milestone =
     project.milestones.find(
@@ -926,7 +936,7 @@ function IssueModal({
   return (
     <Dialog title="Laporkan kendala" onClose={onClose}>
       <form
-        onSubmit={(event) => {
+        onSubmit={async (event) => {
           event.preventDefault();
           if (!category || !selectedCategory) {
             setError("Pilih kategori kendala.");
@@ -948,25 +958,32 @@ function IssueModal({
           }
           setSending(true);
           idCounter.current += 1;
-          onSubmit({
-            id: `KN-${project.id}-${idCounter.current}`,
-            projectId: project.id,
-            category,
-            categoryLabel: selectedCategory.label,
-            description: description.trim(),
-            affectedMilestoneId: milestone.id,
-            affectedMilestoneTitle: milestone.title,
-            affectedSubtaskId: selectedSubtask.id,
-            affectedSubtaskTitle: selectedSubtask.title,
-            workCondition,
-            estimatedDelayDays,
-            additionalInfo: additionalInfo.trim(),
-            attachment,
-            attachmentName,
-            submitted: formatNow(),
-            status: "Menunggu",
-            followUp: "",
-          });
+          try {
+            await onSubmit(
+              {
+                id: `KN-${project.id}-${idCounter.current}`,
+                projectId: project.id,
+                category,
+                categoryLabel: selectedCategory.label,
+                description: description.trim(),
+                affectedMilestoneId: milestone.id,
+                affectedMilestoneTitle: milestone.title,
+                affectedSubtaskId: selectedSubtask.id,
+                affectedSubtaskTitle: selectedSubtask.title,
+                workCondition,
+                estimatedDelayDays,
+                additionalInfo: additionalInfo.trim(),
+                attachment,
+                attachmentName,
+                submitted: formatNow(),
+                status: "Menunggu",
+                followUp: "",
+              },
+              { stageId: milestone.id, subtaskId: selectedSubtask.id },
+            );
+          } finally {
+            setSending(false);
+          }
         }}
         className="space-y-4"
       >

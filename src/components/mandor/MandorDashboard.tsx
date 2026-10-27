@@ -3,18 +3,19 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { mandorProjects, initialMandorRegistration } from "@/data/mandor";
+import { initialMandorRegistration } from "@/data/mandor";
 import { useMandorStatus } from "@/components/mandor/MandorShell";
-import { useProjectSync } from "@/utils/project-events";
+import { useMandorProjects } from "@/hooks/useMandorProjects";
 
 export default function MandorDashboard() {
-  const { status } = useMandorStatus();
+  const { status, loading: statusLoading } = useMandorStatus();
   const [filter, setFilter] = useState("Semua proyek");
   const [query, setQuery] = useState("");
-  const sync = useProjectSync();
+  const { projects: allProjects, loading: projectsLoading } =
+    useMandorProjects();
   const projects = useMemo(
     () =>
-      mandorProjects.filter(
+      allProjects.filter(
         (project) =>
           `${project.id} ${project.title} ${project.design} ${project.location}`
             .toLowerCase()
@@ -24,14 +25,20 @@ export default function MandorDashboard() {
               ? project.overallProgress < 100
               : project.overallProgress === 100)),
       ),
-    [query, filter],
+    [allProjects, query, filter],
   );
-  const active = mandorProjects.filter(
+  const active = allProjects.filter(
     (project) => project.overallProgress < 100,
   ).length;
-  const waiting = sync.reports.filter(
-    (report) => report.decision === "Menunggu",
-  ).length;
+  const waiting = allProjects
+    .flatMap((project) => project.progressReports)
+    .filter((report) => report.review === "Menunggu").length;
+  if (statusLoading || projectsLoading)
+    return (
+      <main className="grid min-h-[calc(100vh-68px)] place-items-center text-sm text-slate-600">
+        Memuat halaman...
+      </main>
+    );
   if (status !== "Disetujui") return <VerificationStatus />;
   return (
     <div className="mx-auto max-w-[1480px] space-y-7 px-4 py-6 sm:px-6 md:py-8">
@@ -175,7 +182,7 @@ export default function MandorDashboard() {
 }
 
 function VerificationStatus() {
-  const { status, reason, setDemoStatus } = useMandorStatus();
+  const { status, reason, resubmit } = useMandorStatus();
   if (status === "Menunggu")
     return (
       <main className="mx-auto grid min-h-[calc(100vh-68px)] max-w-3xl place-items-center px-5 py-12">
@@ -219,7 +226,7 @@ function VerificationStatus() {
     <main className="mx-auto grid min-h-[calc(100vh-68px)] max-w-3xl place-items-center px-5 py-12">
       <RejectedApplication
         reason={reason}
-        onResubmit={() => setDemoStatus("Menunggu", reason)}
+        onResubmit={() => void resubmit()}
       />
     </main>
   );
