@@ -126,10 +126,11 @@ export default function DefaultNavbar() {
                       aria-label="Buka profile"
                     >
                       <Image
-                        src="/images/aset/avatar.jpg"
-                        alt="User profile avatar"
+                        src={user.avatarUrl || "/images/aset/avatar.jpg"}
+                        alt={`Foto profil ${user.fullName}`}
                         width={48}
                         height={48}
+                        unoptimized={Boolean(user.avatarUrl)}
                         className="h-12 w-12 rounded-full object-cover transition active:scale-90"
                       />
                     </button>
@@ -151,10 +152,11 @@ export default function DefaultNavbar() {
                           <div className="relative z-10 flex items-center gap-3">
                             <div className="flex h-12 w-12 items-center justify-center rounded-lg">
                               <Image
-                                src="/images/aset/avatar.jpg"
-                                alt="Avatar"
+                                src={user.avatarUrl || "/images/aset/avatar.jpg"}
+                                alt={`Foto profil ${user.fullName}`}
                                 width={48}
                                 height={48}
+                                unoptimized={Boolean(user.avatarUrl)}
                                 className="h-12 w-12 rounded-full object-cover"
                               />
                             </div>
@@ -330,10 +332,11 @@ export default function DefaultNavbar() {
               {/* User Card */}
               <div className="flex items-center gap-3.5 rounded-2xl border border-[#cac4cf]/45 bg-gradient-to-br from-[#004796]/[0.08] to-[#045ec2]/[0.04] px-4 py-3.5">
                 <Image
-                  src="/images/aset/avatar.jpg"
-                  alt="Avatar"
+                  src={user.avatarUrl || "/images/aset/avatar.jpg"}
+                  alt={`Foto profil ${user.fullName}`}
                   width={48}
                   height={48}
+                  unoptimized={Boolean(user.avatarUrl)}
                   className="h-12 w-12 rounded-full object-cover shadow-[0_8px_20px_rgba(14,23,68,0.12)]"
                 />
 
