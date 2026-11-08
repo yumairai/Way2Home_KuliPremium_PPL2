@@ -95,10 +95,20 @@ export default function PaymentsSection({ project }: PaymentsSectionProps) {
         body: JSON.stringify({ payment_stage_id: stageId }),
       });
 
-      const data = (await response.json()) as {
+      const responseText = await response.text();
+      let data: {
         token?: string;
         message?: string;
       };
+      try {
+        data = JSON.parse(responseText) as typeof data;
+      } catch {
+        throw new Error(
+          response.ok
+            ? "Respons pembayaran tidak valid. Muat ulang halaman dan coba lagi."
+            : `Server pembayaran gagal (${response.status}). Muat ulang halaman dan coba lagi.`,
+        );
+      }
 
       if (!response.ok || !data.token) {
         throw new Error(data.message || "Gagal membuat transaksi.");
@@ -153,9 +163,7 @@ export default function PaymentsSection({ project }: PaymentsSectionProps) {
         },
       });
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Terjadi kesalahan.",
-      );
+      setError(err instanceof Error ? err.message : "Terjadi kesalahan.");
       setLoading(false);
     }
   }
@@ -168,7 +176,8 @@ export default function PaymentsSection({ project }: PaymentsSectionProps) {
 
       <div className="mt-5 grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
         {project.payments.map((payment) => {
-          const badge = STATUS_BADGE[payment.status] ?? STATUS_BADGE.akan_datang;
+          const badge =
+            STATUS_BADGE[payment.status] ?? STATUS_BADGE.akan_datang;
           const isActive = payment.status === "aktif";
 
           return (

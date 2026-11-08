@@ -292,7 +292,7 @@ export async function createProjectWithDocuments(
 
 export async function deleteCancellableProject(
   supabase: SupabaseClient<Database>,
-  projectId: string
+  projectId: string,
 ): Promise<void> {
   const { user } = await requireRole(supabase, "customer");
   const cancellableStatuses: Database["public"]["Enums"]["project_status"][] = [
@@ -317,7 +317,10 @@ export async function deleteCancellableProject(
     status: Database["public"]["Enums"]["project_status"];
   };
   if (!cancellableStatuses.includes(projectRow.status)) {
-    throw new ServiceError("Proyek tidak dapat dibatalkan pada tahap ini.", 409);
+    throw new ServiceError(
+      "Proyek tidak dapat dibatalkan pada tahap ini.",
+      409,
+    );
   }
 
   if (projectRow.status === "finalisasi_kontrak") {
@@ -351,15 +354,18 @@ export async function deleteCancellableProject(
     throw new ServiceError("Gagal menyiapkan penghapusan dokumen proyek.", 500);
   }
 
-  const storagePaths = ((documents || []) as unknown as Array<{ url: string }>).map(
-    (document) => document.url
-  );
+  const storagePaths = (
+    (documents || []) as unknown as Array<{ url: string }>
+  ).map((document) => document.url);
   if (storagePaths.length > 0) {
     const { error: storageError } = await supabase.storage
       .from("project-documents")
       .remove(storagePaths);
     if (storageError) {
-      throw new ServiceError("Gagal menghapus dokumen proyek dari penyimpanan.", 500);
+      throw new ServiceError(
+        "Gagal menghapus dokumen proyek dari penyimpanan.",
+        500,
+      );
     }
   }
 
@@ -373,7 +379,10 @@ export async function deleteCancellableProject(
     .maybeSingle();
 
   if (deleteError || !deletedProject) {
-    throw new ServiceError("Proyek gagal dihapus. Muat ulang halaman dan coba lagi.", 500);
+    throw new ServiceError(
+      "Proyek gagal dihapus. Muat ulang halaman dan coba lagi.",
+      500,
+    );
   }
 }
 
@@ -449,31 +458,39 @@ export function transformDBProjectToProject(
   const team: TeamMember[] = [];
   if (row.pengawas_profiles) {
     const pengawas = row.pengawas_profiles as Record<string, unknown>;
-    const pengawasProfile =
-      (pengawas.profiles as Record<string, unknown>) || {};
+    const pengawasProfile = Array.isArray(pengawas.profiles)
+      ? (pengawas.profiles[0] as Record<string, unknown>) || {}
+      : (pengawas.profiles as Record<string, unknown>) || {};
     team.push({
       id: pengawas.id as string,
-      name: (pengawasProfile.nama_lengkap as string) || "Pengawas Proyek",
+      name: (pengawasProfile.full_name as string) || "Pengawas Proyek",
       role: "Pengawas",
-      phone: (pengawasProfile.nomor_telepon as string) || "-",
-      experience: `${pengawas.pengalaman_tahun || 0} tahun`,
-      projects: (pengawas.jumlah_proyek_selesai as number) || 0,
+      phone: (pengawasProfile.phone as string) || "-",
+      experience: "Pengawas",
+      projects: 0,
     });
   }
 
   if (Array.isArray(row.project_mandors)) {
-    for (const item of row.project_mandors as Array<Record<string, unknown>>) {
+    for (const item of (
+      row.project_mandors as Array<Record<string, unknown>>
+    ).slice(0, 3)) {
       const mandor = item.mandor_profiles as
         Record<string, unknown> | undefined;
       if (mandor) {
-        const mandorProfile =
-          (mandor.profiles as Record<string, unknown>) || {};
+        const mandorProfile = Array.isArray(mandor.profiles)
+          ? (mandor.profiles[0] as Record<string, unknown>) || {}
+          : (mandor.profiles as Record<string, unknown>) || {};
         team.push({
           id: mandor.id as string,
-          name: (mandorProfile.nama_lengkap as string) || "Mandor Proyek",
+          name: (mandorProfile.full_name as string) || "Mandor Proyek",
           role: "Mandor",
-          phone: (mandorProfile.nomor_telepon as string) || "-",
-          experience: `${mandor.pengalaman_tahun || 0} tahun`,
+          phone: (mandorProfile.phone as string) || "-",
+          experience:
+            mandor.pengalaman_tahun === null ||
+            mandor.pengalaman_tahun === undefined
+              ? "-"
+              : `${mandor.pengalaman_tahun} tahun`,
           projects: (mandor.jumlah_proyek_selesai as number) || 0,
         });
       }
@@ -484,11 +501,9 @@ export function transformDBProjectToProject(
     ? (row.contracts as Array<Record<string, unknown>>)[0]
     : (row.contracts as Record<string, unknown> | undefined);
   const contractSpecification = dbContracts?.spesifikasi as
-    | Record<string, unknown>
-    | undefined;
+    Record<string, unknown> | undefined;
   const contractCustomer = contractSpecification?.customer as
-    | Record<string, unknown>
-    | undefined;
+    Record<string, unknown> | undefined;
   const contractStatusMap: Record<string, ContractStatus> = {
     draft: "menunggu",
     sent: "menunggu",
@@ -589,10 +604,11 @@ export function transformDBProjectToProject(
     submittedAt: row.created_at as string,
     status: projectStatus,
     documentStatus,
-    adminNote:
-      Array.isArray(docs)
-        ? (docs as Array<Record<string, unknown>>).find((document) => Boolean(document.catatan))?.catatan as string | undefined
-        : undefined,
+    adminNote: Array.isArray(docs)
+      ? ((docs as Array<Record<string, unknown>>).find((document) =>
+          Boolean(document.catatan),
+        )?.catatan as string | undefined)
+      : undefined,
     team,
     contract,
     payments,
@@ -625,6 +641,17 @@ export async function getUserProjects(
         design_images (
           url,
           urutan
+        )
+      ),
+      pengawas_profiles (
+        id,
+        profiles!pengawas_profiles_id_fkey ( full_name, phone )
+      ),
+      project_mandors (
+        mandor_profiles (
+          id,
+          pengalaman_tahun,
+          profiles!mandor_profiles_id_fkey ( full_name, phone )
         )
       ),
       project_documents (
@@ -679,6 +706,17 @@ export async function getUserProjects(
           design_images (
             url,
             urutan
+          )
+        ),
+        pengawas_profiles (
+          id,
+          profiles!pengawas_profiles_id_fkey ( full_name, phone )
+        ),
+        project_mandors (
+          mandor_profiles (
+            id,
+            pengalaman_tahun,
+            profiles!mandor_profiles_id_fkey ( full_name, phone )
           )
         ),
         project_documents (
@@ -763,6 +801,17 @@ export async function getUserProjectById(
           urutan
         )
       ),
+      pengawas_profiles (
+        id,
+        profiles!pengawas_profiles_id_fkey ( full_name, phone )
+      ),
+      project_mandors (
+        mandor_profiles (
+          id,
+          pengalaman_tahun,
+          profiles!mandor_profiles_id_fkey ( full_name, phone )
+        )
+      ),
       project_documents (
         id,
         jenis_dokumen,
@@ -816,6 +865,17 @@ export async function getUserProjectById(
           design_images (
             url,
             urutan
+          )
+        ),
+        pengawas_profiles (
+          id,
+          profiles!pengawas_profiles_id_fkey ( full_name, phone )
+        ),
+        project_mandors (
+          mandor_profiles (
+            id,
+            pengalaman_tahun,
+            profiles!mandor_profiles_id_fkey ( full_name, phone )
           )
         ),
         project_documents (

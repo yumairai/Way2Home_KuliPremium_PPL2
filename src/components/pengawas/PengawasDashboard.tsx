@@ -14,6 +14,7 @@ import {
   type VerifiedMandor,
 } from "@/services/allocation.service";
 import { ServiceError } from "@/services/access.service";
+import { getPengawasProgressProjects } from "@/services/progress.service";
 
 // ─── Status helpers ────────────────────────────────────────────────────────────
 
@@ -23,7 +24,7 @@ const STATUS_LABEL: Record<string, string> = {
   revisi_dokumen: "Revisi Dokumen",
   alokasi_mandor_pengawas: "Menunggu Tim",
   finalisasi_kontrak: "Finalisasi Kontrak",
-  pembayaran_dp: "Pembayaran DP",
+  pembayaran_dp: "Menunggu Pembayaran DP",
   berjalan: "Berjalan",
   selesai: "Selesai",
   batal: "Dibatalkan",
@@ -32,6 +33,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 const STATUS_CLASS: Record<string, string> = {
   berjalan: "bg-[#eaf2f8] text-[#416f91]",
+  pembayaran_dp: "bg-amber-50 text-amber-700",
   selesai: "bg-[#edf6ef] text-[#4d7d56]",
   alokasi_mandor_pengawas: "bg-amber-50 text-amber-700",
   default: "bg-[#f0f5f8] text-[#416f91]",
@@ -147,7 +149,9 @@ function MandorAllocationModal({
       onClose();
     } catch (err) {
       setError(
-        err instanceof ServiceError ? err.message : "Gagal memfinalisasi alokasi.",
+        err instanceof ServiceError
+          ? err.message
+          : "Gagal memfinalisasi alokasi.",
       );
     } finally {
       setFinalizing(false);
@@ -419,6 +423,9 @@ export default function PengawasDashboard() {
   const [query, setQuery] = useState("");
   const [selectedProject, setSelectedProject] =
     useState<ProjectForPengawas | null>(null);
+  const [officialProgress, setOfficialProgress] = useState<
+    Record<string, number | null>
+  >({});
 
   const fetchData = useCallback(async () => {
     const supabase = createClient();
@@ -435,6 +442,16 @@ export default function PengawasDashboard() {
       const [projectsData, mandorsData] = await fetchData();
       setProjects(projectsData);
       setAllMandors(mandorsData);
+      const progressProjects =
+        await getPengawasProgressProjects(createClient());
+      setOfficialProgress(
+        Object.fromEntries(
+          progressProjects.map((project) => [
+            project.id,
+            project.overallProgress,
+          ]),
+        ),
+      );
     } catch (err) {
       if (err instanceof ServiceError) {
         setError(err.message);
@@ -450,10 +467,20 @@ export default function PengawasDashboard() {
     let active = true;
 
     fetchData()
-      .then(([projectsData, mandorsData]) => {
+      .then(async ([projectsData, mandorsData]) => {
         if (!active) return;
         setProjects(projectsData);
         setAllMandors(mandorsData);
+        const progressProjects =
+          await getPengawasProgressProjects(createClient());
+        setOfficialProgress(
+          Object.fromEntries(
+            progressProjects.map((project) => [
+              project.id,
+              project.overallProgress,
+            ]),
+          ),
+        );
       })
       .catch((err: unknown) => {
         if (!active) return;
@@ -497,9 +524,7 @@ export default function PengawasDashboard() {
     newMandors: AllocatedMandor[],
   ) => {
     setProjects((curr) =>
-      curr.map((p) =>
-        p.id === projectId ? { ...p, mandors: newMandors } : p,
-      ),
+      curr.map((p) => (p.id === projectId ? { ...p, mandors: newMandors } : p)),
     );
     // Also update selectedProject so the modal reflects latest state
     if (selectedProject?.id === projectId) {
@@ -653,6 +678,9 @@ export default function PengawasDashboard() {
                         ? ` · ${project.alamat_proyek.slice(0, 60)}`
                         : ""}
                     </p>
+                    <p className="mt-2 text-xs font-semibold text-[#315b76]">
+                      Progress resmi: {officialProgress[project.id] ?? "—"}%
+                    </p>
                   </div>
                   <Link
                     href={`/pengawas/proyek/${project.id}`}
@@ -686,18 +714,29 @@ export default function PengawasDashboard() {
                         </p>
                       )}
                     </div>
-                    <button
-                      id={`kelola-mandor-${project.id}`}
-                      onClick={() => setSelectedProject(project)}
-                      disabled={!canAllocateStaff(project.status)}
-                      className="ml-3 shrink-0 rounded-lg border border-[#183b57] px-3 py-2 text-[11px] font-semibold text-[#183b57] hover:bg-[#183b57] hover:text-white transition-colors"
-                    >
-                      {!canAllocateStaff(project.status)
-                        ? "Menunggu verifikasi kontrak"
-                        : project.mandors.length === 0
+                    {canAllocateStaff(project.status) ? (
+                      <button
+                        id={`kelola-mandor-${project.id}`}
+                        onClick={() => setSelectedProject(project)}
+                        className="ml-3 shrink-0 rounded-lg border border-[#183b57] px-3 py-2 text-[11px] font-semibold text-[#183b57] transition-colors hover:bg-[#183b57] hover:text-white"
+                      >
+                        {project.mandors.length === 0
                           ? "Alokasikan Mandor"
                           : "Kelola Mandor"}
-                    </button>
+                      </button>
+                    ) : project.status === "berjalan" ||
+                      project.status === "selesai" ? (
+                      <Link
+                        href={`/pengawas/proyek/${project.id}`}
+                        className="ml-3 inline-flex h-10 shrink-0 items-center justify-center rounded-lg border border-[#183b57] px-3 py-2 text-[11px] font-semibold text-[#183b57] transition-colors hover:bg-[#183b57] hover:text-white"
+                      >
+                        Buka tracking proyek
+                      </Link>
+                    ) : (
+                      <span className="ml-3 inline-flex h-10 shrink-0 items-center justify-center rounded-lg border border-[#e8d8ae] bg-[#fffaf0] px-3 py-2 text-center text-[11px] font-semibold text-[#946a27]">
+                        Tracking menunggu pembayaran DP
+                      </span>
+                    )}
                   </div>
                 </div>
               </article>

@@ -298,6 +298,124 @@ export type Database = {
           },
         ];
       };
+      project_stages: {
+        Row: {
+          id: string;
+          project_id: string;
+          nama_tahap: string;
+          urutan: number;
+          progress_percentage: number;
+          status: string;
+          keterangan: string | null;
+          updated_by: string | null;
+          updated_at: string;
+          tanggal_mulai: string | null;
+          tanggal_selesai: string | null;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          nama_tahap: string;
+          urutan: number;
+          progress_percentage?: number;
+          status?: string;
+          keterangan?: string | null;
+          updated_by?: string | null;
+          updated_at?: string;
+          tanggal_mulai?: string | null;
+          tanggal_selesai?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["project_stages"]["Insert"]>;
+      };
+      progress_reports: {
+        Row: {
+          id: string;
+          project_stage_id: string;
+          mandor_id: string | null;
+          persentase: number;
+          keterangan: string | null;
+          foto_url: string | null;
+          status: Database["public"]["Enums"]["report_status"];
+          verified_by: string | null;
+          verified_at: string | null;
+          created_at: string;
+          reviewer_note: string | null;
+          keputusan: string;
+          feedback: string | null;
+          revisi_ke: number;
+        };
+        Insert: {
+          id?: string;
+          project_stage_id: string;
+          mandor_id?: string | null;
+          persentase: number;
+          keterangan?: string | null;
+          foto_url?: string | null;
+          status?: Database["public"]["Enums"]["report_status"];
+          verified_by?: string | null;
+          verified_at?: string | null;
+          created_at?: string;
+          reviewer_note?: string | null;
+          keputusan?: string;
+          feedback?: string | null;
+          revisi_ke?: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["progress_reports"]["Insert"]>;
+      };
+      project_subtasks: {
+        Row: {
+          id: string;
+          project_stage_id: string;
+          judul: string;
+          bobot: number;
+          urutan: number;
+          target_selesai: string | null;
+          selesai: boolean;
+          completed_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_stage_id: string;
+          judul: string;
+          bobot?: number;
+          urutan?: number;
+          target_selesai?: string | null;
+          selesai?: boolean;
+          completed_at?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["project_subtasks"]["Insert"]>;
+      };
+      kendala: {
+        Row: {
+          id: string;
+          project_id: string;
+          project_stage_id: string | null;
+          reported_by: string;
+          deskripsi: string;
+          status: Database["public"]["Enums"]["kendala_status"];
+          tindak_lanjut: string | null;
+          dampak_biaya: number | null;
+          dampak_waktu_hari: number | null;
+          visible_to_customer: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          project_stage_id?: string | null;
+          reported_by: string;
+          deskripsi: string;
+          status?: Database["public"]["Enums"]["kendala_status"];
+          tindak_lanjut?: string | null;
+          dampak_biaya?: number | null;
+          dampak_waktu_hari?: number | null;
+          visible_to_customer?: boolean;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["kendala"]["Insert"]>;
+      };
       pengawas_profiles: {
         Row: {
           id: string;
@@ -997,6 +1115,18 @@ export type Database = {
       };
       submit_project: { Args: { pid: string }; Returns: undefined };
       sign_project_contract: { Args: { pid: string }; Returns: undefined };
+      approve_progress_report: {
+        Args: { report_id: string; review_note?: string | null };
+        Returns: Database["public"]["Tables"]["progress_reports"]["Row"];
+      };
+      reject_progress_report: {
+        Args: { report_id: string; review_note: string };
+        Returns: Database["public"]["Tables"]["progress_reports"]["Row"];
+      };
+      get_project_overall_progress: {
+        Args: { pid: string };
+        Returns: number | null;
+      };
     };
     Enums: {
       contract_status: "draft" | "menunggu_ttd" | "aktif" | "selesai";
@@ -1012,7 +1142,7 @@ export type Database = {
         | "berjalan"
         | "selesai"
         | "batal";
-      report_status: "pending" | "verified";
+      report_status: "pending" | "verified" | "rejected";
       user_role: "customer" | "admin" | "pengawas" | "mandor";
       verifikasi_status: "pending" | "approved" | "rejected";
     };

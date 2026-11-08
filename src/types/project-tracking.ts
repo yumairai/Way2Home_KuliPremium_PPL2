@@ -10,8 +10,10 @@ export type ConstructionMilestone = {
   title: string;
   description: string;
   status: "pending" | "in-progress" | "completed";
+  progress: number;
   startedAt?: string;
   completedAt?: string;
+  updatedAt?: string;
   tasks: ConstructionTask[];
 };
 
