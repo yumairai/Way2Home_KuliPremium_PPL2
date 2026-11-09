@@ -9,14 +9,14 @@ import { verifyMidtransPayment } from "@/utils/midtrans-payment";
 
 type Banner = {
   icon:
-    | "check"
-    | "clock"
-    | "alert"
-    | "revision"
-    | "contract"
-    | "expired"
-    | "cancel"
-    | "active";
+  | "check"
+  | "clock"
+  | "alert"
+  | "revision"
+  | "contract"
+  | "expired"
+  | "cancel"
+  | "active";
   title: string;
   body: string;
   style: string;
@@ -565,50 +565,50 @@ export default function ActionPanel({
           {project.contract.status === "kedaluwarsa" &&
             project.status === "Finalisasi Kontrak" &&
             project.contract.id && (
-            <button
-              type="button"
-              onClick={() => setModalOpen(true)}
-              className="flex min-h-14 cursor-pointer items-center gap-3 rounded-full bg-[#111e3f] px-8 font-bold text-white transition hover:-translate-y-0.5 active:scale-95"
-            >
-              Ajukan Kontrak Ulang
-            </button>
-          )}
+              <button
+                type="button"
+                onClick={() => setModalOpen(true)}
+                className="flex min-h-14 cursor-pointer items-center gap-3 rounded-full bg-[#111e3f] px-8 font-bold text-white transition hover:-translate-y-0.5 active:scale-95"
+              >
+                Ajukan Kontrak Ulang
+              </button>
+            )}
 
           {project.status === "Pembayaran DP" &&
             !activePayment &&
             !dpSuccess && (
-            <button
-              type="button"
-              disabled={dpLoading}
-              onClick={handlePayDP}
-              className="flex min-h-14 cursor-pointer items-center gap-3 rounded-full bg-gradient-to-r from-[#004796] to-[#045ec2] px-8 font-bold text-white shadow-[0_10px_25px_rgba(0,71,150,0.3)] transition hover:-translate-y-0.5 hover:shadow-lg active:scale-95 disabled:cursor-wait disabled:opacity-60"
-            >
-              {dpLoading ? (
-                <>
-                  <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  Memproses Pembayaran...
-                </>
-              ) : (
-                <>
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    <rect width="20" height="14" x="2" y="5" rx="2" />
-                    <path d="M2 10h20" />
-                  </svg>
-                  Bayar Down Payment
-                </>
-              )}
-            </button>
-          )}
+              <button
+                type="button"
+                disabled={dpLoading}
+                onClick={handlePayDP}
+                className="flex min-h-14 cursor-pointer items-center gap-3 rounded-full bg-gradient-to-r from-[#004796] to-[#045ec2] px-8 font-bold text-white shadow-[0_10px_25px_rgba(0,71,150,0.3)] transition hover:-translate-y-0.5 hover:shadow-lg active:scale-95 disabled:cursor-wait disabled:opacity-60"
+              >
+                {dpLoading ? (
+                  <>
+                    <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    Memproses Pembayaran...
+                  </>
+                ) : (
+                  <>
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <rect width="20" height="14" x="2" y="5" rx="2" />
+                      <path d="M2 10h20" />
+                    </svg>
+                    Bayar Down Payment
+                  </>
+                )}
+              </button>
+            )}
 
           {project.status === "Selesai" && (
             <button

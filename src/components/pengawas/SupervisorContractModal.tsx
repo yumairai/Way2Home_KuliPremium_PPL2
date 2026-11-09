@@ -1,15 +1,13 @@
-﻿"use client";
+"use client";
 
 import { useEffect } from "react";
 import Image from "next/image";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import SignaturePadModal from "@/components/contract/SignaturePadModal";
+import ContractDocument from "@/components/contract/ContractDocument";
+import SignatureSlot from "@/components/contract/SignatureSlot";
 import type { SupervisorProject } from "@/data/pengawas";
-
-const money = (value: number) =>
-  new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    maximumFractionDigits: 0,
-  }).format(value);
 
 export default function SupervisorContractModal({
   project,
@@ -18,6 +16,11 @@ export default function SupervisorContractModal({
   project: SupervisorProject;
   onClose: () => void;
 }) {
+  const router = useRouter();
+  const [signatureOpen, setSignatureOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [signedImage, setSignedImage] = useState<string | null>(null);
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
@@ -29,16 +32,37 @@ export default function SupervisorContractModal({
       document.body.style.overflow = "";
     };
   }, [onClose]);
-  const rows = [
-    ["Nomor kontrak", project.contractId],
-    ["Pihak pertama", "PT Way2Home Konstruksi"],
-    ["Pihak kedua", project.customer],
-    ["Alamat proyek", project.address],
-    ["Tipe desain", project.design],
-    ["Nilai kontrak", money(project.value)],
-    ["Tanggal mulai", project.started],
-    ["Target penyelesaian", project.deadline],
-  ];
+  useEffect(() => {
+    const path = project.supervisorSignaturePath;
+    if (!path) return;
+    let active = true;
+    const load = async () => {
+      const { createClient } = await import("@/utils/supabase/client");
+      const { data } = await createClient().storage.from("contract-signatures").createSignedUrl(path, 300);
+      if (active && data?.signedUrl) setSignedImage(data.signedUrl);
+    };
+    void load();
+    return () => { active = false; };
+  }, [project.supervisorSignaturePath]);
+
+  const paymentStages =
+    project.payments.length > 0
+      ? project.payments.map((payment) => ({
+        label: payment.stage,
+        amount: payment.amount,
+      }))
+      : [
+        { label: "Uang Muka (DP)", amount: Math.round(project.value * 0.3) },
+        { label: "Termin 1", amount: Math.round(project.value * 0.25) },
+        { label: "Termin 2", amount: Math.round(project.value * 0.25) },
+        {
+          label: "Termin 3 (Pelunasan)",
+          amount:
+            project.value -
+            Math.round(project.value * 0.3) -
+            Math.round(project.value * 0.25) * 2,
+        },
+      ];
   return (
     <div
       className="fixed inset-0 z-[80] flex items-center justify-center p-4"
@@ -61,7 +85,7 @@ export default function SupervisorContractModal({
               Kontrak proyek
             </h2>
             <p className="mt-1 text-xs text-slate-500">
-              {project.contractId} · {project.title}
+              {project.contractId} � {project.title}
             </p>
           </div>
           <button
@@ -70,7 +94,7 @@ export default function SupervisorContractModal({
             aria-label="Tutup kontrak"
             className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 text-lg text-slate-500 hover:bg-slate-50"
           >
-            ×
+            �
           </button>
         </header>
         <div className="overflow-y-auto px-5 py-6 md:px-10">
@@ -83,88 +107,105 @@ export default function SupervisorContractModal({
               className="mx-auto h-14 w-auto object-contain"
             />
             <p className="mt-3 text-sm font-bold text-[#234b69]">
-              KONTRAK PEMBANGUNAN RUMAH
+              SURAT PERJANJIAN KERJA SAMA PEMBANGUNAN RUMAH
             </p>
             <p className="mt-1 text-[10px] text-slate-500">
-              Nomor: {project.contractId}
+              Nomor: {project.contractId} · Hari / Tanggal:{" "}
+              {project.contractIssuedAt || "Belum tersedia"}
             </p>
           </div>
-          <section className="mt-7">
-            <h3 className="text-sm font-bold text-[#263d53]">
-              Data pihak dan proyek
-            </h3>
-            <div className="mt-3 divide-y divide-[#e9edf1] rounded-xl border border-[#e3e9ee] px-4">
-              {rows.map(([label, value]) => (
-                <div
-                  key={label}
-                  className="flex flex-col gap-1 py-3 sm:flex-row sm:justify-between sm:gap-5"
-                >
-                  <span className="text-xs text-slate-500">{label}</span>
-                  <span className="text-xs font-semibold text-[#2b4358] sm:text-right">
-                    {value}
+          <ContractDocument
+            contractNumber={project.contractId}
+            contractDate={project.contractIssuedAt || "Belum tersedia"}
+            customerName={project.customer}
+            customerNik={project.customerNik || "Belum tersedia"}
+            customerPhone={project.customerPhone || "Belum tersedia"}
+            projectCode={project.id}
+            address={project.address}
+            designName={project.title}
+            architecturalStyle={project.architecturalStyle || "Belum tercantum"}
+            landArea={project.landArea ?? 0}
+            buildingArea={project.buildingArea ?? 0}
+            floors={project.floors}
+            bedrooms={project.bedrooms}
+            bathrooms={project.bathrooms}
+            value={project.value}
+            duration={project.duration ?? 0}
+            startDate={project.started}
+            completionDate={project.deadline}
+            scope={[]}
+            specifications={[
+              ...project.specifications.filter((spec) => !spec.startsWith("Kontrak")),
+              `Kebutuhan customer: ${project.needs}`,
+            ]}
+            supervisor={project.supervisor}
+            foremen={project.foremen ?? (project.foreman ? [project.foreman] : [])}
+            paymentStages={paymentStages}
+          />
+          <div className="mt-10 rounded-xl border border-[#e3e9ee] bg-[#fafbfc] p-5 text-center">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Tanda Tangan Para Pihak</p>
+            <div className="mx-auto mt-5 grid max-w-2xl grid-cols-1 gap-6 sm:grid-cols-2">
+              <SignatureSlot role="Pihak Pertama" name="PT Way2Home Konstruksi">
+                <Image
+                  src="/images/signature-w2h.png"
+                  alt="Tanda tangan PT Way2Home Konstruksi"
+                  width={220}
+                  height={90}
+                  unoptimized
+                  className="h-[72px] w-[180px] object-contain object-center"
+                />
+              </SignatureSlot>
+              <SignatureSlot role="Pengawas" name={project.supervisor}>
+                {signedImage ? (
+                  <img
+                    src={signedImage}
+                    alt="Tanda tangan pengawas"
+                    className="h-[72px] max-w-full object-contain"
+                  />
+                ) : (
+                  <span className="pb-6 text-xs text-slate-500">
+                    Menunggu tanda tangan
                   </span>
-                </div>
-              ))}
-            </div>
-          </section>
-          <section className="mt-7">
-            <h3 className="text-sm font-bold text-[#263d53]">
-              Spesifikasi pekerjaan
-            </h3>
-            <ul className="mt-3 list-disc space-y-2 pl-5 text-xs leading-5 text-slate-600">
-              {project.specifications
-                .filter((spec) => !spec.startsWith("Kontrak"))
-                .map((spec) => (
-                  <li key={spec}>{spec}</li>
-                ))}
-            </ul>
-            <p className="mt-3 text-xs leading-6 text-slate-600">
-              Kebutuhan customer: {project.needs}
-            </p>
-          </section>
-          <section className="mt-7">
-            <h3 className="text-sm font-bold text-[#263d53]">Ketentuan</h3>
-            <ol className="mt-3 list-decimal space-y-2 pl-5 text-xs leading-5 text-slate-600">
-              <li>
-                Perubahan desain atau spesifikasi pekerjaan harus disetujui
-                secara tertulis oleh kedua pihak.
-              </li>
-              <li>
-                Pengerjaan mengikuti tahapan dan jadwal proyek yang disepakati.
-              </li>
-              <li>
-                Penyesuaian jadwal dapat dilakukan jika terdapat keterlambatan
-                material atau kondisi di luar kendali pihak terkait.
-              </li>
-              <li>
-                Pembayaran mengikuti termin dan status yang tercantum dalam
-                informasi proyek.
-              </li>
-            </ol>
-          </section>
-          <div className="mt-10 grid gap-8 sm:grid-cols-2">
-            <div className="border-t border-[#dfe6ec] pt-3 text-center">
-              <p className="text-[10px] text-slate-500">Pihak pertama</p>
-              <p className="mt-10 text-xs font-semibold text-[#263d53]">
-                PT Way2Home Konstruksi
-              </p>
-            </div>
-            <div className="border-t border-[#dfe6ec] pt-3 text-center">
-              <p className="text-[10px] text-slate-500">Pihak kedua</p>
-              <p className="mt-10 text-xs font-semibold text-[#263d53]">
-                {project.customer}
-              </p>
+                )}
+              </SignatureSlot>
+              <div className="sm:col-span-2 sm:mx-auto sm:w-1/2">
+                <SignatureSlot
+                  role="Customer"
+                  name={project.customer}
+                >
+                  {project.customerSignaturePath ? (
+                    <span className="pb-6 text-xs text-slate-500">
+                      Tanda tangan customer akan tampil setelah kontrak disetujui.
+                    </span>
+                  ) : (
+                    <span className="pb-6 text-xs text-slate-500">
+                      Menunggu tanda tangan customer
+                    </span>
+                  )}
+                </SignatureSlot>
+              </div>
             </div>
           </div>
         </div>
-        <footer className="flex justify-end border-t border-[#e7ebef] bg-[#fafbfc] px-5 py-4">
-          <button
-            onClick={onClose}
-            className="h-10 rounded-lg bg-[#183b57] px-5 text-xs font-semibold text-white hover:bg-[#234f70]"
-          >
-            Tutup kontrak
-          </button>
+        <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-[#e7ebef] bg-[#fafbfc] px-5 py-4">
+          {error && <p role="alert" className="w-full text-sm text-red-700">{error}</p>}
+          <div className="flex gap-2"><button type="button" onClick={() => window.print()} className="h-10 rounded-lg border border-slate-300 px-4 text-xs font-semibold text-slate-700">Unduh / Cetak PDF</button><button type="button" onClick={onClose} className="h-10 rounded-lg px-4 text-xs font-semibold text-slate-600">Tutup</button></div>
+          {!project.supervisorSignedAt && project.projectStageStatus === "finalisasi_kontrak" && <button type="button" disabled={project.contractStatus !== "draft" || saving || (project.foremen ?? []).length === 0} onClick={() => setSignatureOpen(true)} className="h-10 rounded-lg bg-[#183b57] px-5 text-xs font-semibold text-white hover:bg-[#234f70] disabled:cursor-not-allowed disabled:opacity-50">Tanda tangani sebagai pengawas</button>}
+          {!project.supervisorSignedAt && project.projectStageStatus !== "finalisasi_kontrak" && <p className="text-xs text-amber-800">Tanda tangan tersedia setelah alokasi mandor difinalisasi.</p>}
+          {!project.supervisorSignedAt && project.projectStageStatus === "finalisasi_kontrak" && (project.foremen ?? []).length === 0 && <p className="text-xs text-amber-800">Alokasikan minimal satu mandor sebelum menandatangani.</p>}
+          {project.supervisorSignedAt && <p className="text-xs font-semibold text-emerald-800">Tanda tangan pengawas tersimpan</p>}
         </footer>
+        {signatureOpen && <SignaturePadModal busy={saving} onClose={() => setSignatureOpen(false)} onContinue={async (signature) => {
+          setSaving(true); setError(null);
+          try {
+            const response = await fetch(`/api/pengawas/projects/${project.id}/contract-signature`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ signature }) });
+            const result = await response.json() as { message?: string };
+            if (!response.ok) throw new Error(result.message || "Gagal menyimpan tanda tangan.");
+            setSignatureOpen(false); router.refresh();
+          } catch (err) { setError(err instanceof Error ? err.message : "Gagal menyimpan tanda tangan."); }
+          finally { setSaving(false); }
+        }} />}
+
       </section>
     </div>
   );

@@ -504,6 +504,7 @@ export function transformDBProjectToProject(
     Record<string, unknown> | undefined;
   const contractCustomer = contractSpecification?.customer as
     Record<string, unknown> | undefined;
+  const projectCustomer = (row.profiles as Record<string, unknown> | undefined) || {};
   const contractStatusMap: Record<string, ContractStatus> = {
     draft: "menunggu",
     sent: "menunggu",
@@ -520,8 +521,18 @@ export function transformDBProjectToProject(
     status: dbContracts
       ? contractStatusMap[dbContracts.status as string] || "menunggu"
       : "belum_tersedia",
-    version: (dbContracts?.versi as number) || 1,
+    version: Number(dbContracts?.document_version || dbContracts?.versi || 1),
+    signedCustomerAt: (dbContracts?.signed_customer_at as string | null) ?? null,
+    signedCustomerSignaturePath: (dbContracts?.signed_customer_signature_path as string | null) ?? null,
+    signedCustomerConsentAt: (dbContracts?.signed_customer_consent_at as string | null) ?? null,
+    signedPengawasAt: (dbContracts?.signed_pengawas_at as string | null) ?? null,
+    signedPengawasSignaturePath: (dbContracts?.signed_pengawas_signature_path as string | null) ?? null,
+    documentVersion: Number(dbContracts?.document_version || 1),
+    companySignatureLabel: (dbContracts?.company_signature_label as string) || "Placeholder tanda tangan PT Way2Home Konstruksi",
     issuedAt: (dbContracts?.created_at as string) || (row.created_at as string),
+    startAt: (dbContracts?.tanggal_mulai as string | null) ?? null,
+    estimatedCompletionAt:
+      (dbContracts?.tanggal_selesai_estimasi as string | null) ?? null,
     deadlineAt: dbContracts?.created_at
       ? new Date(
           new Date(dbContracts.created_at as string).getTime() + 7 * 86400000,
@@ -587,6 +598,9 @@ export function transformDBProjectToProject(
     style: (design.gaya_arsitektur as string) || "Modern",
     landArea: Number(design.luas_tanah || 0),
     buildingArea: Number(design.luas_bangunan || 0),
+    floors: Number(design.jumlah_lantai || 0),
+    bedrooms: Number(design.jumlah_kamar_tidur || 0),
+    bathrooms: Number(design.jumlah_kamar_mandi || 0),
     budget: Number(
       dbContracts?.nilai_kontrak ||
         row.budget_proyek ||
@@ -594,9 +608,10 @@ export function transformDBProjectToProject(
         0,
     ),
     customerName:
-      typeof contractCustomer?.nama === "string"
-        ? contractCustomer.nama
-        : undefined,
+      (typeof contractCustomer?.nama === "string" ? contractCustomer.nama : undefined) ||
+      (typeof projectCustomer.full_name === "string" ? projectCustomer.full_name : undefined),
+    customerNik: (projectCustomer.nik as string | null) ?? null,
+    customerPhone: (projectCustomer.phone as string | null) ?? (contractCustomer?.telepon as string | null) ?? null,
     duration:
       Math.round(((design.estimasi_durasi_hari as number) || 0) / 30) || 8,
     address: (row.alamat_proyek as string) || "Lokasi Belum Ditentukan",
@@ -634,6 +649,9 @@ export async function getUserProjects(
         gaya_arsitektur,
         luas_tanah,
         luas_bangunan,
+        jumlah_lantai,
+        jumlah_kamar_tidur,
+        jumlah_kamar_mandi,
         estimasi_biaya,
         estimasi_durasi_hari,
         lokasi,
@@ -662,6 +680,7 @@ export async function getUserProjects(
         review_status,
         created_at
       ),
+      profiles!projects_customer_id_fkey ( full_name, nik, phone ),
       contracts (
         id,
         ruang_lingkup,
@@ -670,7 +689,14 @@ export async function getUserProjects(
         tanggal_mulai,
         tanggal_selesai_estimasi,
         status,
-        created_at
+        created_at,
+        signed_customer_at,
+        signed_customer_signature_path,
+        signed_customer_consent_at,
+        signed_pengawas_at,
+        signed_pengawas_signature_path,
+        document_version,
+        company_signature_label
       ),
       payment_stages (
         id,
@@ -699,6 +725,9 @@ export async function getUserProjects(
           gaya_arsitektur,
           luas_tanah,
           luas_bangunan,
+          jumlah_lantai,
+          jumlah_kamar_tidur,
+          jumlah_kamar_mandi,
           estimasi_biaya,
           estimasi_durasi_hari,
           lokasi,
@@ -792,6 +821,9 @@ export async function getUserProjectById(
         gaya_arsitektur,
         luas_tanah,
         luas_bangunan,
+        jumlah_lantai,
+        jumlah_kamar_tidur,
+        jumlah_kamar_mandi,
         estimasi_biaya,
         estimasi_durasi_hari,
         lokasi,
@@ -820,6 +852,7 @@ export async function getUserProjectById(
         review_status,
         created_at
       ),
+      profiles!projects_customer_id_fkey ( full_name, nik, phone ),
       contracts (
         id,
         ruang_lingkup,
@@ -828,7 +861,14 @@ export async function getUserProjectById(
         tanggal_mulai,
         tanggal_selesai_estimasi,
         status,
-        created_at
+        created_at,
+        signed_customer_at,
+        signed_customer_signature_path,
+        signed_customer_consent_at,
+        signed_pengawas_at,
+        signed_pengawas_signature_path,
+        document_version,
+        company_signature_label
       ),
       payment_stages (
         id,
@@ -858,6 +898,9 @@ export async function getUserProjectById(
           gaya_arsitektur,
           luas_tanah,
           luas_bangunan,
+          jumlah_lantai,
+          jumlah_kamar_tidur,
+          jumlah_kamar_mandi,
           estimasi_biaya,
           estimasi_durasi_hari,
           lokasi,

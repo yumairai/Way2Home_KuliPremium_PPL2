@@ -75,8 +75,17 @@ export type Contract = {
   version: number;
   issuedAt: string;
   deadlineAt: string;
+  startAt?: string | null;
+  estimatedCompletionAt?: string | null;
   rejectionReasons?: string[];
   adminNotes?: string;
+  signedCustomerAt?: string | null;
+  signedCustomerSignaturePath?: string | null;
+  signedCustomerConsentAt?: string | null;
+  signedPengawasAt?: string | null;
+  signedPengawasSignaturePath?: string | null;
+  documentVersion?: number;
+  companySignatureLabel?: string;
 };
 
 export type Project = {
@@ -88,8 +97,13 @@ export type Project = {
   style: string;
   landArea: number;
   buildingArea: number;
+  floors?: number;
+  bedrooms?: number;
+  bathrooms?: number;
   budget: number;
   customerName?: string;
+  customerNik?: string | null;
+  customerPhone?: string | null;
   duration: number;
   address: string;
   submittedAt: string;

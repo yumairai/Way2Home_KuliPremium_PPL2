@@ -89,15 +89,24 @@ const PROJECT_SELECT = `
     luas_bangunan,
     jumlah_kamar_tidur,
     jumlah_kamar_mandi,
-    jumlah_lantai
+    jumlah_lantai,
+    estimasi_durasi_hari
   ),
   contracts (
     id,
+    created_at,
     nilai_kontrak,
     tanggal_mulai,
-    tanggal_selesai_estimasi
+    tanggal_selesai_estimasi,
+    status,
+    signed_pengawas_at,
+    signed_pengawas_signature_path,
+    signed_customer_at,
+    signed_customer_signature_path,
+    document_version,
+    company_signature_label
   ),
-  profiles!projects_customer_id_fkey ( full_name, phone ),
+  profiles!projects_customer_id_fkey ( full_name, phone, nik ),
   pengawas_profiles (
     profiles!pengawas_profiles_id_fkey ( full_name )
   ),
@@ -326,7 +335,15 @@ function buildSupervisorProject(
     title: String(design.nama ?? "Proyek Pembangunan"),
     customer: String(customer.full_name ?? "Customer"),
     customerPhone: String(customer.phone ?? "-"),
+    customerNik: (customer.nik as string | null) ?? null,
     design: `${String(design.nama ?? "-")} · ${String(design.gaya_arsitektur ?? "-")}`,
+    architecturalStyle: String(design.gaya_arsitektur ?? "-"),
+    landArea: Number(design.luas_tanah ?? 0),
+    buildingArea: Number(design.luas_bangunan ?? 0),
+    floors: Number(design.jumlah_lantai ?? 0),
+    bedrooms: Number(design.jumlah_kamar_tidur ?? 0),
+    bathrooms: Number(design.jumlah_kamar_mandi ?? 0),
+    duration: Math.round(Number(design.estimasi_durasi_hari ?? 0) / 30),
     category: "Pembangunan rumah",
     address: String(row.alamat_proyek ?? "-"),
     status: resolveProjectStatus(String(row.status ?? ""), progress, issues),
@@ -344,6 +361,16 @@ function buildSupervisorProject(
     needs: String(design.deskripsi ?? "Kebutuhan customer belum diisi."),
     specifications: buildSpecifications(design, contractId),
     contractId,
+    contractIssuedAt: contract?.created_at
+      ? formatDate(String(contract.created_at))
+      : "-",
+    contractStatus: String(contract?.status ?? "draft"),
+    projectStageStatus: String(row.status ?? ""),
+    supervisorSignedAt: (contract?.signed_pengawas_at as string | null) ?? null,
+    supervisorSignaturePath: (contract?.signed_pengawas_signature_path as string | null) ?? null,
+    customerSignedAt: (contract?.signed_customer_at as string | null) ?? null,
+    customerSignaturePath: (contract?.signed_customer_signature_path as string | null) ?? null,
+    companySignatureLabel: String(contract?.company_signature_label ?? "Placeholder tanda tangan PT Way2Home Konstruksi"),
     milestones: toSupervisorMilestones(stages),
     tasks: toSupervisorTasks(stages),
     reports,

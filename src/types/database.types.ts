@@ -118,6 +118,7 @@ export type Database = {
           created_at: string;
           full_name: string;
           id: string;
+          nik: string | null;
           phone: string | null;
           role: Database["public"]["Enums"]["user_role"];
         };
@@ -127,6 +128,7 @@ export type Database = {
           created_at?: string;
           full_name: string;
           id: string;
+          nik?: string | null;
           phone?: string | null;
           role?: Database["public"]["Enums"]["user_role"];
         };
@@ -136,6 +138,7 @@ export type Database = {
           created_at?: string;
           full_name?: string;
           id?: string;
+          nik?: string | null;
           phone?: string | null;
           role?: Database["public"]["Enums"]["user_role"];
         };
@@ -497,8 +500,13 @@ export type Database = {
           ketentuan_perubahan: string | null;
           status: Database["public"]["Enums"]["contract_status"];
           signed_customer_at: string | null;
+          signed_customer_consent_at: string | null;
+          signed_customer_signature_path: string | null;
           signed_pengawas_at: string | null;
+          signed_pengawas_signature_path: string | null;
           signed_mandor_at: string | null;
+          document_version: number;
+          company_signature_label: string;
           created_at: string;
         };
         Insert: {
@@ -513,8 +521,13 @@ export type Database = {
           ketentuan_perubahan?: string | null;
           status?: Database["public"]["Enums"]["contract_status"];
           signed_customer_at?: string | null;
+          signed_customer_consent_at?: string | null;
+          signed_customer_signature_path?: string | null;
           signed_pengawas_at?: string | null;
+          signed_pengawas_signature_path?: string | null;
           signed_mandor_at?: string | null;
+          document_version?: number;
+          company_signature_label?: string;
           created_at?: string;
         };
         Update: {
@@ -529,8 +542,13 @@ export type Database = {
           ketentuan_perubahan?: string | null;
           status?: Database["public"]["Enums"]["contract_status"];
           signed_customer_at?: string | null;
+          signed_customer_consent_at?: string | null;
+          signed_customer_signature_path?: string | null;
           signed_pengawas_at?: string | null;
+          signed_pengawas_signature_path?: string | null;
           signed_mandor_at?: string | null;
+          document_version?: number;
+          company_signature_label?: string;
           created_at?: string;
         };
         Relationships: [
@@ -1114,7 +1132,14 @@ export type Database = {
         Relationships: [];
       };
       submit_project: { Args: { pid: string }; Returns: undefined };
-      sign_project_contract: { Args: { pid: string }; Returns: undefined };
+      sign_project_contract: {
+        Args: { pid: string; signature_path: string };
+        Returns: undefined;
+      };
+      sign_supervisor_contract: {
+        Args: { pid: string; signature_path: string };
+        Returns: undefined;
+      };
       approve_progress_report: {
         Args: { report_id: string; review_note?: string | null };
         Returns: Database["public"]["Tables"]["progress_reports"]["Row"];

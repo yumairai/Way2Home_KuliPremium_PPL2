@@ -204,3 +204,15 @@ body {
     transform: none;
   }
 }
+
+
+@media print {
+  body * { visibility: hidden !important; }
+  .contract-modal, .contract-modal * { visibility: visible !important; }
+  .contract-modal { position: static !important; display: block !important; width: 100% !important; max-width: none !important; max-height: none !important; overflow: visible !important; border-radius: 0 !important; box-shadow: none !important; }
+  .contract-modal > :not(.contract-print-area) { display: none !important; }
+  .no-print { display: none !important; }
+  .contract-print-area { overflow: visible !important; max-height: none !important; padding: 0 !important; }
+  .contract-print-area section { break-inside: avoid; }
+  @page { size: A4; margin: 18mm; }
+}
