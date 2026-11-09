@@ -3,13 +3,15 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { houseDesigns } from "@/data/house-designs";
-import type { AiPreference, AiResult } from "@/components/ai/PreferenceForm";
+import type {
+  RecommendationInput,
+  RecommendationResponse,
+} from "@/services/recommendation.service";
 
 const money = (value: number) =>
   `Rp ${(value / 1000000).toLocaleString("id-ID")} juta`;
 
-const priorityLabels: Record<AiPreference["priority"], string> = {
+const priorityLabels: Record<RecommendationInput["priority"], string> = {
   biaya: "Efisiensi Biaya",
   estetik: "Desain Estetik",
   cepat: "Konstruksi Cepat",
@@ -25,12 +27,13 @@ function readStored<T>(key: string, fallback: T): T {
 }
 
 export default function AiResults() {
-  const [preference] = useState<AiPreference | null>(() =>
-    readStored<AiPreference | null>("w2h_ai_preferensi", null),
+  const [preference] = useState<RecommendationInput | null>(() =>
+    readStored<RecommendationInput | null>("w2h_ai_preferensi", null),
   );
-  const [results] = useState<AiResult[]>(() =>
-    readStored<AiResult[]>("w2h_ai_hasil", []),
+  const [response] = useState<RecommendationResponse | null>(() =>
+    readStored<RecommendationResponse | null>("w2h_ai_rekomendasi", null),
   );
+  const results = response?.recommendations ?? [];
 
   const matchColor = (score: number) =>
     score >= 70
@@ -58,9 +61,8 @@ export default function AiResults() {
               Rekomendasi rumah untuk Anda
             </h1>
             <p className="mt-4 max-w-2xl text-base leading-7 text-[#64748b]">
-              Enam desain dengan kecocokan tertinggi terhadap preferensi Anda.
-              Skor dihitung dari kedekatan fitur budget, luas, kamar, gaya,
-              lokasi, dan durasi pembangunan.
+              Desain diurutkan berdasarkan kecocokan budget, luas lahan,
+              kamar, lantai, gaya arsitektur, durasi, dan iklim.
             </p>
           </div>
           <Link
@@ -86,6 +88,9 @@ export default function AiResults() {
               Kamar: {preference.bedrooms}
             </span>
             <span className="rounded-full bg-[#111e3f] px-4 py-1.5 text-xs font-semibold text-white">
+              Lantai: {preference.floors}
+            </span>
+            <span className="rounded-full bg-[#111e3f] px-4 py-1.5 text-xs font-semibold text-white">
               Budget: {money(preference.budget)}
             </span>
             <span className="rounded-full bg-[#fcd47c] px-4 py-1.5 text-xs font-bold text-[#2b3361]">
@@ -94,15 +99,19 @@ export default function AiResults() {
           </div>
         )}
 
+        {response && (
+          <div
+            role="status"
+            className={`mt-6 rounded-xl border px-4 py-3 text-sm leading-6 ${response.usedLocationFallback ? "border-[#ead9b6] bg-[#fff9ed] text-[#765b2c]" : "border-[#cfe3d2] bg-[#edf6ef] text-[#477c50]"}`}
+          >
+            {response.message}
+          </div>
+        )}
+
         <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-          {results.map((result, index) => {
-            const design = houseDesigns.find(
-              (item) => item.slug === result.slug,
-            );
-            if (!design) return null;
-            return (
+          {results.map((design, index) => (
               <article
-                key={result.slug}
+                key={design.slug}
                 className="group overflow-hidden rounded-[2rem] border border-[#dbe4f2] bg-white shadow-[0_12px_30px_rgba(17,30,63,0.05)] transition hover:-translate-y-1 hover:shadow-[0_20px_45px_rgba(17,30,63,0.1)]"
               >
                 <div className="relative aspect-[16/10] overflow-hidden">
@@ -117,9 +126,9 @@ export default function AiResults() {
                     Desain #{index + 1}
                   </span>
                   <span
-                    className={`absolute right-4 top-4 rounded-full bg-white/95 px-4 py-1.5 text-xs font-bold backdrop-blur ${matchColor(result.match)}`}
+                    className={`absolute right-4 top-4 rounded-full bg-white/95 px-4 py-1.5 text-xs font-bold backdrop-blur ${matchColor(design.match)}`}
                   >
-                    {result.match}% Match
+                    {design.match}% Match
                   </span>
                 </div>
                 <div className="p-6">
@@ -132,11 +141,16 @@ export default function AiResults() {
                   <p className="mt-2 text-sm text-[#64748b]">
                     {design.location}
                   </p>
+                  <p className="mt-2 text-xs font-semibold text-[#477c50]">
+                    {design.locationSuitable && design.climateScore !== null
+                      ? `Kecocokan iklim ${(design.climateScore * 100).toFixed(0)}%`
+                      : "Skor iklim tidak tersedia untuk lokasi ini"}
+                  </p>
 
                   <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#f1f5f9]">
                     <div
-                      className={`h-full rounded-full ${matchBar(result.match)}`}
-                      style={{ width: `${result.match}%` }}
+                      className={`h-full rounded-full ${matchBar(design.match)}`}
+                      style={{ width: `${design.match}%` }}
                     />
                   </div>
 
@@ -168,7 +182,7 @@ export default function AiResults() {
                   </dl>
 
                   <div className="mt-5 space-y-1.5 rounded-2xl bg-[#f7f9fc] p-4">
-                    {result.factors.map((factor) => (
+                    {design.factors.map((factor) => (
                       <div
                         key={factor.label}
                         className="flex items-center justify-between text-xs"
@@ -195,16 +209,19 @@ export default function AiResults() {
                   </div>
                 </div>
               </article>
-            );
-          })}
+            ))}
         </div>
 
         {results.length === 0 && (
           <div className="mt-16 rounded-[2rem] border border-dashed border-[#b8c7dc] bg-white px-6 py-16 text-center">
-            <h2 className="text-2xl font-bold">Belum ada hasil rekomendasi</h2>
+              <h2 className="text-2xl font-bold">
+                {response
+                  ? "Belum ada desain untuk direkomendasikan"
+                  : "Belum ada hasil rekomendasi"}
+              </h2>
             <p className="mt-3 text-[#64748b]">
-              Lengkapi preferensi Anda terlebih dahulu, lalu sistem akan
-              menyusun rekomendasi terbaik.
+                {response?.message ??
+                  "Lengkapi preferensi Anda terlebih dahulu, lalu sistem akan menyusun rekomendasi terbaik."}
             </p>
             <Link
               href="/ai-planning-based"

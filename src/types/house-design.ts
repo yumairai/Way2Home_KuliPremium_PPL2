@@ -17,4 +17,5 @@ export type HouseDesign = {
   image: string;
   images?: string[];
   spesifikasi?: Record<string, unknown>;
+  lokasi_cocok?: string[];
 };

@@ -111,6 +111,56 @@ export type Database = {
           },
         ];
       };
+      design_location_scores: {
+        Row: {
+          cocok: boolean;
+          created_at: string;
+          id: string;
+          lokasi: string;
+          nama: string;
+          peringkat_lokasi_untuk_desain: number | null;
+          skor_hujan: number | null;
+          skor_kecocokan_iklim: number | null;
+          skor_kelembapan: number | null;
+          skor_panas: number | null;
+          slug: string;
+        };
+        Insert: {
+          cocok?: boolean;
+          created_at?: string;
+          id?: string;
+          lokasi: string;
+          nama: string;
+          peringkat_lokasi_untuk_desain?: number | null;
+          skor_hujan?: number | null;
+          skor_kecocokan_iklim?: number | null;
+          skor_kelembapan?: number | null;
+          skor_panas?: number | null;
+          slug: string;
+        };
+        Update: {
+          cocok?: boolean;
+          created_at?: string;
+          id?: string;
+          lokasi?: string;
+          nama?: string;
+          peringkat_lokasi_untuk_desain?: number | null;
+          skor_hujan?: number | null;
+          skor_kecocokan_iklim?: number | null;
+          skor_kelembapan?: number | null;
+          skor_panas?: number | null;
+          slug?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "fk_design_location_scores_design";
+            columns: ["slug"];
+            isOneToOne: false;
+            referencedRelation: "designs";
+            referencedColumns: ["slug"];
+          },
+        ];
+      };
       profiles: {
         Row: {
           address: string | null;
@@ -297,124 +347,6 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
-      };
-      project_stages: {
-        Row: {
-          id: string;
-          project_id: string;
-          nama_tahap: string;
-          urutan: number;
-          progress_percentage: number;
-          status: string;
-          keterangan: string | null;
-          updated_by: string | null;
-          updated_at: string;
-          tanggal_mulai: string | null;
-          tanggal_selesai: string | null;
-        };
-        Insert: {
-          id?: string;
-          project_id: string;
-          nama_tahap: string;
-          urutan: number;
-          progress_percentage?: number;
-          status?: string;
-          keterangan?: string | null;
-          updated_by?: string | null;
-          updated_at?: string;
-          tanggal_mulai?: string | null;
-          tanggal_selesai?: string | null;
-        };
-        Update: Partial<Database["public"]["Tables"]["project_stages"]["Insert"]>;
-      };
-      progress_reports: {
-        Row: {
-          id: string;
-          project_stage_id: string;
-          mandor_id: string | null;
-          persentase: number;
-          keterangan: string | null;
-          foto_url: string | null;
-          status: Database["public"]["Enums"]["report_status"];
-          verified_by: string | null;
-          verified_at: string | null;
-          created_at: string;
-          reviewer_note: string | null;
-          keputusan: string;
-          feedback: string | null;
-          revisi_ke: number;
-        };
-        Insert: {
-          id?: string;
-          project_stage_id: string;
-          mandor_id?: string | null;
-          persentase: number;
-          keterangan?: string | null;
-          foto_url?: string | null;
-          status?: Database["public"]["Enums"]["report_status"];
-          verified_by?: string | null;
-          verified_at?: string | null;
-          created_at?: string;
-          reviewer_note?: string | null;
-          keputusan?: string;
-          feedback?: string | null;
-          revisi_ke?: number;
-        };
-        Update: Partial<Database["public"]["Tables"]["progress_reports"]["Insert"]>;
-      };
-      project_subtasks: {
-        Row: {
-          id: string;
-          project_stage_id: string;
-          judul: string;
-          bobot: number;
-          urutan: number;
-          target_selesai: string | null;
-          selesai: boolean;
-          completed_at: string | null;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          project_stage_id: string;
-          judul: string;
-          bobot?: number;
-          urutan?: number;
-          target_selesai?: string | null;
-          selesai?: boolean;
-          completed_at?: string | null;
-          created_at?: string;
-        };
-        Update: Partial<Database["public"]["Tables"]["project_subtasks"]["Insert"]>;
-      };
-      kendala: {
-        Row: {
-          id: string;
-          project_id: string;
-          project_stage_id: string | null;
-          reported_by: string;
-          deskripsi: string;
-          status: Database["public"]["Enums"]["kendala_status"];
-          tindak_lanjut: string | null;
-          dampak_biaya: number | null;
-          dampak_waktu_hari: number | null;
-          visible_to_customer: boolean;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          project_id: string;
-          project_stage_id?: string | null;
-          reported_by: string;
-          deskripsi: string;
-          status?: Database["public"]["Enums"]["kendala_status"];
-          tindak_lanjut?: string | null;
-          dampak_biaya?: number | null;
-          dampak_waktu_hari?: number | null;
-          visible_to_customer?: boolean;
-          created_at?: string;
-        };
-        Update: Partial<Database["public"]["Tables"]["kendala"]["Insert"]>;
       };
       pengawas_profiles: {
         Row: {
@@ -685,7 +617,7 @@ export type Database = {
           id: string;
           project_stage_id: string;
           project_subtask_id: string | null;
-          mandor_id: string;
+          mandor_id: string | null;
           persentase: number;
           keterangan: string | null;
           foto_url: string | null;
@@ -693,6 +625,7 @@ export type Database = {
           keputusan: "menunggu" | "disetujui" | "perlu_revisi";
           feedback: string | null;
           revisi_ke: number;
+          reviewer_note: string | null;
           verified_by: string | null;
           verified_at: string | null;
           created_at: string;
@@ -701,7 +634,7 @@ export type Database = {
           id?: string;
           project_stage_id: string;
           project_subtask_id?: string | null;
-          mandor_id: string;
+          mandor_id?: string | null;
           persentase: number;
           keterangan?: string | null;
           foto_url?: string | null;
@@ -709,6 +642,7 @@ export type Database = {
           keputusan?: "menunggu" | "disetujui" | "perlu_revisi";
           feedback?: string | null;
           revisi_ke?: number;
+          reviewer_note?: string | null;
           verified_by?: string | null;
           verified_at?: string | null;
           created_at?: string;
@@ -717,7 +651,7 @@ export type Database = {
           id?: string;
           project_stage_id?: string;
           project_subtask_id?: string | null;
-          mandor_id?: string;
+          mandor_id?: string | null;
           persentase?: number;
           keterangan?: string | null;
           foto_url?: string | null;
@@ -725,6 +659,7 @@ export type Database = {
           keputusan?: "menunggu" | "disetujui" | "perlu_revisi";
           feedback?: string | null;
           revisi_ke?: number;
+          reviewer_note?: string | null;
           verified_by?: string | null;
           verified_at?: string | null;
           created_at?: string;

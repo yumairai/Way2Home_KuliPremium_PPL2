@@ -1,58 +1,13 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { houseDesigns } from "@/data/house-designs";
+import { toDatabaseLocation, UI_LOCATIONS } from "@/data/location-mapping";
+import type { RecommendationInput, RecommendationResponse } from "@/services/recommendation.service";
 
-export type AiPreference = {
-  location: string;
-  style: string;
-  area: number;
-  bedrooms: number;
-  bathrooms: number;
-  garage: number;
-  quality: number;
-  flexibility: number;
-  budget: number;
-  priority: "biaya" | "estetik" | "cepat";
-};
-
-export type AiResult = {
-  slug: string;
-  match: number;
-  factors: { label: string; score: number }[];
-};
-
-const LOCATIONS = [
-  "Kota Bandung",
-  "Kabupaten Bandung",
-  "Kabupaten Bandung Barat",
-  "Kota Cimahi",
-  "Kabupaten Sumedang",
-  "Kabupaten Garut",
-  "Kota Tasikmalaya",
-  "Kabupaten Tasikmalaya",
-  "Kabupaten Cianjur",
-  "Kota Sukabumi",
-  "Kabupaten Sukabumi",
-  "Kota Bogor",
-  "Kabupaten Bogor",
-  "Kota Depok",
-  "Kota Bekasi",
-  "Kabupaten Bekasi",
-  "Kabupaten Karawang",
-  "Kabupaten Purwakarta",
-  "Kabupaten Subang",
-  "Kabupaten Indramayu",
-  "Kota Cirebon",
-  "Kabupaten Cirebon",
-  "Kabupaten Kuningan",
-  "Kabupaten Majalengka",
-  "Kabupaten Ciamis",
-  "Kota Banjar",
-  "Kabupaten Pangandaran",
-];
+export type AiPreference = RecommendationInput;
 
 const PRIORITIES = [
   {
@@ -77,99 +32,6 @@ const money = (value: number) =>
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
-}
-
-export function generateRecommendations(preference: AiPreference): AiResult[] {
-  const flexBudget = preference.budget * (1 + preference.flexibility / 100);
-  const weights =
-    preference.priority === "biaya"
-      ? {
-          budget: 0.35,
-          area: 0.15,
-          bedrooms: 0.12,
-          style: 0.1,
-          duration: 0.18,
-          location: 0.1,
-        }
-      : preference.priority === "estetik"
-        ? {
-            budget: 0.15,
-            area: 0.15,
-            bedrooms: 0.1,
-            style: 0.28,
-            duration: 0.12,
-            location: 0.2,
-          }
-        : {
-            budget: 0.15,
-            area: 0.15,
-            bedrooms: 0.12,
-            style: 0.1,
-            duration: 0.38,
-            location: 0.1,
-          };
-
-  return houseDesigns
-    .map((design) => {
-      const normalizeLocation = (value: string) =>
-        value.toLowerCase().replace(/^(kota|kabupaten)\s+/, "");
-      const preferredLocation = normalizeLocation(preference.location);
-      const locationScore =
-        design.location.toLowerCase().includes(preferredLocation) ||
-        preferredLocation.includes(design.location.toLowerCase())
-          ? 100
-          : 40;
-      const styleScore = design.style === preference.style ? 100 : 35;
-      const areaScore = clamp(
-        100 - Math.abs(design.landArea - preference.area) * 0.45,
-        0,
-        100,
-      );
-      const bedroomScore =
-        design.bedrooms === preference.bedrooms
-          ? 100
-          : clamp(
-              100 - Math.abs(design.bedrooms - preference.bedrooms) * 25,
-              0,
-              100,
-            );
-      const budgetScore =
-        design.estimatedCost <= preference.budget
-          ? 100
-          : design.estimatedCost <= flexBudget
-            ? 70
-            : 20;
-      const durationScore = clamp(100 - design.estimatedDuration * 4, 0, 100);
-
-      const match =
-        locationScore * weights.location +
-        styleScore * weights.style +
-        areaScore * weights.area +
-        bedroomScore * weights.bedrooms +
-        budgetScore * weights.budget +
-        durationScore * weights.duration;
-
-      const factors: AiResult["factors"] = [
-        { label: "Kesesuaian area", score: Math.round(areaScore) },
-        { label: "Jumlah kamar", score: Math.round(bedroomScore) },
-        { label: "Kesesuaian budget", score: Math.round(budgetScore) },
-      ];
-      if (preference.priority === "cepat") {
-        factors.push({
-          label: "Durasi pengerjaan",
-          score: Math.round(durationScore),
-        });
-      } else {
-        factors.push({
-          label: "Gaya arsitektur",
-          score: Math.round(styleScore),
-        });
-      }
-
-      return { slug: design.slug, match: Math.round(match), factors };
-    })
-    .sort((a, b) => b.match - a.match)
-    .slice(0, 6);
 }
 
 function RangeSlider({
@@ -222,44 +84,100 @@ function RangeSlider({
 export default function PreferenceForm() {
   const router = useRouter();
   const formRef = useRef<HTMLElement>(null);
-  const styles = useMemo(
+  const fallbackStyles = useMemo(
     () => [...new Set(houseDesigns.map((design) => design.style))],
     [],
   );
-  const [location, setLocation] = useState(LOCATIONS[0]);
-  const [style, setStyle] = useState(styles[0]);
+  const [styles, setStyles] = useState(fallbackStyles);
+  const [designCount, setDesignCount] = useState(houseDesigns.length);
+  const [location, setLocation] = useState<string>(UI_LOCATIONS[0]);
+  const [style, setStyle] = useState(fallbackStyles[0] ?? "");
   const [area, setArea] = useState(30);
   const [bedrooms, setBedrooms] = useState(1);
-  const [bathrooms, setBathrooms] = useState(1);
-  const [garage, setGarage] = useState(0);
-  const [quality, setQuality] = useState(5);
+  const [floors, setFloors] = useState(1);
   const [flexibility, setFlexibility] = useState(10);
   const [budget, setBudget] = useState(100000000);
-  const [priority, setPriority] = useState<AiPreference["priority"]>("biaya");
+  const [priority, setPriority] = useState<RecommendationInput["priority"]>("biaya");
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
-  const handleSubmit = () => {
-    const preference: AiPreference = {
+  useEffect(() => {
+    let active = true;
+
+    fetch("/api/designs")
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Katalog desain gagal dimuat.");
+        return (await response.json()) as Array<{ style: string }>;
+      })
+      .then((designs) => {
+        if (!active) return;
+        const availableStyles = [...new Set(designs.map((design) => design.style).filter(Boolean))];
+        if (availableStyles.length > 0) {
+          setStyles(availableStyles);
+          setDesignCount(designs.length);
+          setStyle((current) =>
+            availableStyles.includes(current) ? current : availableStyles[0],
+          );
+        }
+      })
+      .catch((error: unknown) => {
+        console.error("Gagal memuat opsi gaya desain:", error);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleSubmit = async () => {
+    const preference: RecommendationInput = {
       location,
       style,
       area,
       bedrooms,
-      bathrooms,
-      garage,
-      quality,
+      floors,
       flexibility,
       budget,
       priority,
     };
+    const requestInput: RecommendationInput = {
+      ...preference,
+      location: toDatabaseLocation(preference.location),
+    };
     setSubmitting(true);
-    setTimeout(() => {
+    setSubmitError("");
+
+    try {
+      const response = await fetch("/api/recommendations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestInput),
+      });
+      const payload = (await response.json()) as
+        | RecommendationResponse
+        | { message?: string };
+
+      if (!response.ok) {
+        throw new Error(
+          "message" in payload && payload.message
+            ? payload.message
+            : "Rekomendasi gagal dibuat.",
+        );
+      }
+
       localStorage.setItem("w2h_ai_preferensi", JSON.stringify(preference));
       localStorage.setItem(
-        "w2h_ai_hasil",
-        JSON.stringify(generateRecommendations(preference)),
+        "w2h_ai_rekomendasi",
+        JSON.stringify(payload),
       );
       router.push("/ai-planning-based/hasil");
-    }, 700);
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error ? error.message : "Rekomendasi gagal dibuat.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const numberField = (
@@ -372,7 +290,7 @@ export default function PreferenceForm() {
                 onChange={(event) => setLocation(event.target.value)}
                 className="mt-2 w-full cursor-pointer appearance-none rounded-xl border border-[#dbe4f2] bg-white bg-[url('/images/icon/down.png')] bg-[length:16px] bg-[right_14px_center] bg-no-repeat px-4 py-3 text-sm font-semibold text-[#111e3f] outline-none transition focus:border-[#8fb9ed] focus:ring-2 focus:ring-[#045ec2]/20"
               >
-                {LOCATIONS.map((item) => (
+                {UI_LOCATIONS.map((item) => (
                   <option key={item}>{item}</option>
                 ))}
               </select>
@@ -400,7 +318,7 @@ export default function PreferenceForm() {
           <div className="mt-8 grid gap-8 sm:grid-cols-2">
             <RangeSlider
               id="pref-area"
-              label="Estimasi area rumah"
+              label="Luas lahan tersedia"
               value={area}
               min={25}
               max={350}
@@ -421,34 +339,13 @@ export default function PreferenceForm() {
 
           <div className="mt-8 grid gap-6 sm:grid-cols-2">
             {numberField(
-              "pref-bathrooms",
-              "Jumlah kamar mandi",
-              bathrooms,
-              setBathrooms,
+              "pref-floors",
+              "Jumlah lantai",
+              floors,
+              setFloors,
               1,
               3,
-              "Maksimal 3 kamar mandi",
-            )}
-            {numberField(
-              "pref-garage",
-              "Jumlah garasi",
-              garage,
-              setGarage,
-              0,
-              5,
-              "0 - 5 slot kendaraan",
-            )}
-          </div>
-
-          <div className="mt-8 grid gap-6 sm:grid-cols-2">
-            {numberField(
-              "pref-quality",
-              "Kualitas desain",
-              quality,
-              setQuality,
-              1,
-              10,
-              "Skala 1 - 10",
+              "Maksimal 3 lantai",
             )}
             {numberField(
               "pref-flexibility",
@@ -502,15 +399,20 @@ export default function PreferenceForm() {
 
           <button
             type="button"
-            disabled={submitting}
+            disabled={submitting || !style}
             onClick={handleSubmit}
             className="mt-10 min-h-14 w-full cursor-pointer rounded-full bg-gradient-to-r from-[#004796] to-[#045ec2] px-8 text-base font-bold text-white shadow-[0_10px_25px_rgba(0,71,150,0.3)] transition hover:-translate-y-0.5 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60"
           >
             {submitting ? "Menganalisis preferensi..." : "Buat Rekomendasi"}
           </button>
+          {submitError && (
+            <p role="alert" className="mt-3 text-center text-sm text-red-700">
+              {submitError}
+            </p>
+          )}
           <p className="mt-4 text-center text-sm text-[#64748b]">
             Sistem akan membandingkan preferensi Anda dengan{" "}
-            {houseDesigns.length} desain rumah Way2Home.
+            {designCount} desain rumah Way2Home.
           </p>
         </div>
       </section>
