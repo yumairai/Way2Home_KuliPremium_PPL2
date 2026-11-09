@@ -2,6 +2,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
 import type { HouseDesign } from "@/types/house-design";
 import { getHouseDesign } from "@/data/house-designs";
+import { toUiLocation } from "@/data/location-mapping";
+import type { DesignLocationScore } from "./recommendation.types";
+
+export type { DesignLocationScore } from "./recommendation.types";
 
 export type DesignFilters = {
   query?: string;
@@ -15,6 +19,75 @@ export type DesignFilters = {
   bedrooms?: string | number;
   sort?: string;
 };
+
+type DesignLocationScoreRow = Pick<
+  Database["public"]["Tables"]["design_location_scores"]["Row"],
+  | "slug"
+  | "nama"
+  | "lokasi"
+  | "skor_hujan"
+  | "skor_panas"
+  | "skor_kelembapan"
+  | "skor_kecocokan_iklim"
+  | "peringkat_lokasi_untuk_desain"
+  | "cocok"
+>;
+
+function mapDesignLocationScore(
+  row: DesignLocationScoreRow,
+): DesignLocationScore {
+  return {
+    slug: row.slug,
+    nama: row.nama,
+    lokasi: row.lokasi,
+    skor_hujan: Number(row.skor_hujan ?? 0),
+    skor_panas: Number(row.skor_panas ?? 0),
+    skor_kelembapan: Number(row.skor_kelembapan ?? 0),
+    skor_kecocokan_iklim: Number(row.skor_kecocokan_iklim ?? 0),
+    peringkat_lokasi_untuk_desain: Number(
+      row.peringkat_lokasi_untuk_desain ?? 0,
+    ),
+    cocok: row.cocok,
+  };
+}
+
+export async function getAllDesignLocationScores(
+  supabase: SupabaseClient<Database>,
+): Promise<DesignLocationScore[]> {
+  const { data, error } = await supabase
+    .from("design_location_scores")
+    .select(
+      "slug, nama, lokasi, skor_hujan, skor_panas, skor_kelembapan, skor_kecocokan_iklim, peringkat_lokasi_untuk_desain, cocok",
+    )
+    .eq("cocok", true);
+
+  if (error) {
+    console.error("Gagal mengambil skor lokasi desain:", error);
+    throw new Error("Gagal mengambil skor lokasi desain.");
+  }
+
+  return (data ?? []).map(mapDesignLocationScore);
+}
+
+export async function getDesignLocationScores(
+  supabase: SupabaseClient<Database>,
+  lokasi: string,
+): Promise<DesignLocationScore[]> {
+  const { data, error } = await supabase
+    .from("design_location_scores")
+    .select(
+      "slug, nama, lokasi, skor_hujan, skor_panas, skor_kelembapan, skor_kecocokan_iklim, peringkat_lokasi_untuk_desain, cocok",
+    )
+    .eq("lokasi", lokasi)
+    .eq("cocok", true);
+
+  if (error) {
+    console.error("Gagal mengambil skor desain berdasarkan lokasi:", error);
+    throw new Error("Gagal mengambil skor desain berdasarkan lokasi.");
+  }
+
+  return (data ?? []).map(mapDesignLocationScore);
+}
 
 export function transformDesignToHouseDesign(
   row: Record<string, unknown>,
@@ -30,7 +103,7 @@ export function transformDesignToHouseDesign(
     slug: (row.slug as string) || (row.id as string),
     name: row.nama as string,
     style: row.gaya_arsitektur as string,
-    location: (row.lokasi as string) || "Jawa Barat",
+    location: toUiLocation((row.lokasi as string) || "Jawa Barat"),
     landArea: Number(row.luas_tanah || 0),
     buildingArea: Number(row.luas_bangunan || 0),
     bedrooms: Number(row.jumlah_kamar_tidur || 0),
@@ -44,6 +117,7 @@ export function transformDesignToHouseDesign(
         : undefined,
     description: (row.deskripsi as string) || "",
     highlights: (row.highlights as string[]) || [],
+    lokasi_cocok: [],
     image: mainImage,
     images: sortedImages.map((img) => img.url),
     spesifikasi:
@@ -138,19 +212,37 @@ export async function getDesigns(
     query = query.order("created_at", { ascending: false });
   }
 
-  const { data, error } = await query;
+  const [{ data, error }, locationScores] = await Promise.all([
+    query,
+    getAllDesignLocationScores(supabase).catch((scoreError: unknown) => {
+      console.error("Skor lokasi tidak dapat dimuat untuk katalog:", scoreError);
+      return [];
+    }),
+  ]);
 
   if (error) {
     console.error("Gagal mengambil data katalog desain:", error);
     throw new Error("Gagal mengambil data katalog desain.");
   }
 
+  const locationsBySlug = new Map<string, Set<string>>();
+  for (const score of locationScores) {
+    const locations = locationsBySlug.get(score.slug) ?? new Set<string>();
+    locations.add(toUiLocation(score.lokasi));
+    locationsBySlug.set(score.slug, locations);
+  }
+
   let results: HouseDesign[] = (data || []).map(
     (row: Record<string, unknown>) =>
-      transformDesignToHouseDesign(
-        row,
-        (row.design_images as Array<{ url: string; urutan: number }>) || [],
-      ),
+      ({
+        ...transformDesignToHouseDesign(
+          row,
+          (row.design_images as Array<{ url: string; urutan: number }>) || [],
+        ),
+        lokasi_cocok: Array.from(
+          locationsBySlug.get(String(row.slug ?? row.id)) ?? [],
+        ),
+      }),
   );
 
   if (filters?.query && filters.query.trim()) {
@@ -191,7 +283,13 @@ export async function getDesignBySlug(
 
   if (error || !data) {
     const fallback = getHouseDesign(slug);
-    return fallback ?? null;
+    return fallback
+      ? {
+          ...fallback,
+          location: toUiLocation(fallback.location),
+          lokasi_cocok: fallback.lokasi_cocok?.map(toUiLocation) ?? [],
+        }
+      : null;
   }
 
   return transformDesignToHouseDesign(
