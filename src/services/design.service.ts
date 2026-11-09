@@ -50,7 +50,7 @@ export function transformDesignToHouseDesign(
       typeof row.spesifikasi === "object" && row.spesifikasi !== null
         ? (row.spesifikasi as Record<string, unknown>)
         : {},
-  };
+  } as HouseDesign;
 }
 
 export async function getDesigns(

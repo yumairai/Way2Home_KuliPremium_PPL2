@@ -36,7 +36,7 @@ function dateLabel(value?: string) {
 }
 
 function percentLabel(value: number) {
-  return new Intl.NumberFormat("id-ID", { maximumFractionDigits: 0 }).format(
+  return new Intl.NumberFormat("id-ID", { maximumFractionDigits: 1 }).format(
     value,
   );
 }
@@ -46,7 +46,14 @@ export default function CustomerTracking({ project }: { project: Project }) {
     const data = project.tracking?.milestones ?? [];
     return TRACKING_MILESTONE_TEMPLATE.map((template) => {
       const found = data.find((item) => item.id === template.id);
-      return found ?? { ...template, status: "pending" as const, tasks: [] };
+      return (
+        found ?? {
+          ...template,
+          status: "pending" as const,
+          progress: 0,
+          tasks: [],
+        }
+      );
     });
   }, [project.tracking?.milestones]);
   const initialActive =
@@ -68,8 +75,12 @@ export default function CustomerTracking({ project }: { project: Project }) {
   const progress =
     project.status === "Selesai"
       ? 100
-      : hasTrackingMilestones
-        ? Math.round((completedCount / milestones.length) * 100)
+      : hasTrackingMilestones && project.tracking?.milestones.length === 6
+        ? Number(
+            (
+              milestones.reduce((total, item) => total + item.progress, 0) / 6
+            ).toFixed(1),
+          )
         : null;
   const currentMilestone = milestones.find(
     (item) => item.status === "in-progress",
@@ -283,35 +294,50 @@ export default function CustomerTracking({ project }: { project: Project }) {
               Hubungi personel yang mendampingi pembangunan.
             </p>
             <div className="mt-5 divide-y divide-[#e8edf3]">
-              {(["Mandor", "Pengawas"] as const).map((role) => {
-                const member = project.team.find((item) => item.role === role);
-                return (
+              {(["Mandor", "Pengawas"] as const).flatMap((role) => {
+                const members = project.team.filter(
+                  (item) => item.role === role,
+                );
+                const visibleMembers =
+                  members.length > 0
+                    ? members
+                    : [
+                        {
+                          id: `empty-${role}`,
+                          name: `${role} belum ditugaskan`,
+                          role,
+                          phone: "",
+                          experience: "",
+                          projects: 0,
+                        },
+                      ];
+                return visibleMembers.map((member) => (
                   <div
-                    key={role}
+                    key={member.id}
                     className="flex items-center gap-3 py-4 first:pt-0 last:pb-0"
                   >
                     <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#edf4fb] text-sm font-extrabold text-[#145a9d]">
-                      {member?.name
+                      {member.name
                         .split(" ")
                         .map((part) => part[0])
                         .slice(0, 2)
-                        .join("") ?? role[0]}
+                        .join("")}
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-bold text-[#20334f]">
-                        {member?.name ?? `${role} belum ditugaskan`}
+                        {member.name}
                       </p>
                       <p className="mt-0.5 text-xs text-[#7b899a]">
                         {role}
-                        {member?.experience ? ` · ${member.experience}` : ""}
+                        {member.experience ? ` · ${member.experience}` : ""}
                       </p>
                     </div>
-                    {member?.phone ? (
+                    {member.phone ? (
                       <a
                         href={`https://wa.me/${member.phone.replace(/\D/g, "")}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        aria-label={`Hubungi ${role} melalui WhatsApp`}
+                        aria-label={`Hubungi ${member.name} melalui WhatsApp`}
                         className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[#cde8df] bg-[#f1faf6] text-[#0b8068] transition hover:bg-[#e3f5ee] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#045ec2]"
                       >
                         <WhatsAppIcon />
@@ -326,7 +352,7 @@ export default function CustomerTracking({ project }: { project: Project }) {
                       </span>
                     )}
                   </div>
-                );
+                ));
               })}
             </div>
             <div className="mt-5 rounded-xl bg-[#f5f8fb] px-4 py-3">

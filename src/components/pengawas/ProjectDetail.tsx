@@ -1,27 +1,24 @@
 "use client";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
-  supervisorProjects,
   verifiedForemen,
+  type IssueResolution,
   type SupervisorIssue,
   type SupervisorProject,
   type SupervisorReport,
   type VerifiedForeman,
 } from "@/data/pengawas";
 import SupervisorContractModal from "@/components/pengawas/SupervisorContractModal";
+import { useSupervisorProject } from "@/hooks/useSupervisorProject";
 import {
-  addDocumentationItem,
-  addIssueResolution,
-  addSyncedReport,
-  compressImage,
-  persistIssueFollowUp,
-  updateIssueResolution,
-  updateSyncedReportDecision,
-  useProjectSync,
-  type IssueResolution,
-} from "@/utils/project-events";
+  errorMessage,
+  apiPatch,
+  apiPost,
+  apiPut,
+} from "@/lib/api";
+import { compressImage } from "@/utils/image";
 import type { MandorIssueReport } from "@/data/mandor";
 
 const money = (value: number) =>
@@ -338,12 +335,26 @@ function IssueWorkflow({
   projectId,
   customerName,
   onNotify,
+  resolution,
+  onPersist,
+  onPatch,
 }: {
   issue: SupervisorIssue;
   report?: MandorIssueReport;
   projectId: string;
   customerName: string;
   onNotify: (message: string) => void;
+  resolution?: IssueResolution;
+  onPersist: (
+    next: IssueResolution,
+    opts?: {
+      followUp?: string;
+      discussion?: { author: "Pengawas" | "Customer"; message: string };
+      /** True bila keputusan final: kendala langsung ditutup di database. */
+      final?: boolean;
+    },
+  ) => void | Promise<void>;
+  onPatch: (next: IssueResolution) => void;
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [mode, setMode] = useState<"manual" | "ai" | null>(null);
@@ -355,8 +366,6 @@ function IssueWorkflow({
   const [evidence, setEvidence] = useState<string | null>(null);
   const [evidenceName, setEvidenceName] = useState("");
   const [discussionReply, setDiscussionReply] = useState("");
-  const sync = useProjectSync();
-  const resolution = sync.resolutions.find((item) => item.issueId === issue.id);
   const aiOptions = [
     "Koordinasikan pengiriman material pengganti dari pemasok lain, sambil melanjutkan pekerjaan pada area yang tidak terdampak.",
     "Atur ulang urutan pekerjaan untuk sementara dan minta mandor memperbarui jadwal harian setelah material tersedia.",
@@ -379,7 +388,7 @@ function IssueWorkflow({
         : "",
     );
   };
-  const submitResolution = () => {
+  const submitResolution = async () => {
     if (!solution.trim() || (requiresApproval && !approvalReason.trim()))
       return;
     const now = new Date().toLocaleString("id-ID", {
@@ -411,73 +420,93 @@ function IssueWorkflow({
       discussion: [],
       submitted: now,
     };
-    addIssueResolution(next);
-    if (!requiresApproval) persistIssueFollowUp(issue.id, next.solution);
-    onNotify(
-      requiresApproval
-        ? "Usulan dikirim. Kendala menunggu persetujuan customer."
-        : "Solusi dikirim ke mandor dan status kendala diperbarui.",
-    );
+    try {
+      await onPersist(
+        next,
+        requiresApproval ? undefined : { followUp: next.solution },
+      );
+      onNotify(
+        requiresApproval
+          ? "Usulan dikirim. Kendala menunggu persetujuan customer."
+          : "Solusi dikirim ke mandor dan status kendala diperbarui.",
+      );
+    } catch (error) {
+      onNotify(errorMessage(error, "Gagal menyimpan penanganan kendala."));
+    }
   };
-  const customerDecision = (approved: boolean) => {
+  const customerDecision = async (approved: boolean) => {
     if (!resolution) return;
     const feedback = approved
       ? "Usulan disetujui customer."
       : resolution.customerFeedback.trim();
     if (!approved && !feedback) return;
-    const next = {
+    const entry = {
+      author: "Customer" as const,
+      message: feedback,
+      date: new Date().toLocaleString("id-ID", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }),
+    };
+    const next: IssueResolution = {
       ...resolution,
       status: approved
         ? ("Ditindaklanjuti" as const)
         : ("Diskusi dengan pengawas" as const),
-      customerFeedback: approved
-        ? feedback
-        : resolution.customerFeedback.trim(),
+      customerFeedback: approved ? feedback : resolution.customerFeedback.trim(),
       discussion: [
         ...resolution.discussion,
-        {
-          id: crypto.randomUUID(),
-          author: "Customer" as const,
-          message: feedback,
-          date: new Date().toLocaleString("id-ID", {
-            dateStyle: "medium",
-            timeStyle: "short",
-          }),
-        },
+        { ...entry, id: crypto.randomUUID() },
       ],
     };
-    updateIssueResolution(next);
-    if (approved) {
-      persistIssueFollowUp(issue.id, resolution.solution);
-      onNotify("Customer menyetujui usulan. Keputusan diteruskan ke mandor.");
-    } else onNotify("Alasan penolakan diteruskan ke pengawas untuk diskusi.");
+    try {
+      await onPersist(next, {
+        discussion: { author: entry.author, message: feedback },
+        ...(approved ? { followUp: resolution.solution } : {}),
+      });
+      onNotify(
+        approved
+          ? "Customer menyetujui usulan. Keputusan diteruskan ke mandor."
+          : "Alasan penolakan diteruskan ke pengawas untuk diskusi.",
+      );
+    } catch (error) {
+      onNotify(errorMessage(error, "Gagal menyimpan keputusan customer."));
+    }
   };
-  const sendDiscussion = () => {
+  const sendDiscussion = async () => {
     if (!resolution || !discussionReply.trim()) return;
-    updateIssueResolution({
-      ...resolution,
-      solution: discussionReply.trim(),
-      status: "Menunggu approval customer",
-      customerFeedback: "",
-      discussion: [
-        ...resolution.discussion,
+    const entry = {
+      author: "Pengawas" as const,
+      message: discussionReply.trim(),
+      date: new Date().toLocaleString("id-ID", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }),
+    };
+    try {
+      await onPersist(
         {
-          id: crypto.randomUUID(),
-          author: "Pengawas",
-          message: discussionReply.trim(),
-          date: new Date().toLocaleString("id-ID", {
-            dateStyle: "medium",
-            timeStyle: "short",
-          }),
+          ...resolution,
+          solution: discussionReply.trim(),
+          status: "Menunggu approval customer",
+          customerFeedback: "",
+          discussion: [
+            ...resolution.discussion,
+            { ...entry, id: crypto.randomUUID() },
+          ],
         },
-      ],
-    });
-    setDiscussionReply("");
-    onNotify("Tanggapan pengawas dikirim kembali ke customer.");
+        { discussion: { author: entry.author, message: entry.message } },
+      );
+      setDiscussionReply("");
+      onNotify("Tanggapan pengawas dikirim kembali ke customer.");
+    } catch (error) {
+      onNotify(errorMessage(error, "Gagal mengirim tanggapan."));
+    }
   };
-  const finalizeDiscussion = () => {
+  const finalizeDiscussion = async () => {
     if (!resolution || !discussionReply.trim()) return;
-    const finalResolution = {
+    const message = `Keputusan final: ${discussionReply.trim()}`;
+    const finalResolution: IssueResolution = {
       ...resolution,
       solution: discussionReply.trim(),
       discussion: [
@@ -485,7 +514,7 @@ function IssueWorkflow({
         {
           id: crypto.randomUUID(),
           author: "Pengawas" as const,
-          message: `Keputusan final: ${discussionReply.trim()}`,
+          message,
           date: new Date().toLocaleString("id-ID", {
             dateStyle: "medium",
             timeStyle: "short",
@@ -493,10 +522,17 @@ function IssueWorkflow({
         },
       ],
     };
-    updateIssueResolution(finalResolution);
-    persistIssueFollowUp(issue.id, finalResolution.solution);
-    setDiscussionReply("");
-    onNotify("Keputusan final dikirim ke mandor dan dicatat untuk customer.");
+    try {
+      await onPersist(finalResolution, {
+        discussion: { author: "Pengawas", message },
+        followUp: finalResolution.solution,
+        final: true,
+      });
+      setDiscussionReply("");
+      onNotify("Keputusan final dikirim ke mandor dan dicatat untuk customer.");
+    } catch (error) {
+      onNotify(errorMessage(error, "Gagal menyimpan keputusan final."));
+    }
   };
 
   const isFollowedUp =
@@ -792,7 +828,7 @@ function IssueWorkflow({
                   <textarea
                     value={resolution.customerFeedback}
                     onChange={(e) =>
-                      updateIssueResolution({
+                      onPatch({
                         ...resolution,
                         customerFeedback: e.target.value,
                       })
@@ -1030,19 +1066,100 @@ function IssueWorkflow({
 }
 
 export default function ProjectDetail({ projectId }: { projectId: string }) {
-  const initial = supervisorProjects.find(
-    (project) => project.id === projectId,
-  );
-  const [project, setProject] = useState(initial ?? null);
+  const { project: loaded, loading, error, reload } =
+    useSupervisorProject(projectId);
+  const [addedForemanNames, setAddedForemanNames] = useState<string[]>([]);
+  const [resolutionPatches, setResolutionPatches] = useState<
+    Record<string, IssueResolution>
+  >({});
   const [showForemen, setShowForemen] = useState(false);
   const [showContract, setShowContract] = useState(false);
   const [customerMessage, setCustomerMessage] = useState("");
   const [toast, setToast] = useState("");
-  const sync = useProjectSync();
+
   const notify = (message: string) => {
     setToast(message);
     window.setTimeout(() => setToast(""), 3500);
   };
+
+  /**
+   * Data resmi dari Supabase menjadi dasar tampilan. Penugasan mandor yang
+   * ditambahkan di halaman ini bersifat sementara sampai muat ulang berikutnya.
+   */
+  const project = useMemo<SupervisorProject | null>(() => {
+    if (!loaded) return null;
+    if (addedForemanNames.length === 0) return loaded;
+    const names = loaded.foremen ?? (loaded.foreman ? [loaded.foreman] : []);
+    const merged = [
+      ...names,
+      ...addedForemanNames.filter((name) => !names.includes(name)),
+    ].slice(0, 3);
+    return { ...loaded, foremen: merged, foreman: merged[0] ?? null };
+  }, [loaded, addedForemanNames]);
+
+  /** Penanganan kendala: data tersimpan ditimpa oleh suntingan lokal. */
+  const resolutions = useMemo<IssueResolution[]>(() => {
+    const stored = loaded?.resolutions ?? [];
+    const storedIds = new Set(stored.map((item) => item.id));
+    return [
+      ...stored.map((item) => resolutionPatches[item.id] ?? item),
+      ...Object.values(resolutionPatches).filter(
+        (item) => !storedIds.has(item.id),
+      ),
+    ];
+  }, [loaded, resolutionPatches]);
+
+  const patchResolution = (next: IssueResolution) => {
+    setResolutionPatches((current) => ({ ...current, [next.issueId]: next }));
+  };
+
+  /**
+   * Simpan penanganan kendala: membuat baris baru bila belum ada, atau
+   * memperbarui baris yang sudah tersimpan. Diskusi dan tindak lanjut
+   * ditulis pada permintaan yang sama sebelum halaman dimuat ulang.
+   */
+  const persistResolution = async (
+    next: IssueResolution,
+    opts?: {
+      followUp?: string;
+      discussion?: { author: "Pengawas" | "Customer"; message: string };
+      final?: boolean;
+    },
+  ) => {
+    await apiPut(`/api/pengawas/kendala/${next.issueId}/resolution`, {
+      resolution_id: loaded?.resolutions?.find(
+        (item) => item.issueId === next.issueId,
+      )?.id,
+      solusi: next.solution,
+      source: next.source,
+      analisis_ai: next.aiAnalysis,
+      butuh_persetujuan: next.requiresCustomerApproval,
+      alasan_persetujuan: next.approvalReason,
+      bukti: next.approvalEvidence,
+      umpan_balik_customer: next.customerFeedback,
+      status: next.status,
+      keputusan_final: opts?.final === true,
+      discussion: opts?.discussion,
+      tindak_lanjut: opts?.followUp,
+    });
+
+    setResolutionPatches((current) => {
+      const rest = { ...current };
+      delete rest[next.issueId];
+      return rest;
+    });
+
+    await reload();
+  };
+
+  if (loading && !project)
+    return (
+      <div className="mx-auto max-w-3xl p-10">
+        <div className="rounded-2xl border border-[#e3e9ee] bg-white p-8">
+          <p className="text-sm text-slate-500">Memuat halaman...</p>
+        </div>
+      </div>
+    );
   if (!project)
     return (
       <div className="mx-auto max-w-3xl p-10">
@@ -1051,7 +1168,7 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
             Proyek tidak ditemukan
           </h1>
           <p className="mt-2 text-sm text-slate-500">
-            Proyek ini tidak ada dalam daftar penugasan Anda.
+            {error || "Proyek ini tidak ada dalam daftar penugasan Anda."}
           </p>
           <Link
             href="/pengawas"
@@ -1063,114 +1180,56 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
       </div>
     );
 
-  const decideReport = (id: string, decision: "Disetujui" | "Perlu revisi") => {
+  const decideReport = async (
+    id: string,
+    decision: "Disetujui" | "Perlu revisi",
+  ) => {
     const localReport = project.reports.find((report) => report.id === id);
-    const existing = sync.reports.find((report) => report.id === id);
-    if (existing) {
-      updateSyncedReportDecision(id, decision);
-    } else if (localReport) {
-      addSyncedReport({
-        id: localReport.id,
-        projectId: project.id,
-        foreman: localReport.foreman,
-        milestoneId: localReport.milestoneId,
-        milestoneTitle: localReport.title,
-        subtaskTitle: localReport.subtaskTitle,
-        note: localReport.note,
-        photo: localReport.photo,
-        submitted: localReport.submitted,
-        decision,
-        weight: localReport.weight,
-      });
+    const feedback =
+      (
+        document.getElementById(`revision-${id}`) as HTMLTextAreaElement | null
+      )?.value?.trim() ?? "";
+    try {
+      await apiPatch(`/api/pengawas/reports/${id}`, { decision, feedback });
+
+      if (decision === "Disetujui" && localReport?.photo) {
+        await apiPost(`/api/pengawas/projects/${project.id}/documentation`, {
+          url: localReport.photo,
+          catatan: `Dokumentasi mandor: ${localReport.subtaskTitle ?? "pekerjaan"}`,
+          project_stage_id: localReport.milestoneId || null,
+        });
+      }
+
+      await reload();
+      notify(
+        decision === "Disetujui"
+          ? "Laporan diverifikasi. Progres resmi proyek telah diperbarui."
+          : "Catatan revisi disimpan untuk mandor.",
+      );
+    } catch (caught) {
+      notify(
+        errorMessage(caught, "Gagal menyimpan keputusan verifikasi."),
+      );
     }
-    const photo = localReport?.photo ?? existing?.photo ?? null;
-    if (decision === "Disetujui" && photo) {
-      const submitted = (localReport ?? existing)?.submitted ?? "";
-      addDocumentationItem({
-        id: `DOC-${id}`,
-        projectId: project.id,
-        date: submitted.split(" · ")[0] || "Hari ini",
-        caption: `Dokumentasi mandor: ${localReport?.subtaskTitle ?? existing?.subtaskTitle ?? "pekerjaan"}`,
-        image: photo,
-      });
-    }
-    const approvedProgress = existing?.weight ?? 0;
-    setProject((current) =>
-      current
-        ? {
-          ...current,
-          reports: current.reports.map((report) =>
-            report.id === id ? { ...report, decision } : report,
-          ),
-          progress:
-            decision === "Disetujui"
-              ? Math.max(
-                current.progress,
-                current.reports.find((report) => report.id === id)
-                  ?.progress ?? current.progress + approvedProgress,
-              )
-              : current.progress,
-          status:
-            decision === "Disetujui" && current.status === "Perlu perhatian"
-              ? "Berjalan"
-              : current.status,
-        }
-        : current,
-    );
-    notify(
-      decision === "Disetujui"
-        ? "Laporan diverifikasi. Progres resmi proyek telah diperbarui."
-        : "Catatan revisi disimpan untuk mandor.",
-    );
   };
-  const addCustomerUpdate = () => {
+  const addCustomerUpdate = async () => {
     if (!customerMessage.trim()) return;
-    setProject((current) =>
-      current
-        ? {
-          ...current,
-          customerUpdates: [
-            {
-              id: `u-${Date.now()}`,
-              date: "15 Okt 2026",
-              message: customerMessage.trim(),
-            },
-            ...current.customerUpdates,
-          ],
-        }
-        : current,
-    );
-    setCustomerMessage("");
-    notify("Informasi proyek diperbarui untuk customer.");
+    try {
+      await apiPost(`/api/pengawas/projects/${project.id}/updates`, {
+        judul: "Informasi proyek",
+        isi: customerMessage.trim(),
+      });
+      setCustomerMessage("");
+      await reload();
+      notify("Informasi proyek diperbarui untuk customer.");
+    } catch (caught) {
+      notify(errorMessage(caught, "Gagal menerbitkan update proyek."));
+    }
   };
   const overdue = project.status === "Perlu perhatian";
-  const syncedIncoming = sync.reports
-    .filter((report) => report.projectId === project.id)
-    .map((report) => ({
-      id: report.id,
-      foreman: report.foreman,
-      milestoneId: report.milestoneId,
-      title: report.milestoneTitle,
-      subtaskTitle: report.subtaskTitle,
-      note: report.note,
-      submitted: report.submitted,
-      progress: Math.min(100, project.progress + report.weight),
-      decision: report.decision,
-      photo: report.photo,
-      weight: report.weight,
-    }));
-  const mergedReports: SupervisorReport[] = [
-    ...syncedIncoming,
-    ...project.reports.filter(
-      (report) => !syncedIncoming.some((synced) => synced.id === report.id),
-    ),
-  ];
-  const foremanNotes = sync.notes.filter(
-    (note) => note.projectId === project.id,
-  );
-  const mergedDocs = sync.documentation.filter(
-    (item) => item.projectId === project.id,
-  );
+  const mergedReports: SupervisorReport[] = project.reports;
+  const foremanNotes = project.foremanNotes ?? [];
+  const mergedDocs = project.documentation;
   return (
     <div className="mx-auto max-w-[1500px] space-y-6 p-5 md:p-8 xl:p-10">
       {toast && (
@@ -1451,9 +1510,7 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
           >
             <div className="space-y-4">
               {(() => {
-                const syncedIssueReports = sync.issues.filter(
-                  (report) => report.projectId === project.id,
-                );
+                const syncedIssueReports = project.issueReports ?? [];
                 const issueCards: {
                   issue: SupervisorIssue;
                   report?: MandorIssueReport;
@@ -1494,6 +1551,11 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
                       projectId={project.id}
                       customerName={project.customer}
                       onNotify={notify}
+                      resolution={resolutions.find(
+                        (item) => item.issueId === issue.id,
+                      )}
+                      onPersist={persistResolution}
+                      onPatch={patchResolution}
                     />
                   ))
                 ) : (
@@ -1583,7 +1645,7 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
             description="Foto dan catatan hasil pemeriksaan proyek."
           >
             <div className="grid gap-3 sm:grid-cols-2">
-              {[...mergedDocs, ...project.documentation].map((item) => (
+              {mergedDocs.map((item) => (
                 <article
                   key={item.id}
                   className="overflow-hidden rounded-xl border border-[#e6ebef]"
@@ -1728,16 +1790,7 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
           project={project}
           onClose={() => setShowForemen(false)}
           onAssign={(addedForemen) => {
-            setProject((current) => {
-              if (!current) return current;
-              const existing =
-                current.foremen ?? (current.foreman ? [current.foreman] : []);
-              const additions = addedForemen
-                .map((foreman) => foreman.name)
-                .filter((name) => !existing.includes(name));
-              const foremen = [...existing, ...additions].slice(0, 3);
-              return { ...current, foremen, foreman: foremen[0] ?? null };
-            });
+            setAddedForemanNames(addedForemen.map((foreman) => foreman.name));
             setShowForemen(false);
             notify(`${addedForemen.length} mandor ditambahkan ke proyek.`);
           }}

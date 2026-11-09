@@ -1,6 +1,8 @@
 ﻿import { notFound } from "next/navigation";
-import { projects } from "@/data/proyek";
 import CustomerTracking from "@/components/proyek/tracking/CustomerTracking";
+import { createClient } from "@/utils/supabase/server";
+import { getUserProjectById } from "@/services/project.service";
+import { getCustomerProjectTracking } from "@/services/progress.service";
 
 export const metadata = {
   title: "Tracking Pembangunan | Way2Home",
@@ -8,22 +10,14 @@ export const metadata = {
     "Pantau tahapan, catatan tim, dan dokumentasi pembangunan rumah Anda.",
 };
 
-export function generateStaticParams() {
-  return projects
-    .filter(
-      (project) =>
-        project.status === "Proyek Aktif" || project.status === "Selesai",
-    )
-    .map(({ id }) => ({ id: String(id) }));
-}
-
 export default async function ProjectTrackingPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const project = projects.find((item) => item.id === Number(id));
+  const supabase = await createClient();
+  const project = await getUserProjectById(supabase, id);
 
   if (
     !project ||
@@ -32,5 +26,6 @@ export default async function ProjectTrackingPage({
     notFound();
   }
 
-  return <CustomerTracking project={project} />;
+  const tracking = await getCustomerProjectTracking(supabase, id);
+  return <CustomerTracking project={{ ...project, tracking }} />;
 }

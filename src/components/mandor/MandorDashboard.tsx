@@ -2,36 +2,56 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import { mandorProjects, initialMandorRegistration } from "@/data/mandor";
+import { useEffect, useMemo, useState } from "react";
+import { initialMandorRegistration } from "@/data/mandor";
 import { useMandorStatus } from "@/components/mandor/MandorShell";
-import { useProjectSync } from "@/utils/project-events";
+import { createClient } from "@/utils/supabase/client";
+import {
+  getMandorProgressProjects,
+  type LiveProgressProject,
+} from "@/services/progress.service";
 
 export default function MandorDashboard() {
-  const { status } = useMandorStatus();
+  const { status, loading: statusLoading } = useMandorStatus();
   const [filter, setFilter] = useState("Semua proyek");
   const [query, setQuery] = useState("");
-  const sync = useProjectSync();
+  const [liveProjects, setLiveProjects] = useState<LiveProgressProject[]>([]);
+  const [projectsLoading, setProjectsLoading] = useState(true);
+  useEffect(() => {
+    getMandorProgressProjects(createClient())
+      .then(setLiveProjects)
+      .catch((error) => console.error("[MandorDashboard]", error))
+      .finally(() => setProjectsLoading(false));
+  }, []);
   const projects = useMemo(
     () =>
-      mandorProjects.filter(
+      liveProjects.filter(
         (project) =>
-          `${project.id} ${project.title} ${project.design} ${project.location}`
+          `${project.id} ${project.designName} ${project.address ?? ""}`
             .toLowerCase()
             .includes(query.trim().toLowerCase()) &&
           (filter === "Semua proyek" ||
             (filter === "Aktif"
-              ? project.overallProgress < 100
+              ? project.overallProgress !== 100
               : project.overallProgress === 100)),
       ),
-    [query, filter],
+    [liveProjects, query, filter],
   );
-  const active = mandorProjects.filter(
-    (project) => project.overallProgress < 100,
+  const active = liveProjects.filter(
+    (project) => project.overallProgress !== 100,
   ).length;
-  const waiting = sync.reports.filter(
-    (report) => report.decision === "Menunggu",
-  ).length;
+  const waiting = liveProjects.reduce(
+    (total, project) =>
+      total +
+      project.reports.filter((report) => report.status === "pending").length,
+    0,
+  );
+  if (statusLoading || projectsLoading)
+    return (
+      <main className="grid min-h-[calc(100vh-68px)] place-items-center text-sm text-slate-600">
+        Memuat halaman...
+      </main>
+    );
   if (status !== "Disetujui") return <VerificationStatus />;
   return (
     <div className="mx-auto max-w-[1480px] space-y-7 px-4 py-6 sm:px-6 md:py-8">
@@ -110,7 +130,7 @@ export default function MandorDashboard() {
               <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-start sm:p-5">
                 <div className="relative h-28 w-full shrink-0 overflow-hidden rounded-xl bg-[#e9eef2] sm:h-24 sm:w-32">
                   <Image
-                    src={project.image}
+                    src="/images/katalog/house-dummy1.webp"
                     alt="Tampilan desain rumah"
                     fill
                     sizes="(max-width: 640px) 100vw, 128px"
@@ -119,25 +139,31 @@ export default function MandorDashboard() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-[10px] font-semibold text-[#53738d]">
-                    #{project.id} Â· {project.design}
+                    #{project.id} · {project.designName}
                   </p>
                   <h3 className="mt-1 text-base font-bold text-[#183b57]">
-                    {project.title}
+                    Proyek pembangunan
                   </h3>
                   <p className="mt-1 text-xs text-slate-500">
-                    {project.location}
+                    {project.address ?? "Alamat belum tersedia"}
                   </p>
                   <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-slate-500">
-                    <span>Pengawas: {project.supervisor}</span>
-                    <span>Target: {project.target}</span>
+                    <span>Customer: {project.customerName}</span>
+                    <span>Status: {project.status}</span>
                   </div>
                 </div>
-                <Link
-                  href={`/mandor/proyek/${project.id}`}
-                  className="flex min-h-10 shrink-0 items-center justify-center rounded-lg border border-[#cfdce6] px-4 text-xs font-semibold text-[#355c78] hover:bg-[#f3f7fa] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#477ba6]"
-                >
-                  Buka pekerjaan
-                </Link>
+                {project.status === "berjalan" || project.status === "selesai" ? (
+                  <Link
+                    href={`/mandor/proyek/${project.id}`}
+                    className="flex min-h-10 shrink-0 items-center justify-center rounded-lg border border-[#cfdce6] px-4 text-xs font-semibold text-[#355c78] hover:bg-[#f3f7fa] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#477ba6]"
+                  >
+                    Buka pekerjaan
+                  </Link>
+                ) : (
+                  <span className="flex min-h-10 shrink-0 items-center justify-center rounded-lg border border-[#e8d8ae] bg-[#fffaf0] px-4 text-center text-xs font-semibold text-[#946a27]">
+                    Menunggu pembayaran DP
+                  </span>
+                )}
               </div>
               <div className="border-t border-[#edf0f3] bg-[#fafbfc] px-4 py-3 sm:px-5">
                 <div className="flex items-center justify-between text-[10px] text-slate-500">
@@ -147,12 +173,14 @@ export default function MandorDashboard() {
                       Usulan menunggu tidak mengubah progres resmi
                     </span>
                   </span>
-                  <b className="text-[#315b76]">{project.overallProgress}%</b>
+                  <b className="text-[#315b76]">
+                    {project.overallProgress === null ? "—" : `${project.overallProgress}%`}
+                  </b>
                 </div>
                 <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#e9edf2]">
                   <span
                     className="block h-full rounded-full bg-[#5e83a0]"
-                    style={{ width: `${project.overallProgress}%` }}
+                    style={{ width: `${project.overallProgress ?? 0}%` }}
                   />
                 </div>
               </div>
@@ -175,7 +203,7 @@ export default function MandorDashboard() {
 }
 
 function VerificationStatus() {
-  const { status, reason, setDemoStatus } = useMandorStatus();
+  const { status, reason, resubmit } = useMandorStatus();
   if (status === "Menunggu")
     return (
       <main className="mx-auto grid min-h-[calc(100vh-68px)] max-w-3xl place-items-center px-5 py-12">
@@ -219,7 +247,7 @@ function VerificationStatus() {
     <main className="mx-auto grid min-h-[calc(100vh-68px)] max-w-3xl place-items-center px-5 py-12">
       <RejectedApplication
         reason={reason}
-        onResubmit={() => setDemoStatus("Menunggu", reason)}
+        onResubmit={() => void resubmit()}
       />
     </main>
   );
