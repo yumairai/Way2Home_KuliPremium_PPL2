@@ -171,6 +171,11 @@ export default function ProfileEdit({
       setAvatarPreview(nextAvatarUrl || DEFAULT_AVATAR);
       setAvatarFile(null);
       setSaved(true);
+      window.dispatchEvent(
+        new CustomEvent("w2h:profile-updated", {
+          detail: { fullName: nextProfile.name, avatarUrl: nextProfile.avatarUrl },
+        }),
+      );
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
       setSaveError(
