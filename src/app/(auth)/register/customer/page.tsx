@@ -72,6 +72,7 @@ export default function CustomerRegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [nik, setNik] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [terms, setTerms] = useState(false);
@@ -85,6 +86,7 @@ export default function CustomerRegisterPage() {
     name: "",
     email: "",
     phoneNumber: "",
+    nik: "",
     password: "",
     passwordConfirmation: "",
     terms: "",
@@ -101,6 +103,7 @@ export default function CustomerRegisterPage() {
       name: "",
       email: "",
       phoneNumber: "",
+      nik: "",
       password: "",
       passwordConfirmation: "",
       terms: "",
@@ -135,6 +138,11 @@ export default function CustomerRegisterPage() {
       newErrors.phoneNumber = "Format nomor HP tidak valid.";
     }
 
+    // NIK
+    if (!/^\d{16}$/.test(nik)) {
+      newErrors.nik = "NIK harus terdiri dari tepat 16 digit angka.";
+    }
+
     // Terms
     if (!terms) {
       newErrors.terms = "Anda harus menyetujui Syarat & Ketentuan.";
@@ -161,6 +169,7 @@ export default function CustomerRegisterPage() {
       name: name.trim(),
       email: email.trim(),
       phone: phoneNumber,
+      nik,
       password,
     });
 
@@ -326,6 +335,44 @@ export default function CustomerRegisterPage() {
               {errors.phoneNumber && (
                 <p className="mt-1 text-xs font-medium text-red-500">
                   {errors.phoneNumber}
+                </p>
+              )}
+            </div>
+
+            {/* =========================
+                NIK
+                ========================= */}
+            <div className="mb-3.5">
+              <label
+                htmlFor="nik"
+                className="mb-1.5 block text-sm text-[#2B3361]"
+              >
+                NIK
+              </label>
+
+              <input
+                id="nik"
+                type="text"
+                value={nik}
+                onChange={(e) => {
+                  const digitsOnly = e.target.value.replace(/\D/g, "").slice(0, 16);
+                  setNik(digitsOnly);
+                  if (errors.nik) {
+                    setErrors((prev) => ({ ...prev, nik: "" }));
+                  }
+                }}
+                placeholder="Masukkan 16 digit NIK"
+                inputMode="numeric"
+                maxLength={16}
+                autoComplete="off"
+                aria-invalid={!!errors.nik}
+                aria-describedby={errors.nik ? "nik-error" : undefined}
+                className={getInputClassName(!!errors.nik)}
+              />
+
+              {errors.nik && (
+                <p id="nik-error" className="mt-1 text-xs font-medium text-red-500">
+                  {errors.nik}
                 </p>
               )}
             </div>

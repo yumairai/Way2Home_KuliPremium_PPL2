@@ -1074,6 +1074,7 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
   >({});
   const [showForemen, setShowForemen] = useState(false);
   const [showContract, setShowContract] = useState(false);
+  const [signatureError, setSignatureError] = useState<string | null>(null);
   const [customerMessage, setCustomerMessage] = useState("");
   const [toast, setToast] = useState("");
 
@@ -1380,7 +1381,7 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
                   </p>
                 )}
               {(project.foremen ?? (project.foreman ? [project.foreman] : []))
-                .length < 3 && (
+                .length < 3 && !project.supervisorSignedAt && project.contractStatus !== "menunggu_ttd" && (
                   <button
                     onClick={() => setShowForemen(true)}
                     className="h-10 rounded-lg border border-[#cfdce6] px-4 text-xs font-semibold text-[#355c78] hover:bg-[#f3f7fa] hover:cursor-pointer"
@@ -1709,7 +1710,7 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
                 onClick={() => setShowContract(true)}
                 className="mt-3 h-10 w-full rounded-lg border border-[#cfdce6] px-4 text-xs font-semibold text-[#355c78] transition hover:bg-[#f3f7fa] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#477ba6]"
               >
-                Lihat Kontrak
+                {project.supervisorSignedAt ? "Lihat Kontrak · Tanda tangan tersimpan" : "Lihat & Tanda Tangani Kontrak"}
               </button>
             </div>
           </Surface>
@@ -1799,7 +1800,7 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
       {showContract && (
         <SupervisorContractModal
           project={project}
-          onClose={() => setShowContract(false)}
+          onClose={() => { setShowContract(false); setSignatureError(null); void reload(); }}
         />
       )}
     </div>

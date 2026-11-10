@@ -15,6 +15,8 @@ import {
 } from "@/services/allocation.service";
 import { ServiceError } from "@/services/access.service";
 import { getPengawasProgressProjects } from "@/services/progress.service";
+import SupervisorContractModal from "@/components/pengawas/SupervisorContractModal";
+import type { SupervisorProject } from "@/data/pengawas";
 
 // ─── Status helpers ────────────────────────────────────────────────────────────
 
@@ -426,6 +428,9 @@ export default function PengawasDashboard() {
   const [officialProgress, setOfficialProgress] = useState<
     Record<string, number | null>
   >({});
+  const [contractProject, setContractProject] = useState<SupervisorProject | null>(null);
+  const [contractLoadingId, setContractLoadingId] = useState<string | null>(null);
+  const [contractError, setContractError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     const supabase = createClient();
@@ -542,6 +547,26 @@ export default function PengawasDashboard() {
           : project,
       ),
     );
+    const finalized = projects.find((project) => project.id === projectId);
+    if (finalized) void openSupervisorContract({ ...finalized, status: "finalisasi_kontrak" });
+  };
+
+  const openSupervisorContract = async (project: ProjectForPengawas) => {
+    setContractLoadingId(project.id);
+    setContractError(null);
+    try {
+      const response = await fetch(`/api/pengawas/projects/${project.id}`, { cache: "no-store" });
+      if (!response.ok) {
+        const result = await response.json() as { message?: string };
+        throw new Error(result.message || "Gagal memuat kontrak proyek.");
+      }
+      const detail = await response.json() as SupervisorProject;
+      setContractProject(detail);
+    } catch (err) {
+      setContractError(err instanceof Error ? err.message : "Gagal membuka kontrak.");
+    } finally {
+      setContractLoadingId(null);
+    }
   };
 
   if (loading) {
@@ -724,6 +749,15 @@ export default function PengawasDashboard() {
                           ? "Alokasikan Mandor"
                           : "Kelola Mandor"}
                       </button>
+                    ) : project.status === "finalisasi_kontrak" ? (
+                      <button
+                        type="button"
+                        onClick={() => void openSupervisorContract(project)}
+                        disabled={contractLoadingId === project.id}
+                        className="ml-3 inline-flex h-10 shrink-0 items-center justify-center rounded-lg bg-[#183b57] px-3 py-2 text-[11px] font-semibold text-white hover:bg-[#234f70] disabled:opacity-50"
+                      >
+                        {contractLoadingId === project.id ? "Memuat kontrak…" : "Tanda tangani kontrak"}
+                      </button>
                     ) : project.status === "berjalan" ||
                       project.status === "selesai" ? (
                       <Link
@@ -760,6 +794,19 @@ export default function PengawasDashboard() {
         Data diambil langsung dari database. Alokasi mandor tersimpan secara
         permanen dan terlihat setelah refresh.
       </footer>
+
+      {contractError && (
+        <div role="alert" className="fixed bottom-5 right-5 z-[90] max-w-md rounded-xl border border-red-200 bg-white px-5 py-4 text-sm font-medium text-red-800 shadow-xl">
+          {contractError}
+          <button type="button" onClick={() => setContractError(null)} className="ml-3 underline">Tutup</button>
+        </div>
+      )}
+      {contractProject && (
+        <SupervisorContractModal
+          project={contractProject}
+          onClose={() => { setContractProject(null); void load(); }}
+        />
+      )}
 
       {/* Mandor Allocation Modal */}
       {selectedProject && (
