@@ -1,4 +1,4 @@
-import LiveMandorProjectDetail from "@/components/mandor/LiveMandorProjectDetail";
+import MandorProjectDetail from "@/components/mandor/MandorProjectDetail";
 
 export const metadata = {
   title: "Detail Pekerjaan | Way2Home",
@@ -11,5 +11,5 @@ export default async function MandorProjectDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return <LiveMandorProjectDetail id={id} />;
+  return <MandorProjectDetail id={id} />;
 }

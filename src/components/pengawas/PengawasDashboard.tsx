@@ -703,74 +703,93 @@ export default function PengawasDashboard() {
                         ? ` · ${project.alamat_proyek.slice(0, 60)}`
                         : ""}
                     </p>
-                    <p className="mt-2 text-xs font-semibold text-[#315b76]">
-                      Progress resmi: {officialProgress[project.id] ?? "—"}%
-                    </p>
                   </div>
-                  <Link
-                    href={`/pengawas/proyek/${project.id}`}
-                    className="inline-flex h-10 shrink-0 items-center justify-center rounded-lg border border-[#cfdce6] px-4 text-xs font-semibold text-[#355c78] hover:bg-[#f3f7fa] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#477ba6]"
-                  >
-                    Buka detail
-                  </Link>
+                  {canAllocateStaff(project.status) ? (
+                    <button
+                      id={`kelola-mandor-${project.id}`}
+                      onClick={() => setSelectedProject(project)}
+                      className="inline-flex h-10 shrink-0 items-center justify-center rounded-lg border border-[#183b57] px-4 text-xs font-semibold text-[#183b57] transition-colors hover:bg-[#183b57] hover:text-white"
+                    >
+                      {project.mandors.length === 0
+                        ? "Alokasikan Mandor"
+                        : "Kelola Mandor"}
+                    </button>
+                  ) : project.status === "finalisasi_kontrak" ? (
+                    <button
+                      type="button"
+                      onClick={() => void openSupervisorContract(project)}
+                      disabled={contractLoadingId === project.id}
+                      className="inline-flex h-10 shrink-0 items-center justify-center rounded-lg bg-[#183b57] px-4 text-xs font-semibold text-white hover:bg-[#234f70] disabled:opacity-50"
+                    >
+                      {contractLoadingId === project.id ? "Memuat kontrak…" : "Tanda tangani kontrak"}
+                    </button>
+                  ) : project.status === "berjalan" || project.status === "selesai" ? (
+                    <Link
+                      href={`/pengawas/proyek/${project.id}`}
+                      className="inline-flex h-10 shrink-0 items-center justify-center rounded-lg border border-[#cfdce6] px-4 text-xs font-semibold text-[#355c78] hover:bg-[#f3f7fa] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#477ba6]"
+                    >
+                      Buka detail
+                    </Link>
+                  ) : (
+                    <span className="inline-flex h-10 shrink-0 items-center justify-center rounded-lg border border-[#e8d8ae] bg-[#fffaf0] px-4 text-center text-xs font-semibold text-[#946a27]">
+                      Tracking menunggu pembayaran DP
+                    </span>
+                  )}
                 </div>
 
-                {/* Mandor section */}
-                <div className="border-t border-[#edf0f3] bg-[#fafbfc] px-5 py-4 sm:px-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                        Tim Mandor ({project.mandors.length})
-                      </p>
+                {/* Sub-grid 4 Kolom dari ui-old */}
+                <div className="grid grid-cols-2 gap-y-4 border-t border-[#edf0f3] bg-[#fafbfc] px-5 py-4 sm:grid-cols-4 sm:px-6">
+                  <div>
+                    <p className="text-[9px] text-slate-500">Customer</p>
+                    <p className="mt-1 truncate text-xs font-semibold text-slate-700">
+                      {project.customer_name}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-slate-500">Progres resmi</p>
+                    <p className="mt-1 text-xs font-semibold text-slate-700">
+                      {officialProgress[project.id] !== undefined ? `${officialProgress[project.id]}%` : "0%"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-slate-500">Tim Mandor</p>
+                    <div className="mt-1 flex flex-wrap items-center gap-1">
                       {project.mandors.length > 0 ? (
-                        <div className="mt-1.5 flex flex-wrap gap-1.5">
-                          {project.mandors.map((m) => (
-                            <span
-                              key={m.mandor_id}
-                              className="inline-flex items-center gap-1 rounded-full border border-[#d8e3eb] bg-[#eaf1f6] px-2.5 py-1 text-[10px] font-semibold text-[#355973]"
-                            >
-                              {m.full_name}
-                            </span>
-                          ))}
-                        </div>
+                        project.mandors.map((m) => (
+                          <span
+                            key={m.mandor_id}
+                            className="inline-block truncate text-xs font-semibold text-slate-700"
+                            title={m.full_name}
+                          >
+                            {m.full_name}
+                          </span>
+                        ))
                       ) : (
-                        <p className="mt-1 text-xs text-slate-400 italic">
-                          Belum ada mandor dialokasikan
+                        <p className="truncate text-xs font-semibold text-slate-700">
+                          Belum ditetapkan
                         </p>
                       )}
                     </div>
-                    {canAllocateStaff(project.status) ? (
-                      <button
-                        id={`kelola-mandor-${project.id}`}
-                        onClick={() => setSelectedProject(project)}
-                        className="ml-3 shrink-0 rounded-lg border border-[#183b57] px-3 py-2 text-[11px] font-semibold text-[#183b57] transition-colors hover:bg-[#183b57] hover:text-white"
-                      >
-                        {project.mandors.length === 0
-                          ? "Alokasikan Mandor"
-                          : "Kelola Mandor"}
-                      </button>
-                    ) : project.status === "finalisasi_kontrak" ? (
-                      <button
-                        type="button"
-                        onClick={() => void openSupervisorContract(project)}
-                        disabled={contractLoadingId === project.id}
-                        className="ml-3 inline-flex h-10 shrink-0 items-center justify-center rounded-lg bg-[#183b57] px-3 py-2 text-[11px] font-semibold text-white hover:bg-[#234f70] disabled:opacity-50"
-                      >
-                        {contractLoadingId === project.id ? "Memuat kontrak…" : "Tanda tangani kontrak"}
-                      </button>
-                    ) : project.status === "berjalan" ||
-                      project.status === "selesai" ? (
-                      <Link
-                        href={`/pengawas/proyek/${project.id}`}
-                        className="ml-3 inline-flex h-10 shrink-0 items-center justify-center rounded-lg border border-[#183b57] px-3 py-2 text-[11px] font-semibold text-[#183b57] transition-colors hover:bg-[#183b57] hover:text-white"
-                      >
-                        Buka tracking proyek
-                      </Link>
-                    ) : (
-                      <span className="ml-3 inline-flex h-10 shrink-0 items-center justify-center rounded-lg border border-[#e8d8ae] bg-[#fffaf0] px-3 py-2 text-center text-[11px] font-semibold text-[#946a27]">
-                        Tracking menunggu pembayaran DP
-                      </span>
-                    )}
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-slate-500">Status proyek</p>
+                    <p className="mt-1 truncate text-xs font-semibold text-slate-700">
+                      {STATUS_LABEL[project.status] ?? project.status}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Progress bar keseluruhan dari ui-old */}
+                <div className="px-5 pb-5 sm:px-6">
+                  <div className="flex items-center justify-between text-[10px] text-slate-500">
+                    <span>Progres keseluruhan</span>
+                    <span>{officialProgress[project.id] !== undefined ? `${officialProgress[project.id]}%` : "0%"}</span>
+                  </div>
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#e9edf2]">
+                    <span
+                      className="block h-full rounded-full bg-[#5e83a0]"
+                      style={{ width: `${officialProgress[project.id] ?? 0}%` }}
+                    />
                   </div>
                 </div>
               </article>

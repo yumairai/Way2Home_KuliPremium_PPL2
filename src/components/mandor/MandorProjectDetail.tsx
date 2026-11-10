@@ -105,6 +105,28 @@ export default function MandorProjectDetail({ id }: { id: string }) {
       </main>
     );
 
+  if (project.status && project.status !== "berjalan" && project.status !== "selesai")
+    return (
+      <main className="mx-auto max-w-2xl px-5 py-12">
+        <section className="rounded-2xl border border-[#e2e8ed] bg-white p-8 text-center">
+          <h1 className="text-xl font-bold text-[#183b57]">
+            Tracking belum tersedia
+          </h1>
+          <p className="mt-2 text-sm text-slate-500">
+            {project.status === "pembayaran_dp"
+              ? "Tracking proyek tersedia setelah pembayaran DP terverifikasi."
+              : "Tracking proyek belum tersedia pada tahap proyek ini."}
+          </p>
+          <Link
+            href="/mandor/proyek"
+            className="mt-4 inline-block text-sm font-semibold text-[#35658a] underline"
+          >
+            Kembali ke proyek
+          </Link>
+        </section>
+      </main>
+    );
+
   // Subtask sudah ditandai `done` oleh backend saat pengawas memverifikasi,
   // sehingga daftar persetujuan tambahan tidak diperlukan lagi.
   const approvedSubtasks: ApprovedSubtask[] = [];

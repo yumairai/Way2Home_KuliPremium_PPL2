@@ -238,6 +238,7 @@ function buildMandorProject(
 
   return {
     id: String(row.id),
+    status: typeof row.status === "string" ? row.status : undefined,
     title: String(design.nama ?? "Proyek Pembangunan"),
     design: String(design.gaya_arsitektur ?? "-"),
     location: String(row.alamat_proyek ?? design.lokasi ?? "-"),

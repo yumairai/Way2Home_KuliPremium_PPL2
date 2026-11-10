@@ -70,6 +70,7 @@ export type MandorForemanNote = {
 };
 export type MandorProject = {
   id: string;
+  status?: string;
   title: string;
   design: string;
   location: string;
