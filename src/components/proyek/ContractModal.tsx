@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import type { Project } from "@/types/proyek";
@@ -19,7 +19,9 @@ export default function ContractModal({
   onClose: () => void;
 }) {
   const router = useRouter();
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [checked, setChecked] = useState(false);
+  const [readToBottom, setReadToBottom] = useState(false);
   const [rejectMode, setRejectMode] = useState(false);
   const [reason, setReason] = useState("");
   const [toast, setToast] = useState("");
@@ -46,6 +48,24 @@ export default function ContractModal({
       document.body.style.overflow = previousOverflow;
     };
   }, [onClose]);
+
+  const handleScroll = () => {
+    const element = scrollAreaRef.current;
+    if (!element) return;
+    // Toleransi 24px agar user tidak harus presisi di titik terakhir
+    if (element.scrollTop + element.clientHeight >= element.scrollHeight - 24) {
+      setReadToBottom(true);
+    }
+  };
+
+  useEffect(() => {
+    const element = scrollAreaRef.current;
+    if (!element) return;
+    // Konten pendek (tidak bisa scroll) langsung dianggap terbaca sampai bawah
+    if (element.scrollHeight <= element.clientHeight + 24) {
+      setReadToBottom(true);
+    }
+  }, []);
 
   useEffect(() => {
     const path = project.contract.signedCustomerSignaturePath;
@@ -111,15 +131,15 @@ export default function ContractModal({
     project.payments.length > 0
       ? project.payments
       : [
-        { label: "Uang Muka (DP)", amount: Math.round(project.budget * 0.3) },
-        { label: "Termin 1", amount: Math.round(project.budget * 0.25) },
-        { label: "Termin 2", amount: Math.round(project.budget * 0.25) },
+        { label: "Uang Muka (DP)", amount: Math.round((project.estimatedCost ?? project.budget) * 0.3) },
+        { label: "Termin 1", amount: Math.round((project.estimatedCost ?? project.budget) * 0.25) },
+        { label: "Termin 2", amount: Math.round((project.estimatedCost ?? project.budget) * 0.25) },
         {
           label: "Termin 3 (Pelunasan)",
           amount:
-            project.budget -
-            Math.round(project.budget * 0.3) -
-            Math.round(project.budget * 0.25) * 2,
+            (project.estimatedCost ?? project.budget) -
+            Math.round((project.estimatedCost ?? project.budget) * 0.3) -
+            Math.round((project.estimatedCost ?? project.budget) * 0.25) * 2,
         },
       ];
 
@@ -163,7 +183,11 @@ export default function ContractModal({
           </button>
         </div>
 
-        <div className="contract-print-area overflow-y-auto px-8 py-6 md:px-12">
+        <div
+          ref={scrollAreaRef}
+          onScroll={handleScroll}
+          className="contract-print-area overflow-y-auto px-8 py-6 md:px-12"
+        >
           <div className="text-center">
             <Image
               src="/images/aset/logo-w2h.png"
@@ -187,13 +211,17 @@ export default function ContractModal({
             customerName={project.customerName || "Customer"}
             customerNik={project.customerNik || "Belum tersedia"}
             customerPhone={project.customerPhone || "Belum tersedia"}
+            customerEmail={project.customerEmail || "Belum tersedia"}
             projectCode={String(project.id)}
             address={project.address}
             designName={project.designName}
             architecturalStyle={project.style}
             landArea={project.landArea}
             buildingArea={project.buildingArea}
-            value={project.budget}
+            floors={project.floors}
+            bedrooms={project.bedrooms}
+            bathrooms={project.bathrooms}
+            value={project.estimatedCost ?? project.budget}
             duration={project.duration}
             startDate={
               project.contract.startAt
@@ -286,8 +314,24 @@ export default function ContractModal({
               <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">Kontrak menunggu tanda tangan pengawas. Anda dapat melihat kontrak, tetapi belum dapat menyimpan tanda tangan atau menyetujuinya.</p>
             ) : (
               <div className="mb-4 flex flex-wrap items-center gap-3">
-                <button type="button" onClick={() => setSignatureOpen(true)} disabled={submitting} className="min-h-11 rounded-lg border border-[#183b57] px-5 text-sm font-semibold text-[#183b57] hover:bg-slate-50">{signature ? "Gambar ulang tanda tangan" : "Tanda tangan kontrak"}</button>
-                {signature && <span className="text-sm font-semibold text-emerald-800">Tanda tangan siap disimpan</span>}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!readToBottom) {
+                      setError(
+                        "Silakan baca ketentuan kontrak terlebih dahulu sebelum tanda tangan.",
+                      );
+                      return;
+                    }
+                    setError(null);
+                    setSignatureOpen(true);
+                  }}
+                  disabled={submitting}
+                  className="min-h-11 rounded-lg border border-[#183b57] px-5 text-sm font-semibold text-[#183b57] hover:bg-slate-50"
+                >
+                  {signature ? "Gambar ulang tanda tangan" : "Tanda tangan kontrak"}
+                </button>
+                {signature && <span className="text-sm font-semibold text-emerald-800">Tanda tangan berhasil dibuat</span>}
               </div>
             )}
             <label className={`flex items-start gap-3 ${!project.contract.signedPengawasSignaturePath ? "cursor-not-allowed opacity-55" : "cursor-pointer"}`}>

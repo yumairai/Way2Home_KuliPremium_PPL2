@@ -86,6 +86,7 @@ export type SupervisorProject = {
   customer: string;
   customerPhone: string;
   customerNik?: string | null;
+  customerEmail?: string | null;
   design: string;
   architecturalStyle?: string;
   landArea?: number;
@@ -101,6 +102,7 @@ export type SupervisorProject = {
   deadline: string;
   started: string;
   value: number;
+  estimatedCost?: number;
   supervisor: string;
   foreman: string | null;
   foremen?: string[];

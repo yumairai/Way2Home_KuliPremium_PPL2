@@ -721,7 +721,11 @@ export default function PengawasDashboard() {
                       disabled={contractLoadingId === project.id}
                       className="inline-flex h-10 shrink-0 items-center justify-center rounded-lg bg-[#183b57] px-4 text-xs font-semibold text-white hover:bg-[#234f70] disabled:opacity-50"
                     >
-                      {contractLoadingId === project.id ? "Memuat kontrak…" : "Tanda tangani kontrak"}
+                      {contractLoadingId === project.id 
+                        ? "Memuat kontrak…" 
+                        : project.supervisorSignedAt 
+                          ? "Lihat kontrak" 
+                          : "Tanda tangani kontrak"}
                     </button>
                   ) : project.status === "berjalan" || project.status === "selesai" ? (
                     <Link

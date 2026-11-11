@@ -77,6 +77,7 @@ const STAGE_STATUS_UI: Record<string, SupervisorMilestone["status"]> = {
 
 const PROJECT_SELECT = `
   id,
+  customer_id,
   status,
   alamat_proyek,
   nilai_proyek,
@@ -90,7 +91,8 @@ const PROJECT_SELECT = `
     jumlah_kamar_tidur,
     jumlah_kamar_mandi,
     jumlah_lantai,
-    estimasi_durasi_hari
+    estimasi_durasi_hari,
+    estimasi_biaya
   ),
   contracts (
     id,
@@ -306,6 +308,7 @@ function buildSupervisorProject(
   foremanNotes: SupervisorProject["foremanNotes"],
   customerUpdates: SupervisorProject["customerUpdates"],
   documentation: SupervisorProject["documentation"],
+  customerEmail?: string | null,
 ): SupervisorProject {
   const design = (row.designs ?? {}) as Row;
   const contract = (row.contracts ?? null) as Row | null;
@@ -336,6 +339,7 @@ function buildSupervisorProject(
     customer: String(customer.full_name ?? "Customer"),
     customerPhone: String(customer.phone ?? "-"),
     customerNik: (customer.nik as string | null) ?? null,
+    customerEmail: customerEmail ?? null,
     design: `${String(design.nama ?? "-")} · ${String(design.gaya_arsitektur ?? "-")}`,
     architecturalStyle: String(design.gaya_arsitektur ?? "-"),
     landArea: Number(design.luas_tanah ?? 0),
@@ -355,6 +359,7 @@ function buildSupervisorProject(
       ? formatDate(String(contract.tanggal_mulai))
       : formatDate(String(row.created_at)),
     value: Number(row.nilai_proyek ?? contract?.nilai_kontrak ?? 0),
+    estimatedCost: Number(design.estimasi_biaya ?? 0),
     supervisor: String(pengawasProfile.full_name ?? "Belum ditugaskan"),
     foreman: foremen[0] ?? null,
     foremen,
@@ -492,6 +497,18 @@ async function buildDetail(
   options: { includeDiscussions: boolean },
 ): Promise<SupervisorProject> {
   const projectId = String(row.id);
+  const customerId = String(row.customer_id);
+
+  // Get customer email using RPC function
+  let customerEmail: string | null = null;
+  const { data: emailData, error: emailError } = await supabase.rpc(
+    "get_user_email",
+    { user_id: customerId }
+  );
+  
+  if (!emailError && emailData) {
+    customerEmail = String(emailData);
+  }
 
   const [stages, reportData, kendalaData, updateData, docData, noteData] =
     await Promise.all([
@@ -600,6 +617,7 @@ async function buildDetail(
     foremanNotes,
     customerUpdates,
     documentation,
+    customerEmail,
   );
 }
 

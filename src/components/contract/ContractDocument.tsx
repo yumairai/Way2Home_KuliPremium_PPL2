@@ -11,6 +11,7 @@ type ContractDocumentProps = {
   customerName: string;
   customerNik: string;
   customerPhone: string;
+  customerEmail: string;
   projectCode: string;
   address: string;
   designName: string;
@@ -87,6 +88,7 @@ export default function ContractDocument({
   customerName,
   customerNik,
   customerPhone,
+  customerEmail,
   projectCode,
   address,
   designName,
@@ -143,7 +145,7 @@ export default function ContractDocument({
             ["Nama Lengkap", customerName],
             ["NIK", customerNik],
             ["Nomor Telepon", customerPhone],
-            ["Email", "Tidak tersedia pada data proyek"],
+            ["Email", customerEmail],
           ]}
         />
         <p className="pt-1 font-semibold text-[#111e3f]">
