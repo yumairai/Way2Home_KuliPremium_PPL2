@@ -98,6 +98,20 @@ export function transformDesignToHouseDesign(
   );
   const mainImage = sortedImages[0]?.url || "/images/katalog/house-dummy1.webp";
 
+  const locationRows = Array.isArray(row.design_location_scores)
+    ? (row.design_location_scores as Array<{
+        lokasi: string;
+        peringkat_lokasi_untuk_desain: number | null;
+      }>)
+    : [];
+  const lokasiCocok = [...locationRows]
+    .sort(
+      (a, b) =>
+        Number(a.peringkat_lokasi_untuk_desain ?? 0) -
+        Number(b.peringkat_lokasi_untuk_desain ?? 0),
+    )
+    .map((item) => item.lokasi);
+
   return {
     id: row.id as string | undefined,
     slug: (row.slug as string) || (row.id as string),
@@ -117,6 +131,8 @@ export function transformDesignToHouseDesign(
         : undefined,
     description: (row.deskripsi as string) || "",
     highlights: (row.highlights as string[]) || [],
+    dasarPemetaan: (row.dasar_pemetaan as string[]) || [],
+    lokasiCocok,
     lokasi_cocok: [],
     image: mainImage,
     images: sortedImages.map((img) => img.url),
@@ -270,11 +286,20 @@ export async function getDesignBySlug(
       design_images (
         url,
         urutan
+      ),
+      design_location_scores (
+        lokasi,
+        peringkat_lokasi_untuk_desain
       )
     `,
     )
     .eq("slug", slug)
     .eq("is_active", true)
+    .eq("design_location_scores.cocok", true)
+    .order("peringkat_lokasi_untuk_desain", {
+      referencedTable: "design_location_scores",
+      ascending: true,
+    })
     .maybeSingle();
 
   if (error) {

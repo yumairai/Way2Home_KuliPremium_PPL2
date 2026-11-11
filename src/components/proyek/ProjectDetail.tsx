@@ -94,18 +94,31 @@ export default function ProjectDetail({ project }: { project: Project }) {
         </div>
 
         <div className="grid gap-6 p-6 sm:grid-cols-3 md:p-8">
-          {[
-            ["Nama Desain", project.designName],
-            ["Budget", formatRupiah(project.budget)],
-            ["Estimasi Waktu", `${project.duration} bulan`],
-          ].map(([label, value]) => (
-            <div key={label}>
-              <p className="text-xs font-bold uppercase tracking-wider text-[#64748b]">
-                {label}
-              </p>
-              <p className="mt-1 text-lg font-bold text-[#111e3f]">{value}</p>
-            </div>
-          ))}
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-[#64748b]">
+              Nama Desain
+            </p>
+            <p className="mt-1 text-lg font-bold text-[#111e3f]">{project.designName}</p>
+          </div>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-[#64748b]">
+              Estimasi Harga
+            </p>
+            <p className="mt-1 text-lg font-bold text-[#111e3f]">
+              {formatRupiah(project.estimatedCost ?? 0)}
+            </p>
+            <p className="mt-1 text-xs text-[#64748b]">
+              Budget Anda: {formatRupiah(project.budget)}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-[#64748b]">
+              Estimasi Waktu
+            </p>
+            <p className="mt-1 text-lg font-bold text-[#111e3f]">
+              {project.duration} bulan
+            </p>
+          </div>
         </div>
       </section>
 

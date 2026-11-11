@@ -49,6 +49,7 @@ export type ProjectForPengawas = {
   design_name: string;
   customer_name: string;
   mandors: AllocatedMandor[];
+  supervisorSignedAt?: string | null;
 };
 
 export type AllocatedMandor = {
@@ -370,6 +371,7 @@ export async function getProjectsForPengawas(
       alamat_proyek,
       designs ( nama ),
       profiles!projects_customer_id_fkey ( full_name ),
+      contracts ( signed_pengawas_at ),
       project_mandors (
         mandor_id,
         assigned_at,
@@ -392,6 +394,9 @@ export async function getProjectsForPengawas(
   return (data ?? []).map((row: Record<string, unknown>) => {
     const design = (row.designs as Record<string, unknown>) || {};
     const customer = (row.profiles as Record<string, unknown>) || {};
+    const contract = Array.isArray(row.contracts)
+      ? (row.contracts as Record<string, unknown>[])[0]
+      : (row.contracts as Record<string, unknown> | null);
     const rawMandors = Array.isArray(row.project_mandors)
       ? (row.project_mandors as Record<string, unknown>[])
       : [];
@@ -423,6 +428,7 @@ export async function getProjectsForPengawas(
       design_name: (design.nama as string) || "-",
       customer_name: (customer.full_name as string) || "-",
       mandors,
+      supervisorSignedAt: (contract?.signed_pengawas_at as string | null) ?? null,
     };
   });
 }
