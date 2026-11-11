@@ -13,6 +13,7 @@ type ProfileData = {
   phone: string;
   email: string;
   address: string;
+  nik: string;
   avatarPath: string | null;
   avatarUrl: string | null;
 };
@@ -55,11 +56,13 @@ export default function ProfileEdit({
   const [name, setName] = useState(initialProfile.name);
   const [phone, setPhone] = useState(initialProfile.phone);
   const [address, setAddress] = useState(initialProfile.address);
+  const [nik, setNik] = useState(initialProfile.nik);
   const [avatarPreview, setAvatarPreview] = useState(
     initialProfile.avatarUrl || DEFAULT_AVATAR,
   );
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarError, setAvatarError] = useState("");
+  const [nikError, setNikError] = useState("");
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -68,6 +71,7 @@ export default function ProfileEdit({
     name !== original.name ||
     phone !== original.phone ||
     address !== original.address ||
+    nik !== original.nik ||
     avatarFile !== null;
 
   const handleAvatarChange = (file?: File) => {
@@ -90,6 +94,16 @@ export default function ProfileEdit({
   const handleSubmit = async () => {
     if (!name.trim()) {
       setSaveError("Nama lengkap wajib diisi.");
+      return;
+    }
+
+    if (nik.trim() && nik.trim().length !== 16) {
+      setSaveError("NIK harus 16 digit.");
+      return;
+    }
+
+    if (nik.trim() && !/^\d+$/.test(nik.trim())) {
+      setSaveError("NIK hanya boleh berisi angka.");
       return;
     }
 
@@ -128,6 +142,7 @@ export default function ProfileEdit({
           full_name: name.trim(),
           phone: phone.trim() || null,
           address: address.trim() || null,
+          nik: nik.trim() || null,
           ...(uploadedAvatarPath ? { avatar_url: uploadedAvatarPath } : {}),
         })
         .eq("id", user.id)
@@ -164,6 +179,7 @@ export default function ProfileEdit({
         name: name.trim(),
         phone: phone.trim(),
         address: address.trim(),
+        nik: nik.trim(),
         avatarPath: uploadedAvatarPath || original.avatarPath,
         avatarUrl: nextAvatarUrl,
       };
@@ -316,6 +332,51 @@ export default function ProfileEdit({
                   setSaved(false);
                 }}
               />
+
+              <Field
+                id="profile-nik"
+                label="NIK"
+                icon={
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <rect width="20" height="14" x="2" y="5" rx="2" />
+                    <path d="M2 10h20" />
+                  </svg>
+                }
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={16}
+                value={nik}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  // Hanya terima angka
+                  if (value === "" || /^\d+$/.test(value)) {
+                    setNik(value);
+                    setSaved(false);
+                    // Validasi real-time
+                    if (value.length > 0 && value.length !== 16) {
+                      setNikError("NIK harus 16 digit");
+                    } else {
+                      setNikError("");
+                    }
+                  }
+                }}
+              />
+              {nikError && (
+                <p className="mt-1 text-sm font-semibold text-[#dc2626]">
+                  {nikError}
+                </p>
+              )}
 
               <div className="grid gap-8 sm:grid-cols-2">
                 <Field
