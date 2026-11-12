@@ -1,37 +1,27 @@
-﻿"use client";
+"use client";
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useMandorStatus } from "@/components/mandor/MandorShell";
-import { createClient } from "@/utils/supabase/client";
-import {
-  getMandorProgressProjects,
-  type LiveProgressProject,
-} from "@/services/progress.service";
+import { useMandorProjects } from "@/hooks/useMandorProjects";
 
 export default function MandorProjectList() {
   const { status, loading: statusLoading } = useMandorStatus();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("Semua proyek");
-  const [liveProjects, setLiveProjects] = useState<LiveProgressProject[]>([]);
-  const [projectsLoading, setProjectsLoading] = useState(true);
-  useEffect(() => {
-    getMandorProgressProjects(createClient())
-      .then(setLiveProjects)
-      .catch((error) => console.error("[MandorProjectList]", error))
-      .finally(() => setProjectsLoading(false));
-  }, []);
+  const { projects: liveProjects, loading: projectsLoading } = useMandorProjects();
+
   const projects = useMemo(
     () =>
       liveProjects.filter(
         (project) =>
-          `${project.id} ${project.designName} ${project.address ?? ""}`
+          `${project.id} ${project.title} ${project.design} ${project.location}`
             .toLowerCase()
             .includes(query.toLowerCase()) &&
           (filter === "Semua proyek" ||
             (filter === "Aktif"
-              ? project.overallProgress !== 100
+              ? project.overallProgress < 100
               : project.overallProgress === 100)),
       ),
     [liveProjects, query, filter],
@@ -105,8 +95,8 @@ export default function MandorProjectList() {
           >
             <div className="relative h-44 sm:h-52">
               <Image
-                src="/images/katalog/house-dummy1.webp"
-                alt={`Desain ${project.designName}`}
+                src={project.image || "/images/katalog/house-dummy1.webp"}
+                alt={`Desain ${project.title}`}
                 fill
                 sizes="(max-width: 1280px) 100vw, 50vw"
                 className="object-cover"
@@ -116,33 +106,25 @@ export default function MandorProjectList() {
               </span>
             </div>
             <div className="p-5">
-              <p className="text-xs text-[#53738d]">{project.designName}</p>
+              <p className="text-xs text-[#53738d]">{project.design}</p>
               <h2 className="mt-1 text-lg font-bold text-[#183b57]">
-                Proyek pembangunan
+                {project.title}
               </h2>
-              <p className="mt-1 text-xs text-slate-500">
-                {project.address ?? "Alamat belum tersedia"}
-              </p>
+              <p className="mt-1 text-xs text-slate-500">{project.location}</p>
               <div className="mt-4 flex justify-between text-xs text-slate-500">
-                <span>
-                  Tahap:{" "}
-                  {project.stages.find((stage) => stage.status === "berjalan")
-                    ?.nama_tahap ?? "Belum dimulai"}
-                </span>
-                <span>{project.status}</span>
+                <span>Tahap: {project.currentMilestone}</span>
+                <span>Target: {project.target}</span>
               </div>
               <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#e9edf2]">
                 <span
                   className="block h-full rounded-full bg-[#5e83a0]"
-                  style={{ width: `${project.overallProgress ?? 0}%` }}
+                  style={{ width: `${project.overallProgress}%` }}
                 />
               </div>
               <div className="mt-1 text-right text-[10px] font-semibold text-[#315b76]">
-                {project.overallProgress === null
-                  ? "Data tahap belum lengkap"
-                  : `${project.overallProgress}% resmi`}
+                {project.overallProgress}% resmi
               </div>
-              {project.status === "berjalan" || project.status === "selesai" ? (
+              {project.status === "berjalan" || project.status === "selesai" || !project.status ? (
                 <Link
                   href={`/mandor/proyek/${project.id}`}
                   className="mt-4 inline-flex min-h-10 w-full items-center justify-center rounded-lg bg-[#2B3361] px-4 text-sm font-semibold text-white hover:bg-[#21274b]"

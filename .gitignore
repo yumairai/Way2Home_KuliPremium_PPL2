@@ -45,3 +45,22 @@ next-env.d.ts
 skills-lock.json
 laravel-old
 /graphify-out
+opencode.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Local environment
+.env
+.env.*
+
+# Keep trained model artifacts
+!ai-service/models/
+!ai-service/models/*.joblib
+!ai-service/models/*.json

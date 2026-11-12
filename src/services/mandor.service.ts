@@ -238,6 +238,7 @@ function buildMandorProject(
 
   return {
     id: String(row.id),
+    status: typeof row.status === "string" ? row.status : undefined,
     title: String(design.nama ?? "Proyek Pembangunan"),
     design: String(design.gaya_arsitektur ?? "-"),
     location: String(row.alamat_proyek ?? design.lokasi ?? "-"),
@@ -367,7 +368,7 @@ async function getAllStages(
       keterangan,
       tanggal_mulai,
       tanggal_selesai,
-      project_subtasks ( id, judul, bobot, urutan, target_selesai, selesai )
+      project_subtasks!project_subtasks_project_stage_id_fkey ( id, judul, bobot, urutan, target_selesai, selesai )
     `,
     )
     .in("project_id", projectIds)

@@ -79,15 +79,23 @@ export default async function ProyekListPage() {
               Anda belum memiliki proyek pembangunan rumah
             </h2>
             <p className="mx-auto mt-3 max-w-md text-[#64748b]">
-              Silakan pergi ke halaman rekomendasi rumah dan buat proyek Anda
+              Silakan pergi ke halaman rekomendasi rumah atau katalog dan buat proyek Anda
               dari sana.
             </p>
-            <Link
-              href="/ai-planning-based"
-              className="mt-8 inline-flex items-center gap-3 rounded-full bg-gradient-to-r from-[#004796] to-[#045ec2] px-8 py-4 font-bold text-white shadow-[0_10px_25px_rgba(0,71,150,0.3)] transition hover:-translate-y-0.5 hover:shadow-lg active:scale-95"
-            >
-              Lihat Rekomendasi Rumah
-            </Link>
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+              <Link
+                href="/ai-planning-based"
+                className="inline-flex items-center gap-3 rounded-full bg-gradient-to-r from-[#004796] to-[#045ec2] px-8 py-4 font-bold text-white shadow-[0_10px_25px_rgba(0,71,150,0.3)] transition hover:-translate-y-0.5 hover:shadow-lg active:scale-95"
+              >
+                Lihat Rekomendasi Rumah
+              </Link>
+              <Link
+                href="/katalog"
+                className="inline-flex items-center gap-3 rounded-full border-2 border-[#004796] bg-white px-8 py-4 font-bold text-[#004796] transition hover:-translate-y-0.5 hover:shadow-lg active:scale-95"
+              >
+                Lihat Katalog
+              </Link>
+            </div>
           </div>
         )}
       </div>

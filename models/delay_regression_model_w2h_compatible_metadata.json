@@ -1,0 +1,89 @@
+{
+  "model_name": "delay_regression_model_w2h_compatible",
+  "model_version": "1.0.0",
+  "created_at": "2026-11-12T22:22:34.829053+07:00",
+  "task": "delay_regression",
+  "problem_type": "regression",
+  "target": "delay_days",
+  "class_order": null,
+  "algorithm": "HistGradientBoosting (sklearn)",
+  "hyperparameter_variant": "tuned",
+  "variant": "w2h_compatible",
+  "best_params": {
+    "min_samples_leaf": 20,
+    "max_leaf_nodes": 15,
+    "max_iter": 150,
+    "loss": "absolute_error",
+    "learning_rate": 0.05,
+    "l2_regularization": 1.0
+  },
+  "features": [
+    "flag_kendala_material",
+    "flag_kendala_cuaca",
+    "flag_kendala_keselamatan",
+    "dampak_waktu_hari",
+    "dampak_waktu_material_hari",
+    "dampak_waktu_cuaca_hari",
+    "progress_persen"
+  ],
+  "feature_order": [
+    "flag_kendala_material",
+    "flag_kendala_cuaca",
+    "flag_kendala_keselamatan",
+    "dampak_waktu_hari",
+    "dampak_waktu_material_hari",
+    "dampak_waktu_cuaca_hari",
+    "progress_persen"
+  ],
+  "feature_dtypes": {
+    "flag_kendala_material": "int64",
+    "flag_kendala_cuaca": "int64",
+    "flag_kendala_keselamatan": "int64",
+    "dampak_waktu_hari": "int64",
+    "dampak_waktu_material_hari": "int64",
+    "dampak_waktu_cuaca_hari": "int64",
+    "progress_persen": "float64"
+  },
+  "primary_metric": "MAE",
+  "cv_score_primary": 4.885391898502599,
+  "test_metrics": {
+    "MAE": 5.0792529216837465,
+    "RMSE": 6.743286691030482,
+    "R2": 0.32589633669031093,
+    "MedianAE": 4.2553735125370435
+  },
+  "beats_dummy_significantly": null,
+  "deployable": true,
+  "postprocessing": "prediksi di-clip >= 0 (ClippedRegressor)",
+  "training_data": {
+    "file": "data/final/way2home_delay_regression.csv",
+    "n_train": 4000,
+    "n_test": 1000,
+    "by_source": {
+      "CONSTRUCTION_DELAY_RISK_GH": 4000
+    },
+    "synthetic": 4000,
+    "empirical": 0
+  },
+  "split": {
+    "method": "StratifiedGroupKFold fold-1 sebagai test (80/20), group=meta_project_group_id",
+    "cv": "GroupKFold(5, shuffle)",
+    "random_state": 42
+  },
+  "library_versions": {
+    "python": "3.13.18",
+    "numpy": "2.5.3",
+    "pandas": "3.0.5",
+    "scikit-learn": "1.9.1",
+    "joblib": "1.6.0",
+    "xgboost": "NOT INSTALLED",
+    "catboost": "NOT INSTALLED",
+    "shap": "NOT INSTALLED"
+  },
+  "requires_import": "src/w2h_ml.py (ClippedRegressor)",
+  "limitations": [
+    "Data training 100% sintetis (tanpa dokumentasi asal) — performa belum tervalidasi pada proyek nyata.",
+    "Unit training = agregat proyek; input Way2Home = satu kendala (granularitas berbeda).",
+    "Interpretasi fitur bersifat asosiatif, bukan sebab-akibat."
+  ]
+}

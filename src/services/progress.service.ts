@@ -8,6 +8,7 @@ import type {
   ProjectTracking,
 } from "@/types/project-tracking";
 import { TRACKING_MILESTONE_TEMPLATE } from "@/data/project-tracking";
+import { formatDate } from "@/utils/format";
 
 type Client = SupabaseClient;
 type Stage = Database["public"]["Tables"]["project_stages"]["Row"];
@@ -141,7 +142,7 @@ export async function getCustomerProjectTracking(
     customerOnly: true,
   });
   const stageIds = stages.map((stage) => stage.id);
-  const [subtasksResult, updatesResult, documentationResult, contractResult] =
+  const [subtasksResult, updatesResult, documentationResult, contractResult, resolutionsResult] =
     await Promise.all([
       stageIds.length
         ? supabase
@@ -169,6 +170,21 @@ export async function getCustomerProjectTracking(
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle(),
+      supabase
+        .from("issue_resolutions")
+        .select(`
+          id,
+          kendala_id,
+          solusi,
+          alasan_persetujuan,
+          bukti,
+          status,
+          created_at,
+          kendala ( kategori, deskripsi ),
+          resolution_discussions ( id, penulis, pesan, created_at )
+        `)
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: false }),
     ]);
 
   if (subtasksResult.error) throw subtasksResult.error;
@@ -221,6 +237,32 @@ export async function getCustomerProjectTracking(
       : undefined,
   }));
 
+  const rawResolutions = (resolutionsResult.data ?? []) as Record<string, unknown>[];
+  const resolutions = rawResolutions.map((res) => {
+    const k = (res.kendala ?? {}) as Record<string, unknown>;
+    const rawDisc = Array.isArray(res.resolution_discussions)
+      ? (res.resolution_discussions as Record<string, unknown>[])
+      : [];
+    const discussion = rawDisc.map((d) => ({
+      id: String(d.id),
+      author: String(d.penulis ?? "Pengawas"),
+      message: String(d.pesan ?? ""),
+      date: formatDate(String(d.created_at)),
+    }));
+
+    return {
+      id: String(res.id),
+      issueId: String(res.kendala_id),
+      issueTitle: String(k.kategori ?? "Kendala Lapangan"),
+      solution: String(res.solusi ?? ""),
+      approvalReason: String(res.alasan_persetujuan ?? ""),
+      approvalEvidence: (res.bukti as string | null) ?? null,
+      status: String(res.status ?? ""),
+      submittedAt: formatDate(String(res.created_at)),
+      discussion,
+    };
+  });
+
   return {
     startedAt:
       contractResult.data?.tanggal_mulai ??
@@ -242,6 +284,7 @@ export async function getCustomerProjectTracking(
         })),
       ...documentationGallery,
     ],
+    resolutions,
   };
 }
 

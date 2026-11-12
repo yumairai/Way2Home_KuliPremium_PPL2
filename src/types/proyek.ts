@@ -101,9 +101,11 @@ export type Project = {
   bedrooms?: number;
   bathrooms?: number;
   budget: number;
+  estimatedCost?: number;
   customerName?: string;
   customerNik?: string | null;
   customerPhone?: string | null;
+  customerEmail?: string | null;
   duration: number;
   address: string;
   submittedAt: string;

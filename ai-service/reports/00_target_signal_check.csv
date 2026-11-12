@@ -1,0 +1,8 @@
+dataset,target,metrik,skor_CV
+construction_projects,delay_days,R²,0.544
+construction_projects,delay_risk (L/M/H),macro-F1,0.597
+construction_projects,cost overrun %,R²,0.004
+BIM,schedule deviation ratio,R²,-0.047
+BIM,cost overrun %,R²,-0.038
+Aljazair,Delay_Risk (biner),macro-F1,0.717
+project_risk_raw,Risk_Level (4 kelas),macro-F1,0.552

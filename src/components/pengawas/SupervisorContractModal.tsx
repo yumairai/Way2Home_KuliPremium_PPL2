@@ -52,15 +52,15 @@ export default function SupervisorContractModal({
         amount: payment.amount,
       }))
       : [
-        { label: "Uang Muka (DP)", amount: Math.round(project.value * 0.3) },
-        { label: "Termin 1", amount: Math.round(project.value * 0.25) },
-        { label: "Termin 2", amount: Math.round(project.value * 0.25) },
+        { label: "Uang Muka (DP)", amount: Math.round((project.estimatedCost ?? project.value) * 0.3) },
+        { label: "Termin 1", amount: Math.round((project.estimatedCost ?? project.value) * 0.25) },
+        { label: "Termin 2", amount: Math.round((project.estimatedCost ?? project.value) * 0.25) },
         {
           label: "Termin 3 (Pelunasan)",
           amount:
-            project.value -
-            Math.round(project.value * 0.3) -
-            Math.round(project.value * 0.25) * 2,
+            (project.estimatedCost ?? project.value) -
+            Math.round((project.estimatedCost ?? project.value) * 0.3) -
+            Math.round((project.estimatedCost ?? project.value) * 0.25) * 2,
         },
       ];
   return (
@@ -120,6 +120,7 @@ export default function SupervisorContractModal({
             customerName={project.customer}
             customerNik={project.customerNik || "Belum tersedia"}
             customerPhone={project.customerPhone || "Belum tersedia"}
+            customerEmail={project.customerEmail || "Belum tersedia"}
             projectCode={project.id}
             address={project.address}
             designName={project.title}
@@ -129,7 +130,7 @@ export default function SupervisorContractModal({
             floors={project.floors}
             bedrooms={project.bedrooms}
             bathrooms={project.bathrooms}
-            value={project.value}
+            value={project.estimatedCost ?? project.value}
             duration={project.duration ?? 0}
             startDate={project.started}
             completionDate={project.deadline}
@@ -189,11 +190,11 @@ export default function SupervisorContractModal({
         </div>
         <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-[#e7ebef] bg-[#fafbfc] px-5 py-4">
           {error && <p role="alert" className="w-full text-sm text-red-700">{error}</p>}
-          <div className="flex gap-2"><button type="button" onClick={() => window.print()} className="h-10 rounded-lg border border-slate-300 px-4 text-xs font-semibold text-slate-700">Unduh / Cetak PDF</button><button type="button" onClick={onClose} className="h-10 rounded-lg px-4 text-xs font-semibold text-slate-600">Tutup</button></div>
+          <div className="flex gap-2"><button type="button" onClick={() => window.print()} className="h-10 rounded-lg border border-slate-300 px-4 text-xs font-semibold text-slate-700">Unduh PDF</button><button type="button" onClick={onClose} className="h-10 rounded-lg px-4 text-xs font-semibold text-slate-600">Tutup</button></div>
           {!project.supervisorSignedAt && project.projectStageStatus === "finalisasi_kontrak" && <button type="button" disabled={project.contractStatus !== "draft" || saving || (project.foremen ?? []).length === 0} onClick={() => setSignatureOpen(true)} className="h-10 rounded-lg bg-[#183b57] px-5 text-xs font-semibold text-white hover:bg-[#234f70] disabled:cursor-not-allowed disabled:opacity-50">Tanda tangani sebagai pengawas</button>}
           {!project.supervisorSignedAt && project.projectStageStatus !== "finalisasi_kontrak" && <p className="text-xs text-amber-800">Tanda tangan tersedia setelah alokasi mandor difinalisasi.</p>}
           {!project.supervisorSignedAt && project.projectStageStatus === "finalisasi_kontrak" && (project.foremen ?? []).length === 0 && <p className="text-xs text-amber-800">Alokasikan minimal satu mandor sebelum menandatangani.</p>}
-          {project.supervisorSignedAt && <p className="text-xs font-semibold text-emerald-800">Tanda tangan pengawas tersimpan</p>}
+          {project.supervisorSignedAt && <p className="text-xs font-semibold text-emerald-800">Kontrak Ditandatangani</p>}
         </footer>
         {signatureOpen && <SignaturePadModal busy={saving} onClose={() => setSignatureOpen(false)} onContinue={async (signature) => {
           setSaving(true); setError(null);
@@ -201,7 +202,9 @@ export default function SupervisorContractModal({
             const response = await fetch(`/api/pengawas/projects/${project.id}/contract-signature`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ signature }) });
             const result = await response.json() as { message?: string };
             if (!response.ok) throw new Error(result.message || "Gagal menyimpan tanda tangan.");
-            setSignatureOpen(false); router.refresh();
+            setSignatureOpen(false);
+            onClose(); // Tutup modal utama
+            router.refresh(); // Refresh data
           } catch (err) { setError(err instanceof Error ? err.message : "Gagal menyimpan tanda tangan."); }
           finally { setSaving(false); }
         }} />}

@@ -1,14 +1,17 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import type { Project } from "@/types/proyek";
 import type {
   ConstructionMilestone,
+  CustomerIssueResolution,
   ProjectGalleryItem,
 } from "@/types/project-tracking";
 import { TRACKING_MILESTONE_TEMPLATE } from "@/data/project-tracking";
 import { formatDate } from "@/utils/format";
+import { apiPost, errorMessage } from "@/lib/api";
 
 const milestoneStyle = {
   completed: {
@@ -41,7 +44,232 @@ function percentLabel(value: number) {
   );
 }
 
+function CustomerResolutionCard({
+  projectId,
+  resolution,
+  onResolved,
+}: {
+  projectId: string;
+  resolution: CustomerIssueResolution;
+  onResolved: () => void;
+}) {
+  const [feedback, setFeedback] = useState("");
+  const [showDiscuss, setShowDiscuss] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleDecision = async (approved: boolean) => {
+    if (!approved && !feedback.trim()) {
+      setError("Silakan tulis catatan atau pertanyaan untuk pengawas.");
+      return;
+    }
+    setSubmitting(true);
+    setError("");
+    try {
+      await apiPost(
+        `/api/projects/${projectId}/resolutions/${resolution.id}/decision`,
+        {
+          approved,
+          feedback: approved ? "Disetujui oleh pemilik rumah." : feedback.trim(),
+        },
+      );
+      onResolved();
+    } catch (err: unknown) {
+      setError(errorMessage(err, "Gagal memproses keputusan."));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const isPending = resolution.status === "Menunggu approval customer";
+  const isDiscussing = resolution.status === "Diskusi dengan pengawas";
+
+  return (
+    <article
+      className={`rounded-[1.75rem] border p-6 shadow-sm transition-all md:p-7 ${
+        isPending
+          ? "border-[#f3cf8c] bg-[#fffcf5]"
+          : isDiscussing
+            ? "border-[#cbdcf0] bg-[#f8fbfe]"
+            : "border-[#d8ecd8] bg-[#f6fbf7]"
+      }`}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <span
+            className={`grid h-9 w-9 shrink-0 place-items-center rounded-full text-base ${
+              isPending
+                ? "bg-[#feefd3] text-[#9a620b]"
+                : isDiscussing
+                  ? "bg-[#e2edf9] text-[#1c558e]"
+                  : "bg-[#def2e3] text-[#156e35]"
+            }`}
+          >
+            {isPending ? "⚠️" : isDiscussing ? "💬" : "✓"}
+          </span>
+          <div>
+            <h3 className="text-base font-bold text-[#1a2f4c]">
+              {isPending
+                ? "Persetujuan Penanganan Kendala Diperlukan"
+                : isDiscussing
+                  ? "Diskusi Penanganan Kendala Sedang Berlangsung"
+                  : "Penanganan Kendala Disetujui & Ditindaklanjuti"}
+            </h3>
+            <p className="text-xs text-[#6e7d92]">
+              {resolution.issueTitle || "Kendala di Lapangan"} · Tanggal: {resolution.submittedAt}
+            </p>
+          </div>
+        </div>
+        <span
+          className={`rounded-full px-3 py-1 text-xs font-bold ${
+            isPending
+              ? "bg-[#fbe8c3] text-[#865104]"
+              : isDiscussing
+                ? "bg-[#dce9f8] text-[#1d5289]"
+                : "bg-[#d4edd8] text-[#196b34]"
+          }`}
+        >
+          {resolution.status}
+        </span>
+      </div>
+
+      <div className="mt-4 rounded-xl border border-[#d6e3f0] bg-white p-4">
+        <p className="text-[11px] font-bold text-[#004796]">
+          Rencana Solusi yang Diajukan Pengawas:
+        </p>
+        <p className="mt-1 text-sm font-semibold leading-6 text-[#1c324f]">
+          {resolution.solution}
+        </p>
+        {resolution.approvalReason && (
+          <div className="mt-2.5 rounded-lg border border-[#e5ecf3] bg-[#f8fafc] p-3 text-xs leading-5 text-[#47586e]">
+            <span className="font-bold text-[#2a3c50]">
+              Alasan & Dampak untuk Pemilik Rumah:{" "}
+            </span>
+            {resolution.approvalReason}
+          </div>
+        )}
+        {resolution.approvalEvidence && (
+          <div className="mt-3 overflow-hidden rounded-lg border border-slate-200">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={resolution.approvalEvidence}
+              alt="Bukti pendukung solusi"
+              className="max-h-48 w-full object-cover"
+            />
+          </div>
+        )}
+      </div>
+
+      {resolution.discussion && resolution.discussion.length > 0 && (
+        <div className="mt-4 space-y-2 border-t border-[#e2eaf2] pt-4">
+          <p className="text-xs font-bold text-[#344861]">Riwayat Diskusi:</p>
+          {resolution.discussion.map((d) => (
+            <div
+              key={d.id}
+              className={`rounded-xl p-3 text-xs leading-5 ${
+                d.author === "Customer"
+                  ? "ml-4 border border-[#cbe0f8] bg-[#f2f7fd] text-[#1b4372]"
+                  : "mr-4 border border-[#e2e8f0] bg-white text-[#344861]"
+              }`}
+            >
+              <div className="mb-1 flex justify-between text-[10px] text-[#78889c]">
+                <span className="font-bold">
+                  {d.author === "Customer"
+                    ? "Anda (Pemilik Rumah)"
+                    : "Pengawas Proyek"}
+                </span>
+                <span>{d.date}</span>
+              </div>
+              <p>{d.message}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {error && (
+        <p className="mt-3 text-xs font-semibold text-red-600">{error}</p>
+      )}
+
+      {isPending && (
+        <div className="mt-5 border-t border-[#ede3d1] pt-4">
+          {!showDiscuss ? (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-[#637388]">
+                Konfirmasikan apakah Anda menyetujui solusi dari pengawas atau
+                memerlukan penyesuaian.
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowDiscuss(true)}
+                  disabled={submitting}
+                  className="rounded-xl border border-[#cbd5e1] bg-white px-4 py-2.5 text-xs font-bold text-[#33465e] hover:bg-[#f8fafc] disabled:opacity-50"
+                >
+                  Minta Diskusi / Revisi
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDecision(true)}
+                  disabled={submitting}
+                  className="rounded-xl bg-[#0b8068] px-5 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-[#096d58] disabled:opacity-50"
+                >
+                  {submitting ? "Memproses..." : "Setujui Solusi"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <label className="block text-xs font-bold text-[#2a3c50]">
+                Catatan atau Masukan Anda untuk Pengawas:
+              </label>
+              <textarea
+                value={feedback}
+                onChange={(e) => setFeedback(e.target.value)}
+                placeholder="Contoh: Mohon cari alternatif merek lain yang selisih harganya lebih terjangkau..."
+                rows={3}
+                className="w-full rounded-xl border border-[#cbd5e1] p-3 text-xs leading-5 outline-none focus:border-[#045ec2]"
+              />
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDiscuss(false);
+                    setError("");
+                  }}
+                  disabled={submitting}
+                  className="rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-100"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDecision(false)}
+                  disabled={submitting || !feedback.trim()}
+                  className="rounded-lg bg-[#b43333] px-4 py-2 text-xs font-bold text-white hover:bg-[#972929] disabled:opacity-50"
+                >
+                  {submitting ? "Mengirim..." : "Kirim Catatan"}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {isDiscussing && (
+        <div className="mt-4 flex items-center gap-2.5 rounded-xl border border-[#cde0f5] bg-white p-3 text-xs text-[#224b75]">
+          <span className="text-sm">⏳</span>
+          <span>
+            Masukan Anda telah terkirim. Pengawas sedang meninjau dan akan
+            memperbarui usulan solusi di sini.
+          </span>
+        </div>
+      )}
+    </article>
+  );
+}
+
 export default function CustomerTracking({ project }: { project: Project }) {
+  const router = useRouter();
   const milestones = useMemo(() => {
     const data = project.tracking?.milestones ?? [];
     return TRACKING_MILESTONE_TEMPLATE.map((template) => {
@@ -190,6 +418,19 @@ export default function CustomerTracking({ project }: { project: Project }) {
             </div>
           </div>
         </header>
+
+        {project.tracking?.resolutions && project.tracking.resolutions.length > 0 && (
+          <section className="mt-7 space-y-4" aria-label="Persetujuan dan diskusi kendala">
+            {project.tracking.resolutions.map((resolution) => (
+              <CustomerResolutionCard
+                key={resolution.id}
+                projectId={String(project.id)}
+                resolution={resolution}
+                onResolved={() => router.refresh()}
+              />
+            ))}
+          </section>
+        )}
 
         <section
           className="mt-7 grid gap-7 xl:grid-cols-[minmax(0,1fr)_360px]"

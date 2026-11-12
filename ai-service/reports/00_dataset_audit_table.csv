@@ -1,0 +1,9 @@
+dataset,file,rows,cols,granularity,targets,missing,empirical_or_synthetic,recommendation
+Aceh delay survey (Mendeley),Dataset_1.xlsx,68,65,survey (1 baris = 1 responden PM),Y1–Y4 (tidak terdokumentasi),0,Empiris,Knowledge base bobot faktor; tidak digabung
+Simulated Project Risk – raw features,project_risk_raw_dataset.csv,4000,51,project-level (6 jenis proyek; 797 Construction),Risk_Level 4 kelas (Low/Medium/High/Critical),"Tech_Environment_Stability 65%, Change_Control 20%, Risk_Mgmt 20%",Sintetis,Eksperimen terpisah; fitur tidak tersedia di Way2Home
+Simulated EV – summary,(csv di dalam xlsx),4000,7,project-level,"Schedule_Delay (bulan), Cost_Overrun (USD)",0,Simulasi (dari raw via skrip),Tidak dipakai: target = rumus dari fitur + bug encoding
+Simulated EV – time series,(csv di dalam xlsx),72549,15,project-month,sama dengan summary,0,Simulasi (dari raw via skrip),Tidak dipakai: target = rumus dari fitur + bug encoding
+Construction Project Delay Risk (GitHub),construction_projects.csv,5000,12,project-level,"delay_risk (ambang delay_days), delay_days, budget_variance",0,Sintetis (tanpa dokumentasi; distribusi seragam),Kandidat utama risk & delay (subset terpisah)
+BIM AI Civil Engineering (GitHub),bim_ai_civil_engineering_dataset.csv,1000,28,project-level (infrastruktur besar AS),"Risk_Level, Cost_Overrun, Schedule_Deviation",0,Sintetis,Tidak layak: label = aturan Safety_Risk_Score+Anomaly; target biaya/waktu acak
+"Construction Delay Prediction (Aljazair, synthetic)",synthetic_construction_projects.csv,1000,15,project-level,Delay_Risk biner (Yes/No),0,Sintetis (dinyatakan),Opsional: klasifikasi biner terpisah
+RCPLIB (bukan DSLIB),RCPLIB__Parameters_and_BKS_.xlsx,13574,410,instance-level (jaringan jadwal buatan),best-known makespan (bukan keterlambatan aktual),n/a,Benchmark artifisial,Tidak relevan untuk 3 target

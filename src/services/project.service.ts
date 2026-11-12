@@ -413,6 +413,7 @@ export async function getSignedDocumentUrl(
 
 export function transformDBProjectToProject(
   row: Record<string, unknown>,
+  customerEmail?: string | null,
 ): Project {
   const design = (row.designs as Record<string, unknown>) || {};
   const images =
@@ -607,11 +608,13 @@ export function transformDBProjectToProject(
         design.estimasi_biaya ||
         0,
     ),
+    estimatedCost: Number(design.estimasi_biaya || 0),
     customerName:
       (typeof contractCustomer?.nama === "string" ? contractCustomer.nama : undefined) ||
       (typeof projectCustomer.full_name === "string" ? projectCustomer.full_name : undefined),
     customerNik: (projectCustomer.nik as string | null) ?? null,
     customerPhone: (projectCustomer.phone as string | null) ?? (contractCustomer?.telepon as string | null) ?? null,
+    customerEmail: customerEmail ?? null,
     duration:
       Math.round(((design.estimasi_durasi_hari as number) || 0) / 30) || 8,
     address: (row.alamat_proyek as string) || "Lokasi Belum Ditentukan",
@@ -797,7 +800,7 @@ export async function getUserProjects(
   }
 
   return data.map((row: Record<string, unknown>) =>
-    transformDBProjectToProject(row),
+    transformDBProjectToProject(row, user.email),
   );
 }
 
@@ -970,5 +973,5 @@ export async function getUserProjectById(
     return null;
   }
 
-  return transformDBProjectToProject(data);
+  return transformDBProjectToProject(data, user.email);
 }

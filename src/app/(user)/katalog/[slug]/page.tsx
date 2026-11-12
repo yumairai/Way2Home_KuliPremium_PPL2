@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { getDesignBySlug } from "@/services/design.service";
+import LocationMarquee from "@/components/katalog/LocationMarquee";
 
 const money = (value: number) =>
   `Rp ${(value / 1000000).toLocaleString("id-ID")} juta`;
@@ -28,7 +29,7 @@ export default async function DesignDetailPage({
           {"< "} Kembali ke katalog
         </Link>
         <div className="mt-4 grid overflow-hidden rounded-[2rem] bg-white shadow-[0_18px_50px_rgba(17,30,63,0.08)] lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="relative min-h-[360px] lg:min-h-[620px]">
+          <div className="relative min-h-[360px] min-w-0 lg:min-h-[620px]">
             <Image
               src={design.image}
               alt={`Desain rumah ${design.name}`}
@@ -38,7 +39,7 @@ export default async function DesignDetailPage({
               className="object-cover"
             />
           </div>
-          <div className="p-7 md:p-10">
+          <div className="min-w-0 p-7 md:p-10">
             <span className="text-sm font-bold text-[#045ec2]">
               {design.style}
             </span>
@@ -61,7 +62,15 @@ export default async function DesignDetailPage({
                 </div>
               ))}
             </div>
-            <div className="mt-8 border-t border-[#edf1f6] pt-6">
+            {design.lokasiCocok && design.lokasiCocok.length > 0 && (
+              <div className="mt-8 border-t border-[#edf1f6] pt-6">
+                <p className="text-sm text-[#64748b]">Lokasi yang cocok</p>
+                <div className="mt-2">
+                  <LocationMarquee locations={design.lokasiCocok} />
+                </div>
+              </div>
+            )}
+            <div className="mt-6 border-t border-[#edf1f6] pt-6">
               <p className="text-sm text-[#64748b]">Estimasi pembangunan</p>
               <p className="mt-1 text-2xl font-bold text-[#004796]">
                 {money(design.estimatedCost)}
@@ -94,6 +103,21 @@ export default async function DesignDetailPage({
                 </div>
               ))}
             </div>
+            {design.dasarPemetaan && design.dasarPemetaan.length > 0 && (
+              <div className="mt-8 border-t border-white/15 pt-6">
+                <h3 className="text-lg font-semibold">Yang menjadi dasar pemetaan highlights</h3>
+                <ul className="mt-4 space-y-3">
+                  {design.dasarPemetaan.map((pemetaan, index) => (
+                    <li
+                      key={index}
+                      className="text-sm leading-relaxed text-white/75"
+                    >
+                      {pemetaan}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </section>
         )}
       </div>
