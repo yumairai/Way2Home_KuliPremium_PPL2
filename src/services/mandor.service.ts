@@ -368,7 +368,7 @@ async function getAllStages(
       keterangan,
       tanggal_mulai,
       tanggal_selesai,
-      project_subtasks ( id, judul, bobot, urutan, target_selesai, selesai )
+      project_subtasks!project_subtasks_project_stage_id_fkey ( id, judul, bobot, urutan, target_selesai, selesai )
     `,
     )
     .in("project_id", projectIds)

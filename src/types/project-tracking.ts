@@ -1,4 +1,4 @@
-﻿export type ConstructionTask = {
+export type ConstructionTask = {
   id: string;
   title: string;
   status: "pending" | "in-progress" | "completed";
@@ -35,10 +35,23 @@ export type ProjectGalleryItem = {
   milestoneId?: string;
 };
 
+export type CustomerIssueResolution = {
+  id: string;
+  issueId: string;
+  issueTitle: string;
+  solution: string;
+  approvalReason: string;
+  approvalEvidence: string | null;
+  status: string;
+  submittedAt: string;
+  discussion: { id: string; author: string; message: string; date: string }[];
+};
+
 export type ProjectTracking = {
   startedAt?: string;
   targetDate?: string;
   milestones: ConstructionMilestone[];
   activities: ProjectActivity[];
   gallery: ProjectGalleryItem[];
+  resolutions?: CustomerIssueResolution[];
 };

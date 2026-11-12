@@ -1,0 +1,26 @@
+task,model,variant,role,status,primary_metric,cv_primary,test_primary,test_secondary,secondary_metric,is_best,note
+risk_classification,Dummy (most frequent),default,rujukan naif,OK,f1_macro,0.23150558755312894,0.23150565709312446,0.36948302872062666,f1_weighted,False,
+risk_classification,Logistic Regression,default,baseline,OK,f1_macro,0.599271462813494,0.6412119061011506,0.670833333401431,f1_weighted,False,
+risk_classification,Logistic Regression,tuned,baseline,OK,f1_macro,0.6001125116479125,0.6412119061011506,0.670833333401431,f1_weighted,False,
+risk_classification,Random Forest,default,kandidat,OK,f1_macro,0.6160220056336014,0.6281413093678873,0.6730970052728699,f1_weighted,False,
+risk_classification,Random Forest,tuned,kandidat,OK,f1_macro,0.6174083002736465,0.6357159164176708,0.6714697705224021,f1_weighted,True,
+risk_classification,HistGradientBoosting (sklearn),default,kandidat tambahan,OK,f1_macro,0.5998673396930547,0.6296108606422101,0.665893011335174,f1_weighted,False,
+risk_classification,HistGradientBoosting (sklearn),tuned,kandidat tambahan,OK,f1_macro,0.6145746024734842,0.656352447132589,0.6885338900658049,f1_weighted,False,
+risk_classification,XGBoost,-,kandidat,SKIPPED,f1_macro,,,,f1_weighted,False,library xgboost NOT INSTALLED
+risk_classification,CatBoost,-,kandidat,SKIPPED,f1_macro,,,,f1_weighted,False,library catboost NOT INSTALLED
+delay_regression,Dummy (mean),default,rujukan naif,OK,MAE,6.4163459375,6.458284000000001,-0.0002466964270824157,R2,False,
+delay_regression,Linear Regression,default,baseline,OK,MAE,4.145170543059713,4.202952098004475,0.5694649540956525,R2,False,
+delay_regression,Random Forest,default,kandidat,OK,MAE,4.177249166666667,4.38742,0.547021300460572,R2,False,
+delay_regression,Random Forest,tuned,kandidat,OK,MAE,4.136751517672123,4.299306934706345,0.5584028616978622,R2,False,
+delay_regression,HistGradientBoosting (sklearn),default,kandidat tambahan,OK,MAE,4.061820312836981,4.1670567444579545,0.5653948842565298,R2,False,
+delay_regression,HistGradientBoosting (sklearn),tuned,kandidat tambahan,OK,MAE,4.005031196811598,4.155567051410158,0.5634998154433669,R2,True,
+delay_regression,XGBoost,-,kandidat,SKIPPED,MAE,,,,R2,False,library xgboost NOT INSTALLED
+delay_regression,CatBoost,-,kandidat,SKIPPED,MAE,,,,R2,False,library catboost NOT INSTALLED
+cost_prediction,Dummy (mean),default,rujukan naif,OK,MAE,0.06125459814066425,0.063810909251824,-0.0001487378539579698,R2,False,
+cost_prediction,Linear Regression,default,baseline,OK,MAE,0.05949043062684491,0.061096410832130035,0.06636654094491512,R2,True,
+cost_prediction,Random Forest,default,kandidat,OK,MAE,0.06106854260887658,0.06201167302857732,0.04817476168039636,R2,False,
+cost_prediction,Random Forest,tuned,kandidat,OK,MAE,0.05971882609789249,0.06160492254435982,0.05518311315852609,R2,False,
+cost_prediction,HistGradientBoosting (sklearn),default,kandidat tambahan,OK,MAE,0.060857419787992736,0.06219810084694237,0.04058194578921226,R2,False,
+cost_prediction,HistGradientBoosting (sklearn),tuned,kandidat tambahan,OK,MAE,0.06000783022209192,0.06167516772631646,0.05231447093848396,R2,False,
+cost_prediction,XGBoost,-,kandidat,SKIPPED,MAE,,,,R2,False,library xgboost NOT INSTALLED
+cost_prediction,CatBoost,-,kandidat,SKIPPED,MAE,,,,R2,False,library catboost NOT INSTALLED

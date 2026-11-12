@@ -719,16 +719,27 @@ function ProgressModal({
     subtaskId: string,
   ) => void | Promise<void>;
 }) {
-  const firstOpen = project.milestones.find(
-    (milestone) =>
-      !milestone.subtasks.every((task) =>
-        isApproved(task, milestone, approvedSubtasks),
-      ),
+  const firstUnfinishedStage =
+    project.milestones.find((milestone) =>
+      milestone.subtasks.some((task) => !isApproved(task, milestone, approvedSubtasks)),
+    ) ?? project.milestones[0];
+
+  const [selectedStageId, setSelectedStageId] = useState<string>(
+    firstUnfinishedStage?.id ?? "",
   );
-  const [subtaskId, setSubtaskId] = useState(
-    firstOpen?.subtasks.find(
-      (task) => !isApproved(task, firstOpen, approvedSubtasks),
-    )?.id ?? "",
+
+  const currentStage =
+    project.milestones.find((m) => m.id === selectedStageId) ??
+    firstUnfinishedStage ??
+    project.milestones[0];
+
+  const availableSubtasks = currentStage?.subtasks ?? [];
+  const firstPendingSubtask = availableSubtasks.find(
+    (task) => !isApproved(task, currentStage, approvedSubtasks),
+  );
+
+  const [subtaskId, setSubtaskId] = useState<string>(
+    firstPendingSubtask?.id ?? availableSubtasks[0]?.id ?? "",
   );
   const [note, setNote] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
@@ -736,11 +747,20 @@ function ProgressModal({
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
   const idCounter = useRef(0);
-  const milestone = firstOpen;
-  const availableSubtasks = milestone?.subtasks ?? [];
-  const pendingSubtasks = availableSubtasks.filter(
-    (task) => !isApproved(task, milestone!, approvedSubtasks),
-  );
+
+  const handleStageChange = (newStageId: string) => {
+    setSelectedStageId(newStageId);
+    const targetStage = project.milestones.find((m) => m.id === newStageId);
+    if (targetStage) {
+      const pendingInTarget = targetStage.subtasks.find(
+        (t) => !isApproved(t, targetStage, approvedSubtasks),
+      );
+      setSubtaskId(pendingInTarget?.id ?? targetStage.subtasks[0]?.id ?? "");
+    } else {
+      setSubtaskId("");
+    }
+    setError("");
+  };
 
   return (
     <Dialog title="Laporkan progress" onClose={onClose}>
@@ -751,9 +771,13 @@ function ProgressModal({
             setError("Tulis catatan pekerjaan minimal 10 karakter.");
             return;
           }
-          const subtask = pendingSubtasks.find((item) => item.id === subtaskId);
-          if (!subtask || !milestone) {
-            setError("Pilih subtask yang belum selesai.");
+          const subtask = availableSubtasks.find((item) => item.id === subtaskId);
+          if (!subtask || !currentStage) {
+            setError("Pilih subtask yang valid.");
+            return;
+          }
+          if (isApproved(subtask, currentStage, approvedSubtasks)) {
+            setError("Subtask ini sudah selesai dan tidak dapat dilaporkan lagi.");
             return;
           }
           setSending(true);
@@ -762,8 +786,8 @@ function ProgressModal({
             await onSubmit(
               {
                 id: `PR-${project.id}-${idCounter.current}`,
-                milestoneId: milestone.id,
-                milestoneTitle: milestone.title,
+                milestoneId: currentStage.id,
+                milestoneTitle: currentStage.title,
                 subtaskTitle: subtask.title,
                 note: note.trim(),
                 photo,
@@ -784,22 +808,39 @@ function ProgressModal({
           resmi sebelum diverifikasi pengawas.
         </p>
         <div className="block text-xs font-semibold text-[#29465e]">
-          Milestone saat ini
-          <div className="mt-1.5 flex min-h-10 items-center rounded-lg border border-[#dfe6ed] bg-[#f5f8fb] px-3 text-sm font-medium text-[#315b76]">
-            {milestone?.title ?? "Semua milestone telah selesai"}
-          </div>
+          Tahapan pekerjaan <span className="text-[#a75252]">*</span>
+          <select
+            value={selectedStageId}
+            onChange={(e) => handleStageChange(e.target.value)}
+            disabled={project.milestones.length === 0}
+            className="mt-1.5 h-10 w-full rounded-lg border border-[#dfe6ed] bg-white px-3 text-sm font-normal outline-none focus:border-[#5b7c99]"
+          >
+            {project.milestones.map((stage, idx) => {
+              const isStageDone =
+                stage.subtasks.length > 0 &&
+                stage.subtasks.every((t) => isApproved(t, stage, approvedSubtasks));
+              return (
+                <option key={stage.id} value={stage.id}>
+                  Tahap {idx + 1}: {stage.title} {isStageDone ? "· (Selesai)" : ""}
+                </option>
+              );
+            })}
+          </select>
         </div>
         <label className="mt-4 block text-xs font-semibold text-[#29465e]">
-          Subtask yang dilaporkan
+          Subtask yang dilaporkan <span className="text-[#a75252]">*</span>
           <select
             value={subtaskId}
-            onChange={(event) => setSubtaskId(event.target.value)}
-            disabled={!pendingSubtasks.length}
+            onChange={(event) => {
+              setSubtaskId(event.target.value);
+              setError("");
+            }}
+            disabled={availableSubtasks.length === 0}
             className="mt-1.5 h-10 w-full rounded-lg border border-[#dfe6ed] bg-white px-3 text-sm font-normal outline-none focus:border-[#5b7c99] disabled:cursor-not-allowed disabled:bg-slate-100"
           >
             <option value="">Pilih subtask…</option>
             {availableSubtasks.map((task) => {
-              const completed = isApproved(task, milestone!, approvedSubtasks);
+              const completed = isApproved(task, currentStage, approvedSubtasks);
               return (
                 <option key={task.id} value={task.id} disabled={completed}>
                   {task.title} ({task.weight}%) {completed ? "· Selesai" : ""}
@@ -922,22 +963,38 @@ function IssueModal({
     ids: { stageId: string; subtaskId: string },
   ) => void | Promise<void>;
 }) {
-  const milestone =
-    project.milestones.find(
-      (item) => item.title === project.currentMilestone,
-    ) ??
+  const defaultStage =
+    project.milestones.find((item) => item.title === project.currentMilestone) ??
     project.milestones.find((item) =>
       item.subtasks.some((task) => !isApproved(task, item, approvedSubtasks)),
-    );
-  const availableSubtasks =
-    milestone?.subtasks.filter(
-      (task) => !isApproved(task, milestone, approvedSubtasks),
-    ) ?? [];
+    ) ??
+    project.milestones[0];
+
+  const [selectedStageId, setSelectedStageId] = useState<string>(
+    defaultStage?.id ?? "",
+  );
+
+  const currentStage =
+    project.milestones.find((m) => m.id === selectedStageId) ??
+    defaultStage ??
+    project.milestones[0];
+
+  const availableSubtasks = currentStage?.subtasks ?? [];
+  const [subtaskId, setSubtaskId] = useState<string>(
+    availableSubtasks[0]?.id ?? "",
+  );
+
+  const handleStageChange = (newStageId: string) => {
+    setSelectedStageId(newStageId);
+    const targetStage = project.milestones.find((m) => m.id === newStageId);
+    setSubtaskId(targetStage?.subtasks[0]?.id ?? "");
+    setError("");
+  };
+
   const [category, setCategory] = useState<MandorIssueReport["category"] | "">(
     "",
   );
   const [description, setDescription] = useState("");
-  const [subtaskId, setSubtaskId] = useState(availableSubtasks[0]?.id ?? "");
   const [workCondition, setWorkCondition] = useState<
     MandorIssueReport["workCondition"] | ""
   >("");
@@ -968,9 +1025,9 @@ function IssueModal({
             setError("Jelaskan kendala minimal 10 karakter.");
             return;
           }
-          if (!milestone || !selectedSubtask) {
+          if (!currentStage || !selectedSubtask) {
             setError(
-              "Tidak ada subtask aktif yang dapat dipilih untuk laporan.",
+              "Pilih subtask yang terdampak kendala.",
             );
             return;
           }
@@ -988,8 +1045,8 @@ function IssueModal({
                 category,
                 categoryLabel: selectedCategory.label,
                 description: description.trim(),
-                affectedMilestoneId: milestone.id,
-                affectedMilestoneTitle: milestone.title,
+                affectedMilestoneId: currentStage.id,
+                affectedMilestoneTitle: currentStage.title,
                 affectedSubtaskId: selectedSubtask.id,
                 affectedSubtaskTitle: selectedSubtask.title,
                 workCondition,
@@ -1001,7 +1058,7 @@ function IssueModal({
                 status: "Menunggu",
                 followUp: "",
               },
-              { stageId: milestone.id, subtaskId: selectedSubtask.id },
+              { stageId: currentStage.id, subtaskId: selectedSubtask.id },
             );
           } finally {
             setSending(false);
@@ -1047,40 +1104,51 @@ function IssueModal({
             {description.length}/1000
           </span>
         </label>
-        <div className="rounded-xl border border-[#e4eaf0] p-3">
+        <div className="rounded-xl border border-[#e4eaf0] p-3 space-y-3">
           <p className="text-xs font-semibold text-[#29465e]">
-            Pekerjaan yang terdampak
+            Pekerjaan yang terdampak <span className="text-[#a75252]">*</span>
           </p>
-          {milestone ? (
-            <>
-              <p className="mt-2 rounded-lg bg-[#f5f8fb] px-3 py-2 text-xs font-medium text-[#315b76]">
-                {milestone.title}
-              </p>
-              <label className="mt-3 block text-xs font-medium text-slate-600">
-                Subtask aktif <span className="text-[#a75252]">*</span>
-                <select
-                  value={subtaskId}
-                  onChange={(event) => setSubtaskId(event.target.value)}
-                  disabled={!availableSubtasks.length}
-                  className="mt-1.5 h-10 w-full rounded-lg border border-[#dfe6ed] bg-white px-3 text-sm outline-none focus:border-[#5b7c99] disabled:bg-slate-100"
-                >
-                  {availableSubtasks.length ? (
-                    availableSubtasks.map((task) => (
-                      <option key={task.id} value={task.id}>
-                        {task.title}
-                      </option>
-                    ))
-                  ) : (
-                    <option value="">Tidak ada subtask aktif</option>
-                  )}
-                </select>
-              </label>
-            </>
-          ) : (
-            <p className="mt-2 text-xs text-slate-500">
-              Semua pekerjaan telah selesai; tidak ada subtask aktif.
-            </p>
-          )}
+          <div>
+            <label className="block text-[11px] font-medium text-slate-600">
+              Tahap pekerjaan
+            </label>
+            <select
+              value={selectedStageId}
+              onChange={(e) => handleStageChange(e.target.value)}
+              disabled={project.milestones.length === 0}
+              className="mt-1 h-10 w-full rounded-lg border border-[#dfe6ed] bg-white px-3 text-sm outline-none focus:border-[#5b7c99]"
+            >
+              {project.milestones.map((stage, idx) => (
+                <option key={stage.id} value={stage.id}>
+                  Tahap {idx + 1}: {stage.title}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-[11px] font-medium text-slate-600">
+              Subtask yang terdampak
+            </label>
+            <select
+              value={subtaskId}
+              onChange={(e) => {
+                setSubtaskId(e.target.value);
+                setError("");
+              }}
+              disabled={!availableSubtasks.length}
+              className="mt-1 h-10 w-full rounded-lg border border-[#dfe6ed] bg-white px-3 text-sm outline-none focus:border-[#5b7c99] disabled:bg-slate-100"
+            >
+              {availableSubtasks.length ? (
+                availableSubtasks.map((task) => (
+                  <option key={task.id} value={task.id}>
+                    {task.title} ({task.weight}%)
+                  </option>
+                ))
+              ) : (
+                <option value="">Tidak ada subtask</option>
+              )}
+            </select>
+          </div>
         </div>
         <fieldset>
           <legend className="text-xs font-semibold text-[#29465e]">

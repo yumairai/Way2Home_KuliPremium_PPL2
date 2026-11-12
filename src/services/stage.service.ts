@@ -68,7 +68,7 @@ const STAGE_SELECT = `
   keterangan,
   tanggal_mulai,
   tanggal_selesai,
-  project_subtasks (
+  project_subtasks!project_subtasks_project_stage_id_fkey (
     id,
     judul,
     bobot,
@@ -80,12 +80,12 @@ const STAGE_SELECT = `
 
 function toSubtask(row: Row): SubtaskDTO {
   return {
-    id: String(row.id),
-    judul: String(row.judul ?? ""),
-    bobot: Number(row.bobot ?? 0),
+    id: String(row.id ?? ""),
+    judul: String(row.judul ?? row.title ?? ""),
+    bobot: Number(row.bobot ?? row.weight ?? 0),
     urutan: Number(row.urutan ?? 0),
     target_selesai: (row.target_selesai as string | null) ?? null,
-    selesai: row.selesai === true,
+    selesai: row.selesai === true || row.done === true,
   };
 }
 
@@ -101,7 +101,11 @@ export function normalizeStageRows(rows: Row[]): StageDTO[] {
 function toStage(row: Row): StageDTO {
   const rawSubtasks = Array.isArray(row.project_subtasks)
     ? (row.project_subtasks as Row[])
-    : [];
+    : Array.isArray(row.subtasks)
+      ? (row.subtasks as Row[])
+      : row.project_subtasks && typeof row.project_subtasks === "object"
+        ? [row.project_subtasks as Row]
+        : [];
   const subtasks = rawSubtasks
     .map(toSubtask)
     .sort((a, b) => a.urutan - b.urutan || a.judul.localeCompare(b.judul));
