@@ -57,7 +57,11 @@ function VerificationModal({
       setSaved(true);
       window.setTimeout(onClose, 850);
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : "Gagal menyimpan hasil review.");
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : "Gagal menyimpan hasil review.",
+      );
       setSaving(false);
     }
   };
@@ -243,7 +247,9 @@ function VerificationModal({
                   </b>
                 </div>
                 <div className="mt-2 flex items-center justify-between rounded-lg bg-[#edf4f9] px-3 py-2">
-                  <span className="text-[10px] text-slate-600">Budget yang diajukan</span>
+                  <span className="text-[10px] text-slate-600">
+                    Budget yang diajukan
+                  </span>
                   <b className="text-xs text-[#183b57]">
                     {new Intl.NumberFormat("id-ID", {
                       style: "currency",
@@ -303,11 +309,18 @@ function VerificationModal({
                 ? "Tersimpan"
                 : saving
                   ? "Menyimpan..."
-                : pending > 0
-                  ? `Tinjau ${pending} dokumen lagi`
-                  : "Simpan hasil review"}
+                  : pending > 0
+                    ? `Tinjau ${pending} dokumen lagi`
+                    : "Simpan hasil review"}
             </button>
-            {error && <p role="alert" className="w-full text-right text-xs text-[#a75252]">{error}</p>}
+            {error && (
+              <p
+                role="alert"
+                className="w-full text-right text-xs text-[#a75252]"
+              >
+                {error}
+              </p>
+            )}
           </div>
         </div>
       </section>
@@ -344,16 +357,20 @@ export default function AdminVerification() {
     fetch("/api/admin/document-verification")
       .then(async (response) => {
         const result = await response.json();
-        if (!response.ok) throw new Error(result.message || "Gagal memuat pengajuan.");
+        if (!response.ok)
+          throw new Error(result.message || "Gagal memuat pengajuan.");
         return result.requests as VerificationRequest[];
       })
       .then((items) => {
         if (active) setRequests(items);
       })
       .catch((error: unknown) => {
-        if (active) setLoadError(error instanceof Error ? error.message : "Gagal memuat pengajuan.");
+        if (active)
+          setLoadError(
+            error instanceof Error ? error.message : "Gagal memuat pengajuan.",
+          );
       })
-      .finally(() => { 
+      .finally(() => {
         if (active) setLoading(false);
       });
     return () => {
@@ -386,17 +403,26 @@ export default function AdminVerification() {
       0,
     );
   const save = async (updated: VerificationRequest) => {
-    const response = await fetch(`/api/admin/document-verification/${updated.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        decisions: updated.documents.map(({ id, status }) => ({ id, status })),
-        adminNote: updated.adminNote,
-      }),
-    });
+    const response = await fetch(
+      `/api/admin/document-verification/${updated.id}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          decisions: updated.documents.map(({ id, status }) => ({
+            id,
+            status,
+          })),
+          adminNote: updated.adminNote,
+        }),
+      },
+    );
     const result = await response.json();
-    if (!response.ok) throw new Error(result.message || "Gagal menyimpan hasil review.");
-    setRequests((current) => current.filter((request) => request.id !== updated.id));
+    if (!response.ok)
+      throw new Error(result.message || "Gagal menyimpan hasil review.");
+    setRequests((current) =>
+      current.filter((request) => request.id !== updated.id),
+    );
   };
   const summaries = [
     {
@@ -431,7 +457,7 @@ export default function AdminVerification() {
             Verifikasi dokumen
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-              Periksa dokumen, budget, dan desain yang diajukan customer.
+            Periksa dokumen, budget, dan desain yang diajukan customer.
           </p>
         </div>
       </section>
@@ -485,12 +511,15 @@ export default function AdminVerification() {
             </label>
           </div>
         </div>
-          {visibleLoadError && (
-            <p role="alert" className="border-b border-[#f2d4d4] bg-[#fff6f6] px-6 py-3 text-xs text-[#a75252]">
-              {visibleLoadError}
-            </p>
-          )}
-          <div className="overflow-x-auto">
+        {visibleLoadError && (
+          <p
+            role="alert"
+            className="border-b border-[#f2d4d4] bg-[#fff6f6] px-6 py-3 text-xs text-[#a75252]"
+          >
+            {visibleLoadError}
+          </p>
+        )}
+        <div className="overflow-x-auto">
           <table className="w-full min-w-[1000px] text-left text-xs">
             <thead>
               <tr className="bg-[#f8fafc] text-[10px] font-semibold text-slate-500">
@@ -563,7 +592,10 @@ export default function AdminVerification() {
               })}
               {!isLoading && !visibleLoadError && filtered.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-slate-500">
+                  <td
+                    colSpan={8}
+                    className="px-6 py-12 text-center text-slate-500"
+                  >
                     {requests.length === 0
                       ? "Belum ada pengajuan dokumen untuk diverifikasi."
                       : "Tidak ada pengajuan yang cocok dengan pencarian atau filter."}
@@ -572,7 +604,10 @@ export default function AdminVerification() {
               )}
               {isLoading && (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-slate-500">
+                  <td
+                    colSpan={8}
+                    className="px-6 py-12 text-center text-slate-500"
+                  >
                     Memuat pengajuan customer...
                   </td>
                 </tr>

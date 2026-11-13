@@ -142,37 +142,43 @@ export async function getCustomerProjectTracking(
     customerOnly: true,
   });
   const stageIds = stages.map((stage) => stage.id);
-  const [subtasksResult, updatesResult, documentationResult, contractResult, resolutionsResult] =
-    await Promise.all([
-      stageIds.length
-        ? supabase
-            .from("project_subtasks")
-            .select(
-              "id, project_stage_id, judul, bobot, urutan, target_selesai, selesai, completed_at, created_at",
-            )
-            .in("project_stage_id", stageIds)
-            .order("urutan", { ascending: true })
-        : Promise.resolve({ data: [], error: null }),
-      supabase
-        .from("project_updates")
-        .select("id, judul, isi, created_at")
-        .eq("project_id", projectId)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("progress_documentation")
-        .select("id, project_stage_id, url, catatan, created_at")
-        .eq("project_id", projectId)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("contracts")
-        .select("tanggal_mulai, tanggal_selesai_estimasi, created_at")
-        .eq("project_id", projectId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      supabase
-        .from("issue_resolutions")
-        .select(`
+  const [
+    subtasksResult,
+    updatesResult,
+    documentationResult,
+    contractResult,
+    resolutionsResult,
+  ] = await Promise.all([
+    stageIds.length
+      ? supabase
+          .from("project_subtasks")
+          .select(
+            "id, project_stage_id, judul, bobot, urutan, target_selesai, selesai, completed_at, created_at",
+          )
+          .in("project_stage_id", stageIds)
+          .order("urutan", { ascending: true })
+      : Promise.resolve({ data: [], error: null }),
+    supabase
+      .from("project_updates")
+      .select("id, judul, isi, created_at")
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("progress_documentation")
+      .select("id, project_stage_id, url, catatan, created_at")
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("contracts")
+      .select("tanggal_mulai, tanggal_selesai_estimasi, created_at")
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("issue_resolutions")
+      .select(
+        `
           id,
           kendala_id,
           solusi,
@@ -182,10 +188,11 @@ export async function getCustomerProjectTracking(
           created_at,
           kendala ( kategori, deskripsi ),
           resolution_discussions ( id, penulis, pesan, created_at )
-        `)
-        .eq("project_id", projectId)
-        .order("created_at", { ascending: false }),
-    ]);
+        `,
+      )
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: false }),
+  ]);
 
   if (subtasksResult.error) throw subtasksResult.error;
   if (updatesResult.error) throw updatesResult.error;
@@ -237,7 +244,10 @@ export async function getCustomerProjectTracking(
       : undefined,
   }));
 
-  const rawResolutions = (resolutionsResult.data ?? []) as Record<string, unknown>[];
+  const rawResolutions = (resolutionsResult.data ?? []) as Record<
+    string,
+    unknown
+  >[];
   const resolutions = rawResolutions.map((res) => {
     const k = (res.kendala ?? {}) as Record<string, unknown>;
     const rawDisc = Array.isArray(res.resolution_discussions)

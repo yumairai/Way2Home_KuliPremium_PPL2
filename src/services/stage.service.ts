@@ -123,7 +123,8 @@ function toStage(row: Row): StageDTO {
     nama_tahap: String(row.nama_tahap ?? ""),
     urutan: Number(row.urutan ?? 0),
     progress_percentage: progress,
-    status: progress >= 100 ? "selesai" : progress > 0 ? "berjalan" : "belum_mulai",
+    status:
+      progress >= 100 ? "selesai" : progress > 0 ? "berjalan" : "belum_mulai",
     keterangan: (row.keterangan as string | null) ?? null,
     tanggal_mulai: (row.tanggal_mulai as string | null) ?? null,
     tanggal_selesai: (row.tanggal_selesai as string | null) ?? null,
@@ -159,7 +160,9 @@ export function calculateOfficialProgress(stages: StageDTO[]): number {
   const done = stages.reduce(
     (sum, stage) =>
       sum +
-      stage.subtasks.filter((item) => item.selesai).reduce((s, item) => s + item.bobot, 0),
+      stage.subtasks
+        .filter((item) => item.selesai)
+        .reduce((s, item) => s + item.bobot, 0),
     0,
   );
   if (total <= 0) return 0;
@@ -198,7 +201,8 @@ export async function persistStageProgress(
     .filter((row) => row.selesai === true)
     .reduce((sum, row) => sum + Number(row.bobot ?? 0), 0);
 
-  const progress = total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0;
+  const progress =
+    total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0;
   const status =
     progress >= 100 ? "selesai" : progress > 0 ? "berjalan" : "belum_mulai";
 
@@ -332,13 +336,22 @@ export async function createStagesFromTemplate(
 export async function updateStage(
   supabase: SupabaseClient<Database>,
   stageId: string,
-  patch: Partial<Pick<StageDTO, "nama_tahap" | "keterangan" | "tanggal_mulai" | "tanggal_selesai">>,
+  patch: Partial<
+    Pick<
+      StageDTO,
+      "nama_tahap" | "keterangan" | "tanggal_mulai" | "tanggal_selesai"
+    >
+  >,
 ): Promise<void> {
   const { user } = await requireRole(supabase, "pengawas");
 
   const { error } = await supabase
     .from("project_stages")
-    .update({ ...patch, updated_by: user.id, updated_at: new Date().toISOString() })
+    .update({
+      ...patch,
+      updated_by: user.id,
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", stageId);
 
   if (error) {
@@ -375,7 +388,12 @@ export async function createSubtasks(
 export async function updateSubtask(
   supabase: SupabaseClient<Database>,
   subtaskId: string,
-  patch: Partial<Pick<SubtaskDTO, "judul" | "bobot" | "urutan" | "target_selesai" | "selesai">>,
+  patch: Partial<
+    Pick<
+      SubtaskDTO,
+      "judul" | "bobot" | "urutan" | "target_selesai" | "selesai"
+    >
+  >,
 ): Promise<void> {
   await requireRole(supabase, "pengawas");
 
@@ -401,7 +419,10 @@ export async function deleteStage(
   stageId: string,
 ): Promise<void> {
   await requireRole(supabase, "pengawas");
-  const { error } = await supabase.from("project_stages").delete().eq("id", stageId);
+  const { error } = await supabase
+    .from("project_stages")
+    .delete()
+    .eq("id", stageId);
   if (error) {
     console.error("[deleteStage]", error.message);
     throw new ServiceError("Gagal menghapus tahapan.", 500);
@@ -413,7 +434,10 @@ export async function deleteSubtask(
   subtaskId: string,
 ): Promise<void> {
   await requireRole(supabase, "pengawas");
-  const { error } = await supabase.from("project_subtasks").delete().eq("id", subtaskId);
+  const { error } = await supabase
+    .from("project_subtasks")
+    .delete()
+    .eq("id", subtaskId);
   if (error) {
     console.error("[deleteSubtask]", error.message);
     throw new ServiceError("Gagal menghapus subtask.", 500);

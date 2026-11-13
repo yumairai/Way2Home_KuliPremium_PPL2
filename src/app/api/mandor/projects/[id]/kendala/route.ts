@@ -2,10 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { submitKendala } from "@/services/mandor.service";
 import { jsonError, readJson } from "@/services/http";
-import type {
-  MandorIssueCategory,
-  MandorIssueCondition,
-} from "@/data/mandor";
+import type { MandorIssueCategory, MandorIssueCondition } from "@/data/mandor";
 
 /**
  * POST /api/mandor/projects/[id]/kendala

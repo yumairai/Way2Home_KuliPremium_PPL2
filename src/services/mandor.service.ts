@@ -25,7 +25,11 @@ import {
   type StageDTO,
 } from "./stage.service";
 import { ISSUE_CATEGORIES } from "@/data/stage-template";
-import { formatDate, formatDateTimeComma, formatDateTimeDot } from "@/utils/format";
+import {
+  formatDate,
+  formatDateTimeComma,
+  formatDateTimeDot,
+} from "@/utils/format";
 import type {
   MandorForemanNote,
   MandorIssueCategory,
@@ -188,7 +192,9 @@ async function getAssignedProjectIds(
     throw new ServiceError("Gagal memuat daftar penugasan Anda.", 500);
   }
 
-  return (data ?? []).map((row: Record<string, unknown>) => String(row.project_id));
+  return (data ?? []).map((row: Record<string, unknown>) =>
+    String(row.project_id),
+  );
 }
 
 const PROJECT_SELECT = `
@@ -250,11 +256,12 @@ function buildMandorProject(
     currentMilestone: currentStage?.nama_tahap ?? "Belum ada tahapan",
     supervisor: String(pengawasProfile.full_name ?? "Belum ditugaskan"),
     supervisorNote:
-      currentStage?.keterangan ??
-      "Belum ada arahan pengawas untuk tahap ini.",
+      currentStage?.keterangan ?? "Belum ada arahan pengawas untuk tahap ini.",
     image: pickImage(design),
     scope: splitScope(
-      typeof contract?.ruang_lingkup === "string" ? contract.ruang_lingkup : null,
+      typeof contract?.ruang_lingkup === "string"
+        ? contract.ruang_lingkup
+        : null,
     ),
     milestones,
     progressReports: reports,
@@ -305,10 +312,11 @@ export async function getMandorProjects(
   const projectIds = await getAssignedProjectIds(supabase);
   if (projectIds.length === 0) return [];
 
-  const [{ data: projectRows, error: projectError }, stages] = await Promise.all([
-    supabase.from("projects").select(PROJECT_SELECT).in("id", projectIds),
-    getAllStages(supabase, projectIds),
-  ]);
+  const [{ data: projectRows, error: projectError }, stages] =
+    await Promise.all([
+      supabase.from("projects").select(PROJECT_SELECT).in("id", projectIds),
+      getAllStages(supabase, projectIds),
+    ]);
 
   if (projectError || !projectRows) {
     console.error("[getMandorProjects]", projectError?.message);
@@ -397,7 +405,9 @@ async function getReportsForStages(
     throw new ServiceError("Gagal memuat laporan progress.", 500);
   }
 
-  return (data ?? []).map((row: Record<string, unknown>) => toProgressReport(row));
+  return (data ?? []).map((row: Record<string, unknown>) =>
+    toProgressReport(row),
+  );
 }
 
 /** Detail satu proyek milik mandor, lengkap dengan laporan & kendala. */
@@ -409,7 +419,11 @@ export async function getMandorProject(
   if (!projectIds.includes(projectId)) return null;
 
   const [{ data, error }, stages] = await Promise.all([
-    supabase.from("projects").select(PROJECT_SELECT).eq("id", projectId).maybeSingle(),
+    supabase
+      .from("projects")
+      .select(PROJECT_SELECT)
+      .eq("id", projectId)
+      .maybeSingle(),
     getProjectStages(supabase, projectId),
   ]);
 

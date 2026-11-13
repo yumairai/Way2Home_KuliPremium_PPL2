@@ -65,28 +65,28 @@ const PRIORITY_WEIGHTS: Record<
   biaya: {
     budget: 0.35,
     area: 0.15,
-    bedrooms: 0.10,
-    floors: 0.10,
+    bedrooms: 0.1,
+    floors: 0.1,
     style: 0.08,
     duration: 0.07,
     climate: 0.15,
   },
 
   estetik: {
-    budget: 0.10,
-    area: 0.10,
-    bedrooms: 0.10,
-    floors: 0.10,
-    style: 0.30,
+    budget: 0.1,
+    area: 0.1,
+    bedrooms: 0.1,
+    floors: 0.1,
+    style: 0.3,
     duration: 0.05,
     climate: 0.25,
   },
 
   cepat: {
     budget: 0.15,
-    area: 0.10,
-    bedrooms: 0.10,
-    floors: 0.10,
+    area: 0.1,
+    bedrooms: 0.1,
+    floors: 0.1,
     style: 0.05,
     duration: 0.35,
     climate: 0.15,
@@ -115,7 +115,7 @@ function normalizeStyle(value: string): string {
 // Digunakan juga ketika bobot iklim dikeluarkan saat fallback.
 function normalizeWeights(
   weights: PriorityWeights,
-  includeClimate: boolean
+  includeClimate: boolean,
 ): PriorityWeights {
   const adjusted = {
     ...weights,
@@ -124,7 +124,7 @@ function normalizeWeights(
 
   const total = Object.values(adjusted).reduce(
     (sum, weight) => sum + weight,
-    0
+    0,
   );
 
   return {
@@ -149,62 +149,51 @@ function calculateDistances(
     floors: number;
     duration: number;
   },
-  climateScore: number | null
+  climateScore: number | null,
 ): Record<keyof PriorityWeights, number> {
   const designCost = Math.max(0, Number(design.estimatedCost) || 0);
   const designArea = Math.max(0, Number(design.landArea) || 0);
   const designBedrooms = Math.max(0, Number(design.bedrooms) || 0);
   const designFloors = Math.max(0, Number(design.floors) || 0);
-  const designDuration = Math.max(
-    0,
-    Number(design.estimatedDuration) || 0
-  );
+  const designDuration = Math.max(0, Number(design.estimatedDuration) || 0);
 
-  const effectiveBudget =
-    input.budget * (1 + input.flexibility / 100);
+  const effectiveBudget = input.budget * (1 + input.flexibility / 100);
 
   // Semakin murah dibandingkan batas budget,
   // semakin kecil jaraknya.
   const budgetDistance =
-    effectiveBudget > 0
-      ? clamp(designCost / effectiveBudget)
-      : 1;
+    effectiveBudget > 0 ? clamp(designCost / effectiveBudget) : 1;
 
   // Desain yang membutuhkan lahan melebihi
   // luas tanah customer mendapatkan penalti.
   const areaDistance = clamp(
     Math.max(0, designArea - input.area) /
-      Math.max(maxValues.landArea, input.area, 1)
+      Math.max(maxValues.landArea, input.area, 1),
   );
 
   // Jumlah kamar dan lantai dibandingkan
   // dengan kebutuhan customer.
   const bedroomDistance = clamp(
     Math.abs(designBedrooms - input.bedrooms) /
-      Math.max(maxValues.bedrooms, input.bedrooms, 1)
+      Math.max(maxValues.bedrooms, input.bedrooms, 1),
   );
 
   const floorDistance = clamp(
     Math.abs(designFloors - input.floors) /
-      Math.max(maxValues.floors, input.floors, 1)
+      Math.max(maxValues.floors, input.floors, 1),
   );
 
   // Gaya arsitektur merupakan kriteria kategorikal.
   const styleDistance =
-    normalizeStyle(design.style) === normalizeStyle(input.style)
-      ? 0
-      : 1;
+    normalizeStyle(design.style) === normalizeStyle(input.style) ? 0 : 1;
 
   // Durasi lebih pendek mendapatkan jarak lebih kecil.
   const durationDistance = clamp(
-    designDuration / Math.max(maxValues.duration, 1)
+    designDuration / Math.max(maxValues.duration, 1),
   );
 
   // Skor iklim 0-1 diubah menjadi jarak ketidakcocokan.
-  const climateDistance =
-    climateScore === null
-      ? 0
-      : 1 - clamp(climateScore);
+  const climateDistance = climateScore === null ? 0 : 1 - clamp(climateScore);
 
   return {
     budget: budgetDistance,
@@ -220,7 +209,7 @@ function calculateDistances(
 // Menghitung Weighted Euclidean Distance.
 function calculateWeightedDistance(
   distances: Record<keyof PriorityWeights, number>,
-  weights: PriorityWeights
+  weights: PriorityWeights,
 ): number {
   const squaredDistance =
     distances.budget ** 2 * weights.budget +
@@ -241,7 +230,7 @@ function calculateMatch(distance: number): number {
 
 function createFactors(
   distances: Record<keyof PriorityWeights, number>,
-  includeClimate: boolean
+  includeClimate: boolean,
 ): RecommendationFactor[] {
   const factors: RecommendationFactor[] = [
     {
@@ -296,7 +285,7 @@ export function recommendDesigns(
   designs: HouseDesign[],
   locationScores: DesignLocationScore[],
   input: RecommendationInput,
-  limit = 6
+  limit = 6,
 ): RecommendationResponse {
   if (designs.length === 0) {
     return {
@@ -310,59 +299,42 @@ export function recommendDesigns(
   // yang memiliki status cocok = true.
   const suitableLocationScores = locationScores.filter(
     (item) =>
-      normalizeLocation(item.lokasi) ===
-        normalizeLocation(input.location) &&
-      item.cocok === true
+      normalizeLocation(item.lokasi) === normalizeLocation(input.location) &&
+      item.cocok === true,
   );
 
   // Tentukan apakah sistem perlu menggunakan fallback.
   const matchingSlugs = new Set(
-    suitableLocationScores.map((item) => item.slug)
+    suitableLocationScores.map((item) => item.slug),
   );
 
   const suitableDesigns = designs.filter((design) =>
-    matchingSlugs.has(design.slug)
+    matchingSlugs.has(design.slug),
   );
 
   const usedLocationFallback = suitableDesigns.length === 0;
 
   // Jika tidak ada desain cocok secara iklim,
   // gunakan seluruh desain berdasarkan preferensi lainnya.
-  const candidateDesigns = usedLocationFallback
-    ? designs
-    : suitableDesigns;
+  const candidateDesigns = usedLocationFallback ? designs : suitableDesigns;
 
   // Ambil skor iklim berdasarkan slug desain.
   const climateMap = new Map<string, number>();
 
   if (!usedLocationFallback) {
     suitableLocationScores.forEach((item) => {
-      climateMap.set(
-        item.slug,
-        clamp(Number(item.skor_kecocokan_iklim) || 0)
-      );
+      climateMap.set(item.slug, clamp(Number(item.skor_kecocokan_iklim) || 0));
     });
   }
 
   // Nilai maksimum digunakan untuk normalisasi atribut numerik.
   const maxValues = {
-    landArea: Math.max(
-      1,
-      ...designs.map((item) => Number(item.landArea) || 0)
-    ),
-    bedrooms: Math.max(
-      1,
-      ...designs.map((item) => Number(item.bedrooms) || 0)
-    ),
-    floors: Math.max(
-      1,
-      ...designs.map((item) => Number(item.floors) || 0)
-    ),
+    landArea: Math.max(1, ...designs.map((item) => Number(item.landArea) || 0)),
+    bedrooms: Math.max(1, ...designs.map((item) => Number(item.bedrooms) || 0)),
+    floors: Math.max(1, ...designs.map((item) => Number(item.floors) || 0)),
     duration: Math.max(
       1,
-      ...designs.map(
-        (item) => Number(item.estimatedDuration) || 0
-      )
+      ...designs.map((item) => Number(item.estimatedDuration) || 0),
     ),
   };
 
@@ -371,35 +343,29 @@ export function recommendDesigns(
   // bobot kriteria lainnya dinormalisasi.
   const weights = normalizeWeights(
     PRIORITY_WEIGHTS[input.priority],
-    !usedLocationFallback
+    !usedLocationFallback,
   );
 
   const recommendations: RecommendedDesign[] = candidateDesigns
     .map((design) => {
       const climateScore = usedLocationFallback
         ? null
-        : climateMap.get(design.slug) ?? null;
+        : (climateMap.get(design.slug) ?? null);
 
       const distances = calculateDistances(
         design,
         input,
         maxValues,
-        climateScore
+        climateScore,
       );
 
-      const distance = calculateWeightedDistance(
-        distances,
-        weights
-      );
+      const distance = calculateWeightedDistance(distances, weights);
 
       return {
         ...design,
         distance,
         match: calculateMatch(distance),
-        factors: createFactors(
-          distances,
-          !usedLocationFallback
-        ),
+        factors: createFactors(distances, !usedLocationFallback),
         climateScore,
         locationSuitable: !usedLocationFallback,
       };

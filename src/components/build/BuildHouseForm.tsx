@@ -369,7 +369,7 @@ export default function BuildHouseForm({ design }: { design: HouseDesign }) {
             </h2>
             <p className="mt-3 text-[#047857]">
               Terima kasih. Proyek Anda telah masuk ke antrean admin dengan
-              status <strong>Menunggu Pengawas</strong>. Tim kami akan
+              status <strong>Verifikasi Dokumen</strong>. Tim kami akan
               memverifikasi dokumen Anda dalam 1x24 jam.
             </p>
             <div className="mt-6">
@@ -493,7 +493,8 @@ export default function BuildHouseForm({ design }: { design: HouseDesign }) {
               />
             </div>
             <p className="mt-2 text-xs text-[#64748b]">
-              Nominal akan otomatis diformat dengan pemisah ribuan. Minimal sesuai estimasi biaya: {money(design.estimatedCost)}.
+              Nominal akan otomatis diformat dengan pemisah ribuan. Minimal
+              sesuai estimasi biaya: {money(design.estimatedCost)}.
             </p>
             {errors.budget && (
               <p className="mt-2 text-sm font-semibold text-[#dc2626]">

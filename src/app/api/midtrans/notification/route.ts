@@ -17,7 +17,10 @@ export async function POST(request: Request) {
   try {
     const body: unknown = await request.json();
     if (typeof body !== "object" || body === null) {
-      return NextResponse.json({ message: "Invalid notification" }, { status: 400 });
+      return NextResponse.json(
+        { message: "Invalid notification" },
+        { status: 400 },
+      );
     }
 
     const notification = body as Record<string, unknown>;
@@ -34,14 +37,19 @@ export async function POST(request: Request) {
       typeof signatureKey !== "string" ||
       typeof transactionStatus !== "string"
     ) {
-      return NextResponse.json({ message: "Invalid notification" }, { status: 400 });
+      return NextResponse.json(
+        { message: "Invalid notification" },
+        { status: 400 },
+      );
     }
 
     const serverKey = process.env.MIDTRANS_SERVER_KEY;
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!serverKey || !supabaseUrl || !serviceRoleKey) {
-      console.error("[Midtrans Notification] Missing required server configuration.");
+      console.error(
+        "[Midtrans Notification] Missing required server configuration.",
+      );
       return NextResponse.json(
         { message: "Payment notification configuration error" },
         { status: 500 },
@@ -59,12 +67,18 @@ export async function POST(request: Request) {
       !crypto.timingSafeEqual(receivedSignature, expectedSignatureBuffer)
     ) {
       console.error("[Midtrans Notification] Invalid signature.");
-      return NextResponse.json({ message: "Invalid signature" }, { status: 403 });
+      return NextResponse.json(
+        { message: "Invalid signature" },
+        { status: 403 },
+      );
     }
 
     const orderMatch = ORDER_ID_PATTERN.exec(orderId);
     if (!orderMatch) {
-      return NextResponse.json({ message: "Invalid order ID" }, { status: 400 });
+      return NextResponse.json(
+        { message: "Invalid order ID" },
+        { status: 400 },
+      );
     }
 
     const isSuccess =
@@ -91,7 +105,10 @@ export async function POST(request: Request) {
         "[Midtrans Notification] Payment stage not found:",
         paymentStageId,
       );
-      return NextResponse.json({ message: "Payment stage not found" }, { status: 404 });
+      return NextResponse.json(
+        { message: "Payment stage not found" },
+        { status: 404 },
+      );
     }
     if (
       !Number.isFinite(Number(grossAmount)) ||
@@ -113,7 +130,9 @@ export async function POST(request: Request) {
       throw projectErr;
     }
     if (!project) {
-      throw new Error(`Project ${paymentStage.project_id} for payment stage not found.`);
+      throw new Error(
+        `Project ${paymentStage.project_id} for payment stage not found.`,
+      );
     }
 
     if (paymentStage.status !== "lunas") {
@@ -135,7 +154,8 @@ export async function POST(request: Request) {
       const { error: updateProjectErr } = await supabase
         .from("projects")
         .update({
-          status: "berjalan" satisfies Database["public"]["Enums"]["project_status"],
+          status:
+            "berjalan" satisfies Database["public"]["Enums"]["project_status"],
         })
         .eq("id", project.id)
         .eq("status", "pembayaran_dp");
@@ -147,7 +167,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ message: "OK" });
   } catch (error) {
-    console.error("[Midtrans Notification] Failed to process notification:", error);
+    console.error(
+      "[Midtrans Notification] Failed to process notification:",
+      error,
+    );
     return NextResponse.json(
       { message: "Failed to process notification" },
       { status: 500 },

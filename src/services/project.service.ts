@@ -505,7 +505,8 @@ export function transformDBProjectToProject(
     Record<string, unknown> | undefined;
   const contractCustomer = contractSpecification?.customer as
     Record<string, unknown> | undefined;
-  const projectCustomer = (row.profiles as Record<string, unknown> | undefined) || {};
+  const projectCustomer =
+    (row.profiles as Record<string, unknown> | undefined) || {};
   const contractStatusMap: Record<string, ContractStatus> = {
     draft: "menunggu",
     sent: "menunggu",
@@ -523,13 +524,20 @@ export function transformDBProjectToProject(
       ? contractStatusMap[dbContracts.status as string] || "menunggu"
       : "belum_tersedia",
     version: Number(dbContracts?.document_version || dbContracts?.versi || 1),
-    signedCustomerAt: (dbContracts?.signed_customer_at as string | null) ?? null,
-    signedCustomerSignaturePath: (dbContracts?.signed_customer_signature_path as string | null) ?? null,
-    signedCustomerConsentAt: (dbContracts?.signed_customer_consent_at as string | null) ?? null,
-    signedPengawasAt: (dbContracts?.signed_pengawas_at as string | null) ?? null,
-    signedPengawasSignaturePath: (dbContracts?.signed_pengawas_signature_path as string | null) ?? null,
+    signedCustomerAt:
+      (dbContracts?.signed_customer_at as string | null) ?? null,
+    signedCustomerSignaturePath:
+      (dbContracts?.signed_customer_signature_path as string | null) ?? null,
+    signedCustomerConsentAt:
+      (dbContracts?.signed_customer_consent_at as string | null) ?? null,
+    signedPengawasAt:
+      (dbContracts?.signed_pengawas_at as string | null) ?? null,
+    signedPengawasSignaturePath:
+      (dbContracts?.signed_pengawas_signature_path as string | null) ?? null,
     documentVersion: Number(dbContracts?.document_version || 1),
-    companySignatureLabel: (dbContracts?.company_signature_label as string) || "Placeholder tanda tangan PT Way2Home Konstruksi",
+    companySignatureLabel:
+      (dbContracts?.company_signature_label as string) ||
+      "Placeholder tanda tangan PT Way2Home Konstruksi",
     issuedAt: (dbContracts?.created_at as string) || (row.created_at as string),
     startAt: (dbContracts?.tanggal_mulai as string | null) ?? null,
     estimatedCompletionAt:
@@ -610,10 +618,17 @@ export function transformDBProjectToProject(
     ),
     estimatedCost: Number(design.estimasi_biaya || 0),
     customerName:
-      (typeof contractCustomer?.nama === "string" ? contractCustomer.nama : undefined) ||
-      (typeof projectCustomer.full_name === "string" ? projectCustomer.full_name : undefined),
+      (typeof contractCustomer?.nama === "string"
+        ? contractCustomer.nama
+        : undefined) ||
+      (typeof projectCustomer.full_name === "string"
+        ? projectCustomer.full_name
+        : undefined),
     customerNik: (projectCustomer.nik as string | null) ?? null,
-    customerPhone: (projectCustomer.phone as string | null) ?? (contractCustomer?.telepon as string | null) ?? null,
+    customerPhone:
+      (projectCustomer.phone as string | null) ??
+      (contractCustomer?.telepon as string | null) ??
+      null,
     customerEmail: customerEmail ?? null,
     duration:
       Math.round(((design.estimasi_durasi_hari as number) || 0) / 30) || 8,

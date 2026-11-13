@@ -50,7 +50,11 @@ function AssignPengawasModal({
   project: ProjectForAdmin;
   pengawasList: PengawasOption[];
   onClose: () => void;
-  onAssigned: (projectId: string, pengawasId: string, pengawasName: string) => void;
+  onAssigned: (
+    projectId: string,
+    pengawasId: string,
+    pengawasName: string,
+  ) => void;
 }) {
   const [selected, setSelected] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
@@ -210,7 +214,8 @@ export default function SupervisorManagement() {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("Semua status");
   const [allocationFilter, setAllocationFilter] = useState("Semua");
-  const [selectedProject, setSelectedProject] = useState<ProjectForAdmin | null>(null);
+  const [selectedProject, setSelectedProject] =
+    useState<ProjectForAdmin | null>(null);
   const [notice, setNotice] = useState("");
 
   const fetchData = useCallback(async () => {
@@ -282,7 +287,8 @@ export default function SupervisorManagement() {
 
         const matchAllocation =
           allocationFilter === "Semua" ||
-          (allocationFilter === "Sudah dialokasikan" && p.pengawas_id !== null) ||
+          (allocationFilter === "Sudah dialokasikan" &&
+            p.pengawas_id !== null) ||
           (allocationFilter === "Belum dialokasikan" && p.pengawas_id === null);
 
         return matchQuery && matchStatus && matchAllocation;
@@ -291,7 +297,9 @@ export default function SupervisorManagement() {
   );
 
   const totalAllocated = projects.filter((p) => p.pengawas_id !== null).length;
-  const totalUnallocated = projects.filter((p) => p.pengawas_id === null).length;
+  const totalUnallocated = projects.filter(
+    (p) => p.pengawas_id === null,
+  ).length;
 
   const handleAssigned = (
     projectId: string,
@@ -486,7 +494,9 @@ export default function SupervisorManagement() {
                     </span>
                   </td>
                   <td className="px-4 py-4">
-                    <span className="block text-slate-700">{project.customer_name}</span>
+                    <span className="block text-slate-700">
+                      {project.customer_name}
+                    </span>
                     {project.customer_phone && (
                       <span className="block text-[10px] text-slate-400">
                         {project.customer_phone}
@@ -513,7 +523,9 @@ export default function SupervisorManagement() {
                         </span>
                       </div>
                     ) : (
-                      <span className="italic text-slate-400">Belum dialokasikan</span>
+                      <span className="italic text-slate-400">
+                        Belum dialokasikan
+                      </span>
                     )}
                   </td>
                   <td className="px-6 py-4 text-right">

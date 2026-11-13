@@ -12,9 +12,15 @@ export async function POST() {
     );
   } catch (error) {
     if (error instanceof ServiceError) {
-      return NextResponse.json({ message: error.message }, { status: error.status });
+      return NextResponse.json(
+        { message: error.message },
+        { status: error.status },
+      );
     }
     console.error("[Contract] Legacy sign endpoint:", error);
-    return NextResponse.json({ message: "Gagal memproses persetujuan kontrak." }, { status: 500 });
+    return NextResponse.json(
+      { message: "Gagal memproses persetujuan kontrak." },
+      { status: 500 },
+    );
   }
 }

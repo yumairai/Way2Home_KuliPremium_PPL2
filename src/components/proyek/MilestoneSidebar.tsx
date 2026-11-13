@@ -283,30 +283,30 @@ export default function MilestoneSidebar({ project }: { project: Project }) {
 
       {project.contract.id &&
         (contractStatus === "disetujui" ||
-        contractStatus === "ditolak" ||
-        contractStatus === "revisi") && (
-        <button
-          type="button"
-          onClick={() => setContractOpen(true)}
-          className="flex items-center justify-center gap-3 rounded-full border border-[#dbe4f2] bg-white px-6 py-4 text-sm font-bold text-[#004796] transition hover:-translate-y-0.5 hover:border-[#8fb9ed] hover:shadow-lg active:scale-95"
-        >
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
+          contractStatus === "ditolak" ||
+          contractStatus === "revisi") && (
+          <button
+            type="button"
+            onClick={() => setContractOpen(true)}
+            className="flex items-center justify-center gap-3 rounded-full border border-[#dbe4f2] bg-white px-6 py-4 text-sm font-bold text-[#004796] transition hover:-translate-y-0.5 hover:border-[#8fb9ed] hover:shadow-lg active:scale-95"
           >
-            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-            <circle cx="12" cy="12" r="3" />
-          </svg>
-          Lihat Kontrak
-        </button>
-      )}
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            Lihat Kontrak
+          </button>
+        )}
 
       <div className="rounded-[1.5rem] bg-gradient-to-br from-[#004796] to-[#045ec2] p-6 text-white shadow-[0_16px_36px_rgba(0,71,150,0.35)]">
         <div className="flex items-center gap-2 text-sm font-bold">

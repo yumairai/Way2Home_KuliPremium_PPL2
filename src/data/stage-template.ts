@@ -75,13 +75,17 @@ export const STAGE_TEMPLATE: StageTemplateStage[] = [
       { title: "Pengerjaan Pagar & Carport", weight: 2.5 },
       { title: "Pembuatan Taman", weight: 2.5 },
       { title: "Pembersihan Total (Final Cleaning)", weight: 2.5 },
-      { title: "Inspeksi Komplain (Punch List) & Penyerahan Kunci", weight: 2.5 },
+      {
+        title: "Inspeksi Komplain (Punch List) & Penyerahan Kunci",
+        weight: 2.5,
+      },
     ],
   },
 ];
 
 export const TEMPLATE_TOTAL_WEIGHT = STAGE_TEMPLATE.reduce(
-  (total, stage) => total + stage.subtasks.reduce((sum, item) => sum + item.weight, 0),
+  (total, stage) =>
+    total + stage.subtasks.reduce((sum, item) => sum + item.weight, 0),
   0,
 );
 

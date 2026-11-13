@@ -231,7 +231,10 @@ export async function getDesigns(
   const [{ data, error }, locationScores] = await Promise.all([
     query,
     getAllDesignLocationScores(supabase).catch((scoreError: unknown) => {
-      console.error("Skor lokasi tidak dapat dimuat untuk katalog:", scoreError);
+      console.error(
+        "Skor lokasi tidak dapat dimuat untuk katalog:",
+        scoreError,
+      );
       return [];
     }),
   ]);
@@ -249,16 +252,15 @@ export async function getDesigns(
   }
 
   let results: HouseDesign[] = (data || []).map(
-    (row: Record<string, unknown>) =>
-      ({
-        ...transformDesignToHouseDesign(
-          row,
-          (row.design_images as Array<{ url: string; urutan: number }>) || [],
-        ),
-        lokasi_cocok: Array.from(
-          locationsBySlug.get(String(row.slug ?? row.id)) ?? [],
-        ),
-      }),
+    (row: Record<string, unknown>) => ({
+      ...transformDesignToHouseDesign(
+        row,
+        (row.design_images as Array<{ url: string; urutan: number }>) || [],
+      ),
+      lokasi_cocok: Array.from(
+        locationsBySlug.get(String(row.slug ?? row.id)) ?? [],
+      ),
+    }),
   );
 
   if (filters?.query && filters.query.trim()) {

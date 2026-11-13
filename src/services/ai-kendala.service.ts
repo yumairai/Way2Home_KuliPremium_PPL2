@@ -68,13 +68,18 @@ async function callAiKendalaService(payload: {
     clearTimeout(timeout);
 
     if (!res.ok) {
-      console.warn(`[AI Kendala] FastAPI /predict returned status ${res.status}`);
+      console.warn(
+        `[AI Kendala] FastAPI /predict returned status ${res.status}`,
+      );
       return null;
     }
     const data = (await res.json()) as FastAiPredictResponse;
     return data;
   } catch (error) {
-    console.warn("[AI Kendala] Gagal terhubung ke FastAPI AI Service, beralih ke analisis fallback:", error);
+    console.warn(
+      "[AI Kendala] Gagal terhubung ke FastAPI AI Service, beralih ke analisis fallback:",
+      error,
+    );
     return null;
   }
 }
@@ -99,7 +104,10 @@ export function analyzeCostRisk(
   const text = `${deskripsi} ${infoTambahan}`.toLowerCase().trim();
 
   // 1. BELUM DAPAT DINILAI: Informasi kendala tidak mencukupi
-  if (text.length < 12 || /^(ada kendala|kendala|masalah|rusak|error|-|\.)+$/i.test(text)) {
+  if (
+    text.length < 12 ||
+    /^(ada kendala|kendala|masalah|rusak|error|-|\.)+$/i.test(text)
+  ) {
     return {
       overbudget_risk: "BELUM DAPAT DINILAI",
       cost_notes:
@@ -110,33 +118,64 @@ export function analyzeCostRisk(
   // Deteksi indikator HIGH
   // a. Penggantian material
   const hasMaterialReplacement =
-    /ganti material|penggantian material|material rusak|material cacat|material pecah|material tidak sesuai|beli ulang|pesan ulang material|supplier baru|pemasok cadangan/i.test(text);
+    /ganti material|penggantian material|material rusak|material cacat|material pecah|material tidak sesuai|beli ulang|pesan ulang material|supplier baru|pemasok cadangan/i.test(
+      text,
+    );
 
   // b. Tambahan tenaga kerja atau alat
   const hasExtraLaborOrEquipment =
-    /tambah tukang|tambah pekerja|tambah tenaga|sewa alat|alat tambahan|sewa alat berat|alat rusak|lembur berbayar/i.test(text);
+    /tambah tukang|tambah pekerja|tambah tenaga|sewa alat|alat tambahan|sewa alat berat|alat rusak|lembur berbayar/i.test(
+      text,
+    );
 
   // c. Pengerjaan ulang (rework)
   const hasRework =
-    /pengerjaan ulang|rework|bongkar|bobok|cor ulang|plester ulang|pasang ulang|cat ulang|kerjakan ulang|ambruk|retak struktur/i.test(text);
+    /pengerjaan ulang|rework|bongkar|bobok|cor ulang|plester ulang|pasang ulang|cat ulang|kerjakan ulang|ambruk|retak struktur/i.test(
+      text,
+    );
 
   // d. Perubahan spesifikasi yang menambah sumber daya
   const hasSpecChange =
-    /ubah spesifikasi|perubahan spesifikasi|perubahan desain|tambah spek|penambahan volume|tambah struktur|spesifikasi lebih tinggi/i.test(text);
+    /ubah spesifikasi|perubahan spesifikasi|perubahan desain|tambah spek|penambahan volume|tambah struktur|spesifikasi lebih tinggi/i.test(
+      text,
+    );
 
   // e. Kategori kritis dengan kondisi BERHENTI yang mengindikasikan implikasi biaya
   const isHighSeverityCategory =
-    (kategori === "MATERIAL_PERALATAN" || kategori === "TEKNIS_KONSTRUKSI" || kategori === "DESAIN_SPESIFIKASI") &&
+    (kategori === "MATERIAL_PERALATAN" ||
+      kategori === "TEKNIS_KONSTRUKSI" ||
+      kategori === "DESAIN_SPESIFIKASI") &&
     kondisi === "BERHENTI" &&
     (hasMaterialReplacement || hasRework || hasSpecChange);
 
-  if (hasMaterialReplacement || hasExtraLaborOrEquipment || hasRework || hasSpecChange || isHighSeverityCategory) {
+  if (
+    hasMaterialReplacement ||
+    hasExtraLaborOrEquipment ||
+    hasRework ||
+    hasSpecChange ||
+    isHighSeverityCategory
+  ) {
     const reasons: string[] = [];
-    if (hasMaterialReplacement) reasons.push("kebutuhan penggantian material yang rusak atau tidak sesuai spesifikasi");
-    if (hasExtraLaborOrEquipment) reasons.push("kebutuhan penambahan tenaga kerja atau penyewaan alat pendukung lapangan");
-    if (hasRework) reasons.push("pelaksanaan pengerjaan ulang (rework) pada elemen konstruksi terdampak");
-    if (hasSpecChange) reasons.push("penyesuaian spesifikasi atau perubahan desain yang menambah alokasi sumber daya");
-    if (reasons.length === 0) reasons.push("kendala teknis kritis yang berimplikasi langsung pada biaya pekerjaan");
+    if (hasMaterialReplacement)
+      reasons.push(
+        "kebutuhan penggantian material yang rusak atau tidak sesuai spesifikasi",
+      );
+    if (hasExtraLaborOrEquipment)
+      reasons.push(
+        "kebutuhan penambahan tenaga kerja atau penyewaan alat pendukung lapangan",
+      );
+    if (hasRework)
+      reasons.push(
+        "pelaksanaan pengerjaan ulang (rework) pada elemen konstruksi terdampak",
+      );
+    if (hasSpecChange)
+      reasons.push(
+        "penyesuaian spesifikasi atau perubahan desain yang menambah alokasi sumber daya",
+      );
+    if (reasons.length === 0)
+      reasons.push(
+        "kendala teknis kritis yang berimplikasi langsung pada biaya pekerjaan",
+      );
 
     return {
       overbudget_risk: "HIGH",
@@ -146,7 +185,9 @@ export function analyzeCostRisk(
 
   // 2. MEDIUM: Berpotensi membutuhkan sumber daya tambahan, tetapi dampaknya belum pasti
   const hasMediumIndicators =
-    /potensi|kemungkinan|tertunda|terlambat|menunggu stok|stok menipis|terhambat|antre|penurunan produktivitas|jadwal ulang/i.test(text);
+    /potensi|kemungkinan|tertunda|terlambat|menunggu stok|stok menipis|terhambat|antre|penurunan produktivitas|jadwal ulang/i.test(
+      text,
+    );
 
   if (
     hasMediumIndicators ||
@@ -189,7 +230,8 @@ export async function generateIssueAiAnalysis(
 
   const { data: kendala, error: kendalaErr } = await supabase
     .from("kendala")
-    .select(`
+    .select(
+      `
       id,
       project_id,
       kategori,
@@ -205,7 +247,8 @@ export async function generateIssueAiAnalysis(
         status,
         designs ( nama )
       )
-    `)
+    `,
+    )
     .eq("id", kendalaId)
     .maybeSingle();
 
@@ -216,7 +259,10 @@ export async function generateIssueAiAnalysis(
   const kRow = kendala as unknown as KendalaRow;
   const project = (kRow.projects ?? {}) as KendalaRow;
   if (project.pengawas_id !== user.id) {
-    throw new ServiceError("Anda tidak memiliki izin mengawasi proyek ini.", 403);
+    throw new ServiceError(
+      "Anda tidak memiliki izin mengawasi proyek ini.",
+      403,
+    );
   }
 
   const stage = (kRow.project_stages ?? {}) as KendalaRow;
@@ -227,9 +273,15 @@ export async function generateIssueAiAnalysis(
   const deskripsi = String(kRow.deskripsi ?? "");
   const kondisi = String(kRow.kondisi_pekerjaan ?? "BERJALAN");
   const delayMandor = Number(kRow.dampak_waktu_hari ?? 0);
-  const infoTambahan = kRow.informasi_tambahan ? String(kRow.informasi_tambahan) : "";
-  const stageName = stage.nama_tahap ? String(stage.nama_tahap) : "Pekerjaan konstruksi";
-  const subtaskTitle = subtask.judul ? String(subtask.judul) : "Pekerjaan lapangan";
+  const infoTambahan = kRow.informasi_tambahan
+    ? String(kRow.informasi_tambahan)
+    : "";
+  const stageName = stage.nama_tahap
+    ? String(stage.nama_tahap)
+    : "Pekerjaan konstruksi";
+  const subtaskTitle = subtask.judul
+    ? String(subtask.judul)
+    : "Pekerjaan lapangan";
   const designName = design.nama ? String(design.nama) : "Proyek Rumah";
 
   // Hitung progres proyek aktual dari subtask selesai (untuk fitur ML progress_persen)
@@ -250,7 +302,10 @@ export async function generateIssueAiAnalysis(
       }
     } catch (err) {
       // Biarkan progress_persen null agar ditangani imputer sebagai NaN (tidak diisi nilai nol sembarangan)
-      console.warn("[AI Kendala] Progres proyek belum dapat dihitung, diserahkan ke imputer model:", err);
+      console.warn(
+        "[AI Kendala] Progres proyek belum dapat dihitung, diserahkan ke imputer model:",
+        err,
+      );
     }
   }
 
@@ -285,18 +340,19 @@ export async function generateIssueAiAnalysis(
     const roundedDays = Math.max(0, Math.round(aiPred.delay_days));
     delayEstimate = roundedDays <= 0 ? "< 1 hari" : `${roundedDays} hari`;
   } else {
-    const minDelay = Math.max(1, delayMandor > 0 ? delayMandor : kondisi === "BERHENTI" ? 4 : 2);
-    const maxDelay = minDelay + (kondisi === "BERHENTI" ? 3 : kondisi === "TERHAMBAT_SEBAGIAN" ? 2 : 1);
+    const minDelay = Math.max(
+      1,
+      delayMandor > 0 ? delayMandor : kondisi === "BERHENTI" ? 4 : 2,
+    );
+    const maxDelay =
+      minDelay +
+      (kondisi === "BERHENTI" ? 3 : kondisi === "TERHAMBAT_SEBAGIAN" ? 2 : 1);
     delayEstimate = `${minDelay}–${maxDelay} hari`;
   }
 
   // 3. Risiko Pembengkakan Biaya (Rule-Based murni, bukan Machine Learning)
-  const { overbudget_risk: overbudgetRisk, cost_notes: costNotes } = analyzeCostRisk(
-    kategori,
-    deskripsi,
-    kondisi,
-    infoTambahan,
-  );
+  const { overbudget_risk: overbudgetRisk, cost_notes: costNotes } =
+    analyzeCostRisk(kategori, deskripsi, kondisi, infoTambahan);
 
   // Ringkasan naratif Rule-Based
   const kondisiLabel =
@@ -321,7 +377,11 @@ export async function generateIssueAiAnalysis(
   ];
 
   // Rekomendasi 2-3 Opsi Solusi yang Spesifik Kategori
-  const options = buildRecommendedOptions(kategori, subtaskTitle, delayEstimate);
+  const options = buildRecommendedOptions(
+    kategori,
+    subtaskTitle,
+    delayEstimate,
+  );
 
   return {
     risk_level: riskLevel,

@@ -70,7 +70,9 @@ function CustomerResolutionCard({
         `/api/projects/${projectId}/resolutions/${resolution.id}/decision`,
         {
           approved,
-          feedback: approved ? "Disetujui oleh pemilik rumah." : feedback.trim(),
+          feedback: approved
+            ? "Disetujui oleh pemilik rumah."
+            : feedback.trim(),
         },
       );
       onResolved();
@@ -116,7 +118,8 @@ function CustomerResolutionCard({
                   : "Penanganan Kendala Disetujui & Ditindaklanjuti"}
             </h3>
             <p className="text-xs text-[#6e7d92]">
-              {resolution.issueTitle || "Kendala di Lapangan"} · Tanggal: {resolution.submittedAt}
+              {resolution.issueTitle || "Kendala di Lapangan"} · Tanggal:{" "}
+              {resolution.submittedAt}
             </p>
           </div>
         </div>
@@ -419,18 +422,22 @@ export default function CustomerTracking({ project }: { project: Project }) {
           </div>
         </header>
 
-        {project.tracking?.resolutions && project.tracking.resolutions.length > 0 && (
-          <section className="mt-7 space-y-4" aria-label="Persetujuan dan diskusi kendala">
-            {project.tracking.resolutions.map((resolution) => (
-              <CustomerResolutionCard
-                key={resolution.id}
-                projectId={String(project.id)}
-                resolution={resolution}
-                onResolved={() => router.refresh()}
-              />
-            ))}
-          </section>
-        )}
+        {project.tracking?.resolutions &&
+          project.tracking.resolutions.length > 0 && (
+            <section
+              className="mt-7 space-y-4"
+              aria-label="Persetujuan dan diskusi kendala"
+            >
+              {project.tracking.resolutions.map((resolution) => (
+                <CustomerResolutionCard
+                  key={resolution.id}
+                  projectId={String(project.id)}
+                  resolution={resolution}
+                  onResolved={() => router.refresh()}
+                />
+              ))}
+            </section>
+          )}
 
         <section
           className="mt-7 grid gap-7 xl:grid-cols-[minmax(0,1fr)_360px]"

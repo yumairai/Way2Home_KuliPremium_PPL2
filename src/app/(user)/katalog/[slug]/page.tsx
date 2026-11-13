@@ -105,7 +105,9 @@ export default async function DesignDetailPage({
             </div>
             {design.dasarPemetaan && design.dasarPemetaan.length > 0 && (
               <div className="mt-8 border-t border-white/15 pt-6">
-                <h3 className="text-lg font-semibold">Yang menjadi dasar pemetaan highlights</h3>
+                <h3 className="text-lg font-semibold">
+                  Yang menjadi dasar pemetaan highlights
+                </h3>
                 <ul className="mt-4 space-y-3">
                   {design.dasarPemetaan.map((pemetaan, index) => (
                     <li

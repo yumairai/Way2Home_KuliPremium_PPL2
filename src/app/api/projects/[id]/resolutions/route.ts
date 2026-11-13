@@ -21,7 +21,8 @@ export async function GET(
 
     const { data, error } = await supabase
       .from("issue_resolutions")
-      .select(`
+      .select(
+        `
         id,
         kendala_id,
         solusi,
@@ -31,7 +32,8 @@ export async function GET(
         created_at,
         kendala ( kategori, deskripsi ),
         resolution_discussions ( id, penulis, pesan, created_at )
-      `)
+      `,
+      )
       .eq("project_id", id)
       .order("created_at", { ascending: false });
 
@@ -71,4 +73,3 @@ export async function GET(
     );
   }
 }
-

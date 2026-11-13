@@ -9,7 +9,8 @@ import { useMandorProjects } from "@/hooks/useMandorProjects";
 
 export default function MandorDashboard() {
   const { status, loading: statusLoading } = useMandorStatus();
-  const { projects: liveProjects, loading: projectsLoading } = useMandorProjects();
+  const { projects: liveProjects, loading: projectsLoading } =
+    useMandorProjects();
   const [filter, setFilter] = useState("Semua proyek");
   const [query, setQuery] = useState("");
 
@@ -33,7 +34,8 @@ export default function MandorDashboard() {
   const waiting = liveProjects.reduce(
     (total, project) =>
       total +
-      (project.progressReports?.filter((report) => report.review === "Menunggu").length ?? 0),
+      (project.progressReports?.filter((report) => report.review === "Menunggu")
+        .length ?? 0),
     0,
   );
   if (statusLoading || projectsLoading)
@@ -142,7 +144,9 @@ export default function MandorDashboard() {
                     <span>Target: {project.target}</span>
                   </div>
                 </div>
-                {project.status === "berjalan" || project.status === "selesai" || !project.status ? (
+                {project.status === "berjalan" ||
+                project.status === "selesai" ||
+                !project.status ? (
                   <Link
                     href={`/mandor/proyek/${project.id}`}
                     className="flex min-h-10 shrink-0 items-center justify-center rounded-lg border border-[#cfdce6] px-4 text-xs font-semibold text-[#355c78] hover:bg-[#f3f7fa] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#477ba6]"
@@ -163,9 +167,7 @@ export default function MandorDashboard() {
                       Usulan menunggu tidak mengubah progres resmi
                     </span>
                   </span>
-                  <b className="text-[#315b76]">
-                    {project.overallProgress}%
-                  </b>
+                  <b className="text-[#315b76]">{project.overallProgress}%</b>
                 </div>
                 <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#e9edf2]">
                   <span
@@ -235,10 +237,7 @@ function VerificationStatus() {
     );
   return (
     <main className="mx-auto grid min-h-[calc(100vh-68px)] max-w-3xl place-items-center px-5 py-12">
-      <RejectedApplication
-        reason={reason}
-        onResubmit={() => void resubmit()}
-      />
+      <RejectedApplication reason={reason} onResubmit={() => void resubmit()} />
     </main>
   );
 }

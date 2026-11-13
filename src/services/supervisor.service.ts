@@ -372,10 +372,15 @@ function buildSupervisorProject(
     contractStatus: String(contract?.status ?? "draft"),
     projectStageStatus: String(row.status ?? ""),
     supervisorSignedAt: (contract?.signed_pengawas_at as string | null) ?? null,
-    supervisorSignaturePath: (contract?.signed_pengawas_signature_path as string | null) ?? null,
+    supervisorSignaturePath:
+      (contract?.signed_pengawas_signature_path as string | null) ?? null,
     customerSignedAt: (contract?.signed_customer_at as string | null) ?? null,
-    customerSignaturePath: (contract?.signed_customer_signature_path as string | null) ?? null,
-    companySignatureLabel: String(contract?.company_signature_label ?? "Placeholder tanda tangan PT Way2Home Konstruksi"),
+    customerSignaturePath:
+      (contract?.signed_customer_signature_path as string | null) ?? null,
+    companySignatureLabel: String(
+      contract?.company_signature_label ??
+        "Placeholder tanda tangan PT Way2Home Konstruksi",
+    ),
     milestones: toSupervisorMilestones(stages),
     tasks: toSupervisorTasks(stages),
     reports,
@@ -403,18 +408,21 @@ function buildSupervisorProject(
 }
 
 function toIssueResolution(row: Row): IssueResolution {
-  const ai = (row.analisis_ai ?? null) as
-    | { summary?: string; options?: string[]; selectedOption?: number | null }
-    | null;
+  const ai = (row.analisis_ai ?? null) as {
+    summary?: string;
+    options?: string[];
+    selectedOption?: number | null;
+  } | null;
 
   return {
     id: String(row.id),
     projectId: String(row.project_id),
     issueId: String(row.kendala_id),
     solution: String(row.solusi ?? ""),
-    source: String(row.sumber ?? "Pengawas") === "Analisis AI"
-      ? "Analisis AI"
-      : "Pengawas",
+    source:
+      String(row.sumber ?? "Pengawas") === "Analisis AI"
+        ? "Analisis AI"
+        : "Pengawas",
     aiAnalysis: ai
       ? {
           summary: String(ai.summary ?? ""),
@@ -423,7 +431,9 @@ function toIssueResolution(row: Row): IssueResolution {
             typeof ai.selectedOption === "number" ? ai.selectedOption : null,
         }
       : null,
-    status: String(row.status ?? "Ditindaklanjuti") as IssueResolution["status"],
+    status: String(
+      row.status ?? "Ditindaklanjuti",
+    ) as IssueResolution["status"],
     requiresCustomerApproval: row.butuh_persetujuan === true,
     approvalReason: String(row.alasan_persetujuan ?? ""),
     approvalEvidence: (row.bukti as string | null) ?? null,
@@ -503,9 +513,9 @@ async function buildDetail(
   let customerEmail: string | null = null;
   const { data: emailData, error: emailError } = await supabase.rpc(
     "get_user_email",
-    { user_id: customerId }
+    { user_id: customerId },
   );
-  
+
   if (!emailError && emailData) {
     customerEmail = String(emailData);
   }
@@ -679,9 +689,10 @@ async function getDiscussions(
   return ((data ?? []) as unknown as Row[]).map((item) => ({
     id: String(item.id),
     resolutionId: String(item.resolution_id),
-    author: String(item.penulis ?? "Pengawas") === "Customer"
-      ? "Customer"
-      : "Pengawas",
+    author:
+      String(item.penulis ?? "Pengawas") === "Customer"
+        ? "Customer"
+        : "Pengawas",
     message: String(item.pesan ?? ""),
     date: formatDate(String(item.created_at)),
   }));
@@ -693,7 +704,10 @@ async function getDiscussions(
 
 export type ProgressDecision = "Disetujui" | "Perlu revisi";
 
-const UI_DECISION_TO_DB: Record<ProgressDecision, "disetujui" | "perlu_revisi"> = {
+const UI_DECISION_TO_DB: Record<
+  ProgressDecision,
+  "disetujui" | "perlu_revisi"
+> = {
   Disetujui: "disetujui",
   "Perlu revisi": "perlu_revisi",
 };
