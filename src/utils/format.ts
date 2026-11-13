@@ -37,4 +37,3 @@ export const formatDateOnly = (iso: string) => {
   const safe = iso.length === 10 ? `${iso}T00:00:00` : iso;
   return formatDate(safe);
 };
-

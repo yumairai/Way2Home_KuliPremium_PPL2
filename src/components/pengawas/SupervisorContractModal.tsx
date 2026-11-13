@@ -38,31 +38,44 @@ export default function SupervisorContractModal({
     let active = true;
     const load = async () => {
       const { createClient } = await import("@/utils/supabase/client");
-      const { data } = await createClient().storage.from("contract-signatures").createSignedUrl(path, 300);
+      const { data } = await createClient()
+        .storage.from("contract-signatures")
+        .createSignedUrl(path, 300);
       if (active && data?.signedUrl) setSignedImage(data.signedUrl);
     };
     void load();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [project.supervisorSignaturePath]);
 
   const paymentStages =
     project.payments.length > 0
       ? project.payments.map((payment) => ({
-        label: payment.stage,
-        amount: payment.amount,
-      }))
+          label: payment.stage,
+          amount: payment.amount,
+        }))
       : [
-        { label: "Uang Muka (DP)", amount: Math.round((project.estimatedCost ?? project.value) * 0.3) },
-        { label: "Termin 1", amount: Math.round((project.estimatedCost ?? project.value) * 0.25) },
-        { label: "Termin 2", amount: Math.round((project.estimatedCost ?? project.value) * 0.25) },
-        {
-          label: "Termin 3 (Pelunasan)",
-          amount:
-            (project.estimatedCost ?? project.value) -
-            Math.round((project.estimatedCost ?? project.value) * 0.3) -
-            Math.round((project.estimatedCost ?? project.value) * 0.25) * 2,
-        },
-      ];
+          {
+            label: "Uang Muka (DP)",
+            amount: Math.round((project.estimatedCost ?? project.value) * 0.3),
+          },
+          {
+            label: "Termin 1",
+            amount: Math.round((project.estimatedCost ?? project.value) * 0.25),
+          },
+          {
+            label: "Termin 2",
+            amount: Math.round((project.estimatedCost ?? project.value) * 0.25),
+          },
+          {
+            label: "Termin 3 (Pelunasan)",
+            amount:
+              (project.estimatedCost ?? project.value) -
+              Math.round((project.estimatedCost ?? project.value) * 0.3) -
+              Math.round((project.estimatedCost ?? project.value) * 0.25) * 2,
+          },
+        ];
   return (
     <div
       className="fixed inset-0 z-[80] flex items-center justify-center p-4"
@@ -136,15 +149,21 @@ export default function SupervisorContractModal({
             completionDate={project.deadline}
             scope={[]}
             specifications={[
-              ...project.specifications.filter((spec) => !spec.startsWith("Kontrak")),
+              ...project.specifications.filter(
+                (spec) => !spec.startsWith("Kontrak"),
+              ),
               `Kebutuhan customer: ${project.needs}`,
             ]}
             supervisor={project.supervisor}
-            foremen={project.foremen ?? (project.foreman ? [project.foreman] : [])}
+            foremen={
+              project.foremen ?? (project.foreman ? [project.foreman] : [])
+            }
             paymentStages={paymentStages}
           />
           <div className="mt-10 rounded-xl border border-[#e3e9ee] bg-[#fafbfc] p-5 text-center">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Tanda Tangan Para Pihak</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Tanda Tangan Para Pihak
+            </p>
             <div className="mx-auto mt-5 grid max-w-2xl grid-cols-1 gap-6 sm:grid-cols-2">
               <SignatureSlot role="Pihak Pertama" name="PT Way2Home Konstruksi">
                 <Image
@@ -170,13 +189,11 @@ export default function SupervisorContractModal({
                 )}
               </SignatureSlot>
               <div className="sm:col-span-2 sm:mx-auto sm:w-1/2">
-                <SignatureSlot
-                  role="Customer"
-                  name={project.customer}
-                >
+                <SignatureSlot role="Customer" name={project.customer}>
                   {project.customerSignaturePath ? (
                     <span className="pb-6 text-xs text-slate-500">
-                      Tanda tangan customer akan tampil setelah kontrak disetujui.
+                      Tanda tangan customer akan tampil setelah kontrak
+                      disetujui.
                     </span>
                   ) : (
                     <span className="pb-6 text-xs text-slate-500">
@@ -189,26 +206,97 @@ export default function SupervisorContractModal({
           </div>
         </div>
         <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-[#e7ebef] bg-[#fafbfc] px-5 py-4">
-          {error && <p role="alert" className="w-full text-sm text-red-700">{error}</p>}
-          <div className="flex gap-2"><button type="button" onClick={() => window.print()} className="h-10 rounded-lg border border-slate-300 px-4 text-xs font-semibold text-slate-700">Unduh PDF</button><button type="button" onClick={onClose} className="h-10 rounded-lg px-4 text-xs font-semibold text-slate-600">Tutup</button></div>
-          {!project.supervisorSignedAt && project.projectStageStatus === "finalisasi_kontrak" && <button type="button" disabled={project.contractStatus !== "draft" || saving || (project.foremen ?? []).length === 0} onClick={() => setSignatureOpen(true)} className="h-10 rounded-lg bg-[#183b57] px-5 text-xs font-semibold text-white hover:bg-[#234f70] disabled:cursor-not-allowed disabled:opacity-50">Tanda tangani sebagai pengawas</button>}
-          {!project.supervisorSignedAt && project.projectStageStatus !== "finalisasi_kontrak" && <p className="text-xs text-amber-800">Tanda tangan tersedia setelah alokasi mandor difinalisasi.</p>}
-          {!project.supervisorSignedAt && project.projectStageStatus === "finalisasi_kontrak" && (project.foremen ?? []).length === 0 && <p className="text-xs text-amber-800">Alokasikan minimal satu mandor sebelum menandatangani.</p>}
-          {project.supervisorSignedAt && <p className="text-xs font-semibold text-emerald-800">Kontrak Ditandatangani</p>}
+          {error && (
+            <p role="alert" className="w-full text-sm text-red-700">
+              {error}
+            </p>
+          )}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="h-10 rounded-lg border border-slate-300 px-4 text-xs font-semibold text-slate-700"
+            >
+              Unduh PDF
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="h-10 rounded-lg px-4 text-xs font-semibold text-slate-600"
+            >
+              Tutup
+            </button>
+          </div>
+          {!project.supervisorSignedAt &&
+            project.projectStageStatus === "finalisasi_kontrak" && (
+              <button
+                type="button"
+                disabled={
+                  project.contractStatus !== "draft" ||
+                  saving ||
+                  (project.foremen ?? []).length === 0
+                }
+                onClick={() => setSignatureOpen(true)}
+                className="h-10 rounded-lg bg-[#183b57] px-5 text-xs font-semibold text-white hover:bg-[#234f70] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Tanda tangani sebagai pengawas
+              </button>
+            )}
+          {!project.supervisorSignedAt &&
+            project.projectStageStatus !== "finalisasi_kontrak" && (
+              <p className="text-xs text-amber-800">
+                Tanda tangan tersedia setelah alokasi mandor difinalisasi.
+              </p>
+            )}
+          {!project.supervisorSignedAt &&
+            project.projectStageStatus === "finalisasi_kontrak" &&
+            (project.foremen ?? []).length === 0 && (
+              <p className="text-xs text-amber-800">
+                Alokasikan minimal satu mandor sebelum menandatangani.
+              </p>
+            )}
+          {project.supervisorSignedAt && (
+            <p className="text-xs font-semibold text-emerald-800">
+              Kontrak Ditandatangani
+            </p>
+          )}
         </footer>
-        {signatureOpen && <SignaturePadModal busy={saving} onClose={() => setSignatureOpen(false)} onContinue={async (signature) => {
-          setSaving(true); setError(null);
-          try {
-            const response = await fetch(`/api/pengawas/projects/${project.id}/contract-signature`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ signature }) });
-            const result = await response.json() as { message?: string };
-            if (!response.ok) throw new Error(result.message || "Gagal menyimpan tanda tangan.");
-            setSignatureOpen(false);
-            onClose(); // Tutup modal utama
-            router.refresh(); // Refresh data
-          } catch (err) { setError(err instanceof Error ? err.message : "Gagal menyimpan tanda tangan."); }
-          finally { setSaving(false); }
-        }} />}
-
+        {signatureOpen && (
+          <SignaturePadModal
+            busy={saving}
+            onClose={() => setSignatureOpen(false)}
+            onContinue={async (signature) => {
+              setSaving(true);
+              setError(null);
+              try {
+                const response = await fetch(
+                  `/api/pengawas/projects/${project.id}/contract-signature`,
+                  {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ signature }),
+                  },
+                );
+                const result = (await response.json()) as { message?: string };
+                if (!response.ok)
+                  throw new Error(
+                    result.message || "Gagal menyimpan tanda tangan.",
+                  );
+                setSignatureOpen(false);
+                onClose(); // Tutup modal utama
+                router.refresh(); // Refresh data
+              } catch (err) {
+                setError(
+                  err instanceof Error
+                    ? err.message
+                    : "Gagal menyimpan tanda tangan.",
+                );
+              } finally {
+                setSaving(false);
+              }
+            }}
+          />
+        )}
       </section>
     </div>
   );

@@ -355,7 +355,9 @@ export default function CustomerRegisterPage() {
                 type="text"
                 value={nik}
                 onChange={(e) => {
-                  const digitsOnly = e.target.value.replace(/\D/g, "").slice(0, 16);
+                  const digitsOnly = e.target.value
+                    .replace(/\D/g, "")
+                    .slice(0, 16);
                   setNik(digitsOnly);
                   if (errors.nik) {
                     setErrors((prev) => ({ ...prev, nik: "" }));
@@ -371,7 +373,10 @@ export default function CustomerRegisterPage() {
               />
 
               {errors.nik && (
-                <p id="nik-error" className="mt-1 text-xs font-medium text-red-500">
+                <p
+                  id="nik-error"
+                  className="mt-1 text-xs font-medium text-red-500"
+                >
                   {errors.nik}
                 </p>
               )}

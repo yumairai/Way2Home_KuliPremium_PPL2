@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
-import { assertProjectOwner, requireUser, ServiceError } from "@/services/access.service";
+import {
+  assertProjectOwner,
+  requireUser,
+  ServiceError,
+} from "@/services/access.service";
 import { jsonError, readJson } from "@/services/http";
 
 type Body = {
@@ -72,7 +76,10 @@ export async function POST(
     } else {
       const feedback = String(body?.feedback ?? "").trim();
       if (feedback.length < 5) {
-        throw new ServiceError("Tuliskan alasan penolakan/masukan minimal 5 karakter.", 422);
+        throw new ServiceError(
+          "Tuliskan alasan penolakan/masukan minimal 5 karakter.",
+          422,
+        );
       }
 
       const { error: updateError } = await supabase
@@ -109,4 +116,3 @@ export async function POST(
     );
   }
 }
-

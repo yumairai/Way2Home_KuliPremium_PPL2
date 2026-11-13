@@ -62,10 +62,7 @@ export async function POST(
     }
 
     if (project.status !== "pembayaran_dp" && project.status !== "berjalan") {
-      throw new ServiceError(
-        "Pembayaran tidak tersedia pada tahap ini.",
-        409,
-      );
+      throw new ServiceError("Pembayaran tidak tersedia pada tahap ini.", 409);
     }
 
     const orderMatch = ORDER_ID_PATTERN.exec(orderId);
@@ -81,14 +78,20 @@ export async function POST(
       .eq("project_id", projectId)
       .maybeSingle();
     if (stageError) {
-      console.error("[Midtrans Verify] Payment stage lookup failed:", stageError);
+      console.error(
+        "[Midtrans Verify] Payment stage lookup failed:",
+        stageError,
+      );
       throw new ServiceError("Gagal memeriksa tahap pembayaran.", 500);
     }
     if (!paymentStage) {
       throw new ServiceError("Tahap pembayaran tidak ditemukan.", 404);
     }
     if (paymentStage.status === "lunas") {
-      return NextResponse.json({ paid: true, transaction_status: "settlement" });
+      return NextResponse.json({
+        paid: true,
+        transaction_status: "settlement",
+      });
     }
 
     const statusResponse = await fetch(
@@ -106,7 +109,9 @@ export async function POST(
     try {
       transaction = await statusResponse.json();
     } catch {
-      console.error("[Midtrans Verify] Status API returned a non-JSON response.");
+      console.error(
+        "[Midtrans Verify] Status API returned a non-JSON response.",
+      );
       throw new ServiceError("Gagal memeriksa status transaksi.", 502);
     }
     if (statusResponse.status === 404) {
@@ -154,7 +159,10 @@ export async function POST(
       .eq("id", paymentStage.id)
       .neq("status", "lunas");
     if (updateStageError) {
-      console.error("[Midtrans Verify] Payment update failed:", updateStageError);
+      console.error(
+        "[Midtrans Verify] Payment update failed:",
+        updateStageError,
+      );
       throw new ServiceError("Gagal memperbarui status pembayaran.", 500);
     }
 
@@ -165,7 +173,10 @@ export async function POST(
         .eq("id", project.id)
         .eq("status", "pembayaran_dp");
       if (updateProjectError) {
-        console.error("[Midtrans Verify] Project status update failed:", updateProjectError);
+        console.error(
+          "[Midtrans Verify] Project status update failed:",
+          updateProjectError,
+        );
         throw new ServiceError("Gagal memperbarui status proyek.", 500);
       }
     }

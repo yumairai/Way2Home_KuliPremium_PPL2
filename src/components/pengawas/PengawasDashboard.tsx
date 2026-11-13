@@ -428,8 +428,11 @@ export default function PengawasDashboard() {
   const [officialProgress, setOfficialProgress] = useState<
     Record<string, number | null>
   >({});
-  const [contractProject, setContractProject] = useState<SupervisorProject | null>(null);
-  const [contractLoadingId, setContractLoadingId] = useState<string | null>(null);
+  const [contractProject, setContractProject] =
+    useState<SupervisorProject | null>(null);
+  const [contractLoadingId, setContractLoadingId] = useState<string | null>(
+    null,
+  );
   const [contractError, setContractError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
@@ -548,22 +551,30 @@ export default function PengawasDashboard() {
       ),
     );
     const finalized = projects.find((project) => project.id === projectId);
-    if (finalized) void openSupervisorContract({ ...finalized, status: "finalisasi_kontrak" });
+    if (finalized)
+      void openSupervisorContract({
+        ...finalized,
+        status: "finalisasi_kontrak",
+      });
   };
 
   const openSupervisorContract = async (project: ProjectForPengawas) => {
     setContractLoadingId(project.id);
     setContractError(null);
     try {
-      const response = await fetch(`/api/pengawas/projects/${project.id}`, { cache: "no-store" });
+      const response = await fetch(`/api/pengawas/projects/${project.id}`, {
+        cache: "no-store",
+      });
       if (!response.ok) {
-        const result = await response.json() as { message?: string };
+        const result = (await response.json()) as { message?: string };
         throw new Error(result.message || "Gagal memuat kontrak proyek.");
       }
-      const detail = await response.json() as SupervisorProject;
+      const detail = (await response.json()) as SupervisorProject;
       setContractProject(detail);
     } catch (err) {
-      setContractError(err instanceof Error ? err.message : "Gagal membuka kontrak.");
+      setContractError(
+        err instanceof Error ? err.message : "Gagal membuka kontrak.",
+      );
     } finally {
       setContractLoadingId(null);
     }
@@ -721,13 +732,14 @@ export default function PengawasDashboard() {
                       disabled={contractLoadingId === project.id}
                       className="inline-flex h-10 shrink-0 items-center justify-center rounded-lg bg-[#183b57] px-4 text-xs font-semibold text-white hover:bg-[#234f70] disabled:opacity-50"
                     >
-                      {contractLoadingId === project.id 
-                        ? "Memuat kontrak…" 
-                        : project.supervisorSignedAt 
-                          ? "Lihat kontrak" 
+                      {contractLoadingId === project.id
+                        ? "Memuat kontrak…"
+                        : project.supervisorSignedAt
+                          ? "Lihat kontrak"
                           : "Tanda tangani kontrak"}
                     </button>
-                  ) : project.status === "berjalan" || project.status === "selesai" ? (
+                  ) : project.status === "berjalan" ||
+                    project.status === "selesai" ? (
                     <Link
                       href={`/pengawas/proyek/${project.id}`}
                       className="inline-flex h-10 shrink-0 items-center justify-center rounded-lg border border-[#cfdce6] px-4 text-xs font-semibold text-[#355c78] hover:bg-[#f3f7fa] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#477ba6]"
@@ -752,7 +764,9 @@ export default function PengawasDashboard() {
                   <div>
                     <p className="text-[9px] text-slate-500">Progres resmi</p>
                     <p className="mt-1 text-xs font-semibold text-slate-700">
-                      {officialProgress[project.id] !== undefined ? `${officialProgress[project.id]}%` : "0%"}
+                      {officialProgress[project.id] !== undefined
+                        ? `${officialProgress[project.id]}%`
+                        : "0%"}
                     </p>
                   </div>
                   <div>
@@ -787,7 +801,11 @@ export default function PengawasDashboard() {
                 <div className="px-5 pb-5 sm:px-6">
                   <div className="flex items-center justify-between text-[10px] text-slate-500">
                     <span>Progres keseluruhan</span>
-                    <span>{officialProgress[project.id] !== undefined ? `${officialProgress[project.id]}%` : "0%"}</span>
+                    <span>
+                      {officialProgress[project.id] !== undefined
+                        ? `${officialProgress[project.id]}%`
+                        : "0%"}
+                    </span>
                   </div>
                   <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#e9edf2]">
                     <span
@@ -819,15 +837,27 @@ export default function PengawasDashboard() {
       </footer>
 
       {contractError && (
-        <div role="alert" className="fixed bottom-5 right-5 z-[90] max-w-md rounded-xl border border-red-200 bg-white px-5 py-4 text-sm font-medium text-red-800 shadow-xl">
+        <div
+          role="alert"
+          className="fixed bottom-5 right-5 z-[90] max-w-md rounded-xl border border-red-200 bg-white px-5 py-4 text-sm font-medium text-red-800 shadow-xl"
+        >
           {contractError}
-          <button type="button" onClick={() => setContractError(null)} className="ml-3 underline">Tutup</button>
+          <button
+            type="button"
+            onClick={() => setContractError(null)}
+            className="ml-3 underline"
+          >
+            Tutup
+          </button>
         </div>
       )}
       {contractProject && (
         <SupervisorContractModal
           project={contractProject}
-          onClose={() => { setContractProject(null); void load(); }}
+          onClose={() => {
+            setContractProject(null);
+            void load();
+          }}
         />
       )}
 

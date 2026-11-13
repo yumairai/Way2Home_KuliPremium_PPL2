@@ -37,7 +37,8 @@ export default function SignaturePadModal({
     context.lineCap = "round";
     context.lineJoin = "round";
     context.strokeStyle = "#102b43";
-    if (old.width && old.height) context.drawImage(old, 0, 0, rect.width, rect.height);
+    if (old.width && old.height)
+      context.drawImage(old, 0, 0, rect.width, rect.height);
     setReady(true);
   }, []);
 
@@ -98,18 +99,64 @@ export default function SignaturePadModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#0b1b2b]/65 p-4" role="presentation">
-      <section role="dialog" aria-modal="true" aria-labelledby="signature-title" className="w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+    <div
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-[#0b1b2b]/65 p-4"
+      role="presentation"
+    >
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="signature-title"
+        className="w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-2xl"
+      >
         <header className="border-b border-slate-200 px-6 py-5">
-          <h2 id="signature-title" className="text-lg font-bold text-[#17344e]">Tanda tangan digital</h2>
-          <p className="mt-1 text-sm text-slate-600">Gambar tanda tangan di area berikut. Tanda tangan tersimpan sebagai persetujuan digital pada kontrak ini.</p>
+          <h2 id="signature-title" className="text-lg font-bold text-[#17344e]">
+            Tanda tangan digital
+          </h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Gambar tanda tangan di area berikut. Tanda tangan tersimpan sebagai
+            persetujuan digital pada kontrak ini.
+          </p>
         </header>
-        <canvas ref={canvasRef} aria-label="Area gambar tanda tangan" className="m-5 h-52 w-[calc(100%-2.5rem)] touch-none rounded-xl border border-dashed border-slate-400 bg-[#fbfcfd]" onPointerDown={start} onPointerMove={move} onPointerUp={stop} onPointerCancel={stop} />
-        {!ready && <p className="px-6 text-xs text-slate-500">Menyiapkan area tanda tangan…</p>}
+        <canvas
+          ref={canvasRef}
+          aria-label="Area gambar tanda tangan"
+          className="m-5 h-52 w-[calc(100%-2.5rem)] touch-none rounded-xl border border-dashed border-slate-400 bg-[#fbfcfd]"
+          onPointerDown={start}
+          onPointerMove={move}
+          onPointerUp={stop}
+          onPointerCancel={stop}
+        />
+        {!ready && (
+          <p className="px-6 text-xs text-slate-500">
+            Menyiapkan area tanda tangan…
+          </p>
+        )}
         <footer className="flex flex-wrap justify-end gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4">
-          <button type="button" disabled={busy} onClick={reset} className="min-h-11 rounded-lg border border-slate-300 px-5 text-sm font-semibold text-slate-700 hover:bg-white disabled:opacity-50">Reset</button>
-          <button type="button" disabled={busy || !inked} onClick={proceed} className="min-h-11 rounded-lg bg-[#183b57] px-6 text-sm font-semibold text-white hover:bg-[#234f70] disabled:cursor-not-allowed disabled:opacity-50">{busy ? "Menyimpan…" : "Continue"}</button>
-          <button type="button" disabled={busy} onClick={onClose} className="min-h-11 rounded-lg px-4 text-sm font-semibold text-slate-600 hover:bg-white disabled:opacity-50">Batal</button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={reset}
+            className="min-h-11 rounded-lg border border-slate-300 px-5 text-sm font-semibold text-slate-700 hover:bg-white disabled:opacity-50"
+          >
+            Reset
+          </button>
+          <button
+            type="button"
+            disabled={busy || !inked}
+            onClick={proceed}
+            className="min-h-11 rounded-lg bg-[#183b57] px-6 text-sm font-semibold text-white hover:bg-[#234f70] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {busy ? "Menyimpan…" : "Continue"}
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onClose}
+            className="min-h-11 rounded-lg px-4 text-sm font-semibold text-slate-600 hover:bg-white disabled:opacity-50"
+          >
+            Batal
+          </button>
         </footer>
       </section>
     </div>

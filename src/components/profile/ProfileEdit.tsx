@@ -154,7 +154,8 @@ export default function ProfileEdit({
           await supabase.storage.from("avatars").remove([uploadedAvatarPath]);
         }
         throw new Error(
-          updateError?.message || "Profil tidak ditemukan atau tidak dapat diperbarui.",
+          updateError?.message ||
+            "Profil tidak ditemukan atau tidak dapat diperbarui.",
         );
       }
 
@@ -189,7 +190,10 @@ export default function ProfileEdit({
       setSaved(true);
       window.dispatchEvent(
         new CustomEvent("w2h:profile-updated", {
-          detail: { fullName: nextProfile.name, avatarUrl: nextProfile.avatarUrl },
+          detail: {
+            fullName: nextProfile.name,
+            avatarUrl: nextProfile.avatarUrl,
+          },
         }),
       );
       window.scrollTo({ top: 0, behavior: "smooth" });

@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { getAllDesignLocationScores, getDesigns } from "@/services/design.service";
+import {
+  getAllDesignLocationScores,
+  getDesigns,
+} from "@/services/design.service";
 import {
   recommendDesigns,
   type RecommendationInput,
@@ -68,9 +71,7 @@ export async function POST(request: Request) {
       getAllDesignLocationScores(supabase),
     ]);
 
-    return NextResponse.json(
-      recommendDesigns(designs, locationScores, body),
-    );
+    return NextResponse.json(recommendDesigns(designs, locationScores, body));
   } catch (error) {
     console.error("[POST /api/recommendations]", error);
     return NextResponse.json(

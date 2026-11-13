@@ -50,9 +50,7 @@ export function useMandorStatus() {
       .then((result) => {
         if (!active) return;
         setStatus(result.status);
-        setReason(
-          result.reason ?? initialMandorRegistration.rejectionReason,
-        );
+        setReason(result.reason ?? initialMandorRegistration.rejectionReason);
       })
       .catch((error) => {
         if (!active) return;

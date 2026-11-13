@@ -67,11 +67,7 @@ const formatNow = () =>
 
 export default function MandorProjectDetail({ id }: { id: string }) {
   const { status, loading: statusLoading } = useMandorStatus();
-  const {
-    project,
-    loading: projectLoading,
-    reload,
-  } = useMandorProject(id);
+  const { project, loading: projectLoading, reload } = useMandorProject(id);
   const [tab, setTab] = useState<Tab>("Ringkasan");
   const [progressOpen, setProgressOpen] = useState(false);
   const [issueOpen, setIssueOpen] = useState(false);
@@ -105,7 +101,11 @@ export default function MandorProjectDetail({ id }: { id: string }) {
       </main>
     );
 
-  if (project.status && project.status !== "berjalan" && project.status !== "selesai")
+  if (
+    project.status &&
+    project.status !== "berjalan" &&
+    project.status !== "selesai"
+  )
     return (
       <main className="mx-auto max-w-2xl px-5 py-12">
         <section className="rounded-2xl border border-[#e2e8ed] bg-white p-8 text-center">
@@ -721,7 +721,9 @@ function ProgressModal({
 }) {
   const firstUnfinishedStage =
     project.milestones.find((milestone) =>
-      milestone.subtasks.some((task) => !isApproved(task, milestone, approvedSubtasks)),
+      milestone.subtasks.some(
+        (task) => !isApproved(task, milestone, approvedSubtasks),
+      ),
     ) ?? project.milestones[0];
 
   const [selectedStageId, setSelectedStageId] = useState<string>(
@@ -771,13 +773,17 @@ function ProgressModal({
             setError("Tulis catatan pekerjaan minimal 10 karakter.");
             return;
           }
-          const subtask = availableSubtasks.find((item) => item.id === subtaskId);
+          const subtask = availableSubtasks.find(
+            (item) => item.id === subtaskId,
+          );
           if (!subtask || !currentStage) {
             setError("Pilih subtask yang valid.");
             return;
           }
           if (isApproved(subtask, currentStage, approvedSubtasks)) {
-            setError("Subtask ini sudah selesai dan tidak dapat dilaporkan lagi.");
+            setError(
+              "Subtask ini sudah selesai dan tidak dapat dilaporkan lagi.",
+            );
             return;
           }
           setSending(true);
@@ -818,10 +824,13 @@ function ProgressModal({
             {project.milestones.map((stage, idx) => {
               const isStageDone =
                 stage.subtasks.length > 0 &&
-                stage.subtasks.every((t) => isApproved(t, stage, approvedSubtasks));
+                stage.subtasks.every((t) =>
+                  isApproved(t, stage, approvedSubtasks),
+                );
               return (
                 <option key={stage.id} value={stage.id}>
-                  Tahap {idx + 1}: {stage.title} {isStageDone ? "· (Selesai)" : ""}
+                  Tahap {idx + 1}: {stage.title}{" "}
+                  {isStageDone ? "· (Selesai)" : ""}
                 </option>
               );
             })}
@@ -840,7 +849,11 @@ function ProgressModal({
           >
             <option value="">Pilih subtask…</option>
             {availableSubtasks.map((task) => {
-              const completed = isApproved(task, currentStage, approvedSubtasks);
+              const completed = isApproved(
+                task,
+                currentStage,
+                approvedSubtasks,
+              );
               return (
                 <option key={task.id} value={task.id} disabled={completed}>
                   {task.title} ({task.weight}%) {completed ? "· Selesai" : ""}
@@ -964,7 +977,9 @@ function IssueModal({
   ) => void | Promise<void>;
 }) {
   const defaultStage =
-    project.milestones.find((item) => item.title === project.currentMilestone) ??
+    project.milestones.find(
+      (item) => item.title === project.currentMilestone,
+    ) ??
     project.milestones.find((item) =>
       item.subtasks.some((task) => !isApproved(task, item, approvedSubtasks)),
     ) ??
@@ -1026,9 +1041,7 @@ function IssueModal({
             return;
           }
           if (!currentStage || !selectedSubtask) {
-            setError(
-              "Pilih subtask yang terdampak kendala.",
-            );
+            setError("Pilih subtask yang terdampak kendala.");
             return;
           }
           if (!workCondition) {

@@ -10,7 +10,8 @@ export default function MandorProjectList() {
   const { status, loading: statusLoading } = useMandorStatus();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("Semua proyek");
-  const { projects: liveProjects, loading: projectsLoading } = useMandorProjects();
+  const { projects: liveProjects, loading: projectsLoading } =
+    useMandorProjects();
 
   const projects = useMemo(
     () =>
@@ -124,7 +125,9 @@ export default function MandorProjectList() {
               <div className="mt-1 text-right text-[10px] font-semibold text-[#315b76]">
                 {project.overallProgress}% resmi
               </div>
-              {project.status === "berjalan" || project.status === "selesai" || !project.status ? (
+              {project.status === "berjalan" ||
+              project.status === "selesai" ||
+              !project.status ? (
                 <Link
                   href={`/mandor/proyek/${project.id}`}
                   className="mt-4 inline-flex min-h-10 w-full items-center justify-center rounded-lg bg-[#2B3361] px-4 text-sm font-semibold text-white hover:bg-[#21274b]"

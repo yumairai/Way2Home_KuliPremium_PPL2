@@ -32,11 +32,7 @@ type ContractDocumentProps = {
   paymentStages: PaymentStage[];
 };
 
-function ContractTable({
-  rows,
-}: {
-  rows: [string, string][];
-}) {
+function ContractTable({ rows }: { rows: [string, string][] }) {
   return (
     <dl className="divide-y divide-[#e2e8f0] rounded-xl border border-[#dbe4f2] px-4">
       {rows.map(([label, value]) => (
@@ -114,7 +110,9 @@ export default function ContractDocument({
   );
   const foremanRows: [string, string][] =
     foremen.length > 0
-      ? foremen.map((name, index) => [`Mandor ${index + 1}`, name] as [string, string])
+      ? foremen.map(
+          (name, index) => [`Mandor ${index + 1}`, name] as [string, string],
+        )
       : [["Mandor", "Belum ditugaskan"]];
   const progressLimits = [25, 50, 75, 100];
 
@@ -151,12 +149,7 @@ export default function ContractDocument({
         <p className="pt-1 font-semibold text-[#111e3f]">
           Tim Pelaksana Proyek
         </p>
-        <ContractTable
-          rows={[
-            ["Pengawas", supervisor],
-            ...foremanRows,
-          ]}
-        />
+        <ContractTable rows={[["Pengawas", supervisor], ...foremanRows]} />
       </ContractClause>
 
       <ContractClause title="PASAL 2 — INFORMASI PROYEK">
@@ -210,9 +203,7 @@ export default function ContractDocument({
         )}
         {specifications.length > 0 && (
           <div>
-            <p className="font-semibold text-[#111e3f]">
-              Spesifikasi proyek
-            </p>
+            <p className="font-semibold text-[#111e3f]">Spesifikasi proyek</p>
             <ul className="list-disc space-y-1 pl-5">
               {specifications.map((item) => (
                 <li key={item}>{item}</li>
@@ -264,7 +255,9 @@ export default function ContractDocument({
           </table>
         </div>
         <ol className="list-decimal space-y-1 pl-5">
-          <li>Customer wajib membayar sesuai jadwal dan tahapan yang disepakati.</li>
+          <li>
+            Customer wajib membayar sesuai jadwal dan tahapan yang disepakati.
+          </li>
           <li>
             Pembayaran dilakukan melalui metode pembayaran yang tersedia pada
             sistem Way2Home.
@@ -287,7 +280,10 @@ export default function ContractDocument({
             ["Tanggal Kontrak", contractDate],
             ["Tanggal Mulai", startDate],
             ["Estimasi Penyelesaian", completionDate],
-            ["Durasi Pembangunan", duration > 0 ? `${duration} bulan` : "Belum ditentukan"],
+            [
+              "Durasi Pembangunan",
+              duration > 0 ? `${duration} bulan` : "Belum ditentukan",
+            ],
           ]}
         />
         <p>
@@ -307,9 +303,13 @@ export default function ContractDocument({
             Melaksanakan pembangunan sesuai desain, spesifikasi, anggaran, dan
             jadwal yang disepakati.
           </li>
-          <li>Menyediakan tenaga kerja dan material sesuai ketentuan kontrak.</li>
+          <li>
+            Menyediakan tenaga kerja dan material sesuai ketentuan kontrak.
+          </li>
           <li>Memastikan pekerjaan sesuai standar kualitas yang disepakati.</li>
-          <li>Menyediakan informasi perkembangan pembangunan kepada Customer.</li>
+          <li>
+            Menyediakan informasi perkembangan pembangunan kepada Customer.
+          </li>
           <li>Menindaklanjuti kendala yang terjadi selama pembangunan.</li>
         </ol>
         <p className="font-semibold text-[#111e3f]">
@@ -390,7 +390,10 @@ export default function ContractDocument({
             Perkembangan pembangunan wajib dilaporkan secara berkala melalui
             sistem Way2Home.
           </li>
-          <li>Mandor bertanggung jawab memperbarui informasi perkembangan pekerjaan.</li>
+          <li>
+            Mandor bertanggung jawab memperbarui informasi perkembangan
+            pekerjaan.
+          </li>
           <li>Pengawas memeriksa dan memverifikasi laporan perkembangan.</li>
           <li>
             Dokumentasi berupa foto atau bukti pekerjaan dapat dilampirkan dalam
@@ -413,7 +416,9 @@ export default function ContractDocument({
             Perubahan hanya dapat dilaksanakan setelah memperoleh persetujuan
             tertulis atau digital dari pihak terkait.
           </li>
-          <li>Perubahan yang telah disetujui menjadi bagian dari perjanjian ini.</li>
+          <li>
+            Perubahan yang telah disetujui menjadi bagian dari perjanjian ini.
+          </li>
         </ol>
       </ContractClause>
 
@@ -425,8 +430,8 @@ export default function ContractDocument({
           </li>
           <li>Pengawas bertanggung jawab memeriksa laporan kendala.</li>
           <li>
-            Jika terjadi keterlambatan, Penyedia Jasa wajib menjelaskan
-            penyebab dan rencana penyelesaiannya.
+            Jika terjadi keterlambatan, Penyedia Jasa wajib menjelaskan penyebab
+            dan rencana penyelesaiannya.
           </li>
           <li>
             Dalam keadaan kahar (<em>force majeure</em>), para pihak membahas
@@ -470,8 +475,8 @@ export default function ContractDocument({
       <ContractClause title="PASAL 12 — PENYELESAIAN DAN SERAH TERIMA">
         <ol className="list-decimal space-y-1 pl-5">
           <li>
-            Pembangunan dinyatakan selesai setelah seluruh pekerjaan dalam
-            ruang lingkup kontrak dilaksanakan.
+            Pembangunan dinyatakan selesai setelah seluruh pekerjaan dalam ruang
+            lingkup kontrak dilaksanakan.
           </li>
           <li>Pengawas memeriksa hasil pembangunan sebelum serah terima.</li>
           <li>
@@ -499,7 +504,9 @@ export default function ContractDocument({
             Garansi mencakup kerusakan atau ketidaksesuaian akibat kesalahan
             pelaksanaan pekerjaan sesuai cakupan yang disepakati.
           </li>
-          <li>Customer dapat mengajukan klaim garansi melalui sistem Way2Home.</li>
+          <li>
+            Customer dapat mengajukan klaim garansi melalui sistem Way2Home.
+          </li>
           <li>
             Pengecualian garansi dan mekanisme perbaikan dijelaskan dalam
             dokumen garansi terpisah apabila diperlukan.
@@ -509,7 +516,9 @@ export default function ContractDocument({
 
       <ContractClause title="PASAL 14 — PENYELESAIAN PERSELISIHAN">
         <ol className="list-decimal space-y-1 pl-5">
-          <li>Setiap perselisihan diselesaikan terlebih dahulu melalui musyawarah.</li>
+          <li>
+            Setiap perselisihan diselesaikan terlebih dahulu melalui musyawarah.
+          </li>
           <li>
             Jika musyawarah tidak mencapai kesepakatan, para pihak dapat
             menempuh mekanisme penyelesaian sesuai ketentuan hukum yang berlaku.

@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import type { Project, Payment } from "@/types/proyek";
 import { formatDate, formatRupiah } from "@/utils/format";
 import { verifyMidtransPayment } from "@/utils/midtrans-payment";
+import { useToast } from "@/hooks/useToast";
+import Toast from "@/components/Toast";
 
 /**
  * Badge styles mapped to Payment.status which comes from transforming
@@ -69,13 +71,12 @@ export default function PaymentsSection({ project }: PaymentsSectionProps) {
   const router = useRouter();
   const { loading, setLoading, error, setError, loadSnapScript } =
     useMidtransSnap();
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const { toast, showToast, dismissToast } = useToast();
 
   const activePayment = project.payments.find((p) => p.status === "aktif");
 
   async function handlePay(payment: Payment) {
     setError(null);
-    setSuccessMessage(null);
     setLoading(true);
 
     try {
@@ -127,31 +128,30 @@ export default function PaymentsSection({ project }: PaymentsSectionProps) {
                 project.id,
                 result.order_id,
               );
-              setSuccessMessage(
-                paid
-                  ? `Pembayaran ${payment.label} berhasil dan statusnya sudah lunas.`
-                  : `Pembayaran ${payment.label} sedang dikonfirmasi Midtrans. Status akan diperbarui setelah pembayaran terverifikasi.`,
-              );
-              router.refresh();
+              const message = paid
+                ? `Pembayaran ${payment.label} berhasil dan statusnya sudah lunas.`
+                : `Pembayaran ${payment.label} sedang dikonfirmasi Midtrans. Status akan diperbarui setelah pembayaran terverifikasi.`;
+              showToast(message, "success", 3000);
+              await router.refresh();
             } catch (verificationError) {
-              setError(
+              const errMsg =
                 verificationError instanceof Error
                   ? verificationError.message
-                  : "Pembayaran berhasil, tetapi status belum dapat diverifikasi.",
-              );
-              router.refresh();
+                  : "Pembayaran berhasil, tetapi status belum dapat diverifikasi.";
+              setError(errMsg);
+              showToast(errMsg, "error", 3000);
+              await router.refresh();
             } finally {
               setLoading(false);
             }
           })();
         },
         onPending: () => {
-          setSuccessMessage(
-            `Pembayaran ${payment.label} sedang diproses. Status akan diperbarui otomatis.`,
-          );
+          const message = `Pembayaran ${payment.label} sedang diproses. Status akan diperbarui otomatis.`;
+          showToast(message, "info", 3000);
           setLoading(false);
-          setTimeout(() => {
-            router.refresh();
+          setTimeout(async () => {
+            await router.refresh();
           }, 3000);
         },
         onError: () => {
@@ -170,11 +170,13 @@ export default function PaymentsSection({ project }: PaymentsSectionProps) {
 
   return (
     <section className="rounded-[1.5rem] border border-[#dbe4f2] bg-white p-6 shadow-[0_12px_30px_rgba(17,30,63,0.06)] md:p-8">
+      <Toast toast={toast} onDismiss={dismissToast} />
+
       <h2 className="text-sm font-bold uppercase tracking-wider text-[#475569]">
         Tahapan Pembayaran
       </h2>
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
         {project.payments.map((payment) => {
           const badge =
             STATUS_BADGE[payment.status] ?? STATUS_BADGE.akan_datang;
@@ -253,28 +255,6 @@ export default function PaymentsSection({ project }: PaymentsSectionProps) {
         })}
       </div>
 
-      {/* Success message */}
-      {successMessage && (
-        <div className="mt-5 flex items-start gap-3 rounded-2xl bg-[#ecfdf5] p-4 text-sm leading-6 text-[#065f46]">
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-            className="mt-0.5 shrink-0"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <path d="m9 12 2 2 4-4" />
-          </svg>
-          <p>{successMessage}</p>
-        </div>
-      )}
-
       {/* Error message */}
       {error && (
         <div className="mt-5 flex items-start gap-3 rounded-2xl bg-[#fef2f2] p-4 text-sm leading-6 text-[#991b1b]">
@@ -323,7 +303,7 @@ export default function PaymentsSection({ project }: PaymentsSectionProps) {
       </div>
 
       {/* Main pay button for active payment (larger CTA) */}
-      {activePayment && !successMessage && (
+      {activePayment && (
         <button
           type="button"
           disabled={loading}

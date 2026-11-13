@@ -4,19 +4,21 @@ import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import type { Project } from "@/types/proyek";
 import { useCountdown, formatRemaining } from "@/hooks/useCountdown";
+import { useToast } from "@/hooks/useToast";
+import Toast from "@/components/Toast";
 import ContractModal from "./ContractModal";
 import { verifyMidtransPayment } from "@/utils/midtrans-payment";
 
 type Banner = {
   icon:
-  | "check"
-  | "clock"
-  | "alert"
-  | "revision"
-  | "contract"
-  | "expired"
-  | "cancel"
-  | "active";
+    | "check"
+    | "clock"
+    | "alert"
+    | "revision"
+    | "contract"
+    | "expired"
+    | "cancel"
+    | "active";
   title: string;
   body: string;
   style: string;
@@ -60,10 +62,7 @@ function getBanner(project: Project): Banner | null {
       style: "border-[#8fb9ed] bg-[#eef5ff] text-[#004796]",
     };
   }
-  if (
-    project.status === "Finalisasi Kontrak" &&
-    !project.contract.id
-  ) {
+  if (project.status === "Finalisasi Kontrak" && !project.contract.id) {
     return {
       icon: "clock",
       title: "Kontrak Sedang Disiapkan",
@@ -238,13 +237,10 @@ function useLoadSnapScript() {
   return loadSnap;
 }
 
-export default function ActionPanel({
-  project,
-}: {
-  project: Project;
-}) {
+export default function ActionPanel({ project }: { project: Project }) {
   const router = useRouter();
   const banner = getBanner(project);
+  const { toast, showToast, dismissToast } = useToast();
   const [modalOpen, setModalOpen] = useState(false);
   const [cancelConfirm, setCancelConfirm] = useState(false);
   const [cancelSubmitting, setCancelSubmitting] = useState(false);
@@ -253,7 +249,6 @@ export default function ActionPanel({
   // Midtrans DP payment state
   const [dpLoading, setDpLoading] = useState(false);
   const [dpError, setDpError] = useState<string | null>(null);
-  const [dpSuccess, setDpSuccess] = useState<string | null>(null);
   const loadSnap = useLoadSnapScript();
 
   const contractCountdown = useCountdown(
@@ -282,9 +277,7 @@ export default function ActionPanel({
     project.status === "Finalisasi Kontrak";
 
   const canCancel =
-    !canceled &&
-    !contractLocked &&
-    project.status !== "Selesai";
+    !canceled && !contractLocked && project.status !== "Selesai";
 
   const activePayment = project.payments.find((p) => p.status === "aktif");
   const allInstallmentsPaid = !activePayment && dpPaid;
@@ -316,7 +309,6 @@ export default function ActionPanel({
 
   async function handlePayDP() {
     setDpError(null);
-    setDpSuccess(null);
     setDpLoading(true);
 
     try {
@@ -324,8 +316,9 @@ export default function ActionPanel({
       await loadSnap();
 
       // Find the DP stage id (urutan 0)
-      const dpStageId = project.payments.find((payment) => payment.periode === 0)
-        ?.stageId;
+      const dpStageId = project.payments.find(
+        (payment) => payment.periode === 0,
+      )?.stageId;
       if (!dpStageId) {
         throw new Error(
           "ID tahap pembayaran DP tidak ditemukan. Muat ulang halaman.",
@@ -345,9 +338,7 @@ export default function ActionPanel({
       };
 
       if (!response.ok || !data.token) {
-        throw new Error(
-          data.message || "Gagal membuat transaksi pembayaran.",
-        );
+        throw new Error(data.message || "Gagal membuat transaksi pembayaran.");
       }
 
       // Open Snap popup
@@ -363,33 +354,36 @@ export default function ActionPanel({
                 project.id,
                 result.order_id,
               );
-              setDpSuccess(
-                paid
-                  ? "Pembayaran DP berhasil dan statusnya sudah lunas. Proyek Anda akan segera aktif."
-                  : "Pembayaran DP sedang dikonfirmasi Midtrans. Status akan diperbarui setelah pembayaran terverifikasi.",
-              );
-              router.refresh();
+              const message = paid
+                ? "Pembayaran DP berhasil dan statusnya sudah lunas. Proyek Anda akan segera aktif."
+                : "Pembayaran DP sedang dikonfirmasi Midtrans. Status akan diperbarui setelah pembayaran terverifikasi.";
+              showToast(message, "success", 3000);
+              await router.refresh();
             } catch (verificationError) {
-              setDpError(
+              const errMsg =
                 verificationError instanceof Error
                   ? verificationError.message
-                  : "Pembayaran berhasil, tetapi status belum dapat diverifikasi.",
-              );
-              router.refresh();
+                  : "Pembayaran berhasil, tetapi status belum dapat diverifikasi.";
+              setDpError(errMsg);
+              showToast(errMsg, "error", 3000);
+              await router.refresh();
             } finally {
               setDpLoading(false);
             }
           })();
         },
         onPending: () => {
-          setDpSuccess(
-            "Pembayaran sedang diproses. Status akan diperbarui otomatis.",
-          );
+          const message =
+            "Pembayaran sedang diproses. Status akan diperbarui otomatis.";
+          showToast(message, "info", 3000);
           setDpLoading(false);
-          setTimeout(() => router.refresh(), 3000);
+          setTimeout(async () => {
+            await router.refresh();
+          }, 3000);
         },
         onError: () => {
           setDpError("Pembayaran gagal. Silakan coba lagi.");
+          showToast("Pembayaran gagal. Silakan coba lagi.", "error", 3000);
           setDpLoading(false);
         },
         onClose: () => {
@@ -397,9 +391,7 @@ export default function ActionPanel({
         },
       });
     } catch (err) {
-      setDpError(
-        err instanceof Error ? err.message : "Terjadi kesalahan.",
-      );
+      setDpError(err instanceof Error ? err.message : "Terjadi kesalahan.");
       setDpLoading(false);
     }
   }
@@ -409,6 +401,7 @@ export default function ActionPanel({
 
   return (
     <section className="flex flex-col gap-4">
+      <Toast toast={toast} onDismiss={dismissToast} />
       {banner && (
         <div
           role="status"
@@ -478,31 +471,7 @@ export default function ActionPanel({
         </div>
       )}
 
-      {/* DP Payment success/error messages */}
-      {dpSuccess && (
-        <div className="flex items-start gap-3 rounded-2xl border border-[#a7f3d0] bg-[#ecfdf5] p-5 text-[#065f46]">
-          <svg
-            width="22"
-            height="22"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-            className="mt-0.5 shrink-0"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <path d="m9 12 2 2 4-4" />
-          </svg>
-          <div>
-            <h3 className="font-bold">Pembayaran Berhasil</h3>
-            <p className="mt-1 text-sm leading-6">{dpSuccess}</p>
-          </div>
-        </div>
-      )}
-
+      {/* Error message (DP payment only show error inline if needed) */}
       {dpError && (
         <div className="flex items-start gap-3 rounded-2xl border border-[#fecaca] bg-[#fef2f2] p-5 text-[#991b1b]">
           <svg
@@ -574,41 +543,39 @@ export default function ActionPanel({
               </button>
             )}
 
-          {project.status === "Pembayaran DP" &&
-            !activePayment &&
-            !dpSuccess && (
-              <button
-                type="button"
-                disabled={dpLoading}
-                onClick={handlePayDP}
-                className="flex min-h-14 cursor-pointer items-center gap-3 rounded-full bg-gradient-to-r from-[#004796] to-[#045ec2] px-8 font-bold text-white shadow-[0_10px_25px_rgba(0,71,150,0.3)] transition hover:-translate-y-0.5 hover:shadow-lg active:scale-95 disabled:cursor-wait disabled:opacity-60"
-              >
-                {dpLoading ? (
-                  <>
-                    <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    Memproses Pembayaran...
-                  </>
-                ) : (
-                  <>
-                    <svg
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      aria-hidden="true"
-                    >
-                      <rect width="20" height="14" x="2" y="5" rx="2" />
-                      <path d="M2 10h20" />
-                    </svg>
-                    Bayar Down Payment
-                  </>
-                )}
-              </button>
-            )}
+          {project.status === "Pembayaran DP" && !activePayment && (
+            <button
+              type="button"
+              disabled={dpLoading}
+              onClick={handlePayDP}
+              className="flex min-h-14 cursor-pointer items-center gap-3 rounded-full bg-gradient-to-r from-[#004796] to-[#045ec2] px-8 font-bold text-white shadow-[0_10px_25px_rgba(0,71,150,0.3)] transition hover:-translate-y-0.5 hover:shadow-lg active:scale-95 disabled:cursor-wait disabled:opacity-60"
+            >
+              {dpLoading ? (
+                <>
+                  <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  Memproses Pembayaran...
+                </>
+              ) : (
+                <>
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <rect width="20" height="14" x="2" y="5" rx="2" />
+                    <path d="M2 10h20" />
+                  </svg>
+                  Bayar Down Payment
+                </>
+              )}
+            </button>
+          )}
 
           {project.status === "Selesai" && (
             <button

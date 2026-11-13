@@ -79,8 +79,8 @@ export default async function ProyekListPage() {
               Anda belum memiliki proyek pembangunan rumah
             </h2>
             <p className="mx-auto mt-3 max-w-md text-[#64748b]">
-              Silakan pergi ke halaman rekomendasi rumah atau katalog dan buat proyek Anda
-              dari sana.
+              Silakan pergi ke halaman rekomendasi rumah atau katalog dan buat
+              proyek Anda dari sana.
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
               <Link

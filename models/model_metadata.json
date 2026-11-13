@@ -8,11 +8,7 @@
     "n_jobs": -1,
     "permutation_repeats": 10,
     "bootstrap_iterations": 1000,
-    "class_order": [
-      "LOW",
-      "MEDIUM",
-      "HIGH"
-    ],
+    "class_order": ["LOW", "MEDIUM", "HIGH"],
     "primary_metric": {
       "risk_classification": "f1_macro",
       "delay_regression": "MAE",
@@ -64,10 +60,7 @@
       "jumlah_insiden_keselamatan",
       "jumlah_pekerja"
     ],
-    "risk_menurunkan_HIGH": [
-      "progress_persen",
-      "utilisasi_peralatan_persen"
-    ],
+    "risk_menurunkan_HIGH": ["progress_persen", "utilisasi_peralatan_persen"],
     "delay_berasosiasi_naik": [
       "dampak_waktu_hari",
       "jumlah_insiden_keselamatan",
@@ -98,11 +91,7 @@
       "task": "risk_classification",
       "problem_type": "multiclass_classification",
       "target": "risk_level",
-      "class_order": [
-        "LOW",
-        "MEDIUM",
-        "HIGH"
-      ],
+      "class_order": ["LOW", "MEDIUM", "HIGH"],
       "algorithm": "Random Forest",
       "hyperparameter_variant": "tuned",
       "variant": "full",
@@ -212,11 +201,7 @@
       "task": "risk_classification",
       "problem_type": "multiclass_classification",
       "target": "risk_level",
-      "class_order": [
-        "LOW",
-        "MEDIUM",
-        "HIGH"
-      ],
+      "class_order": ["LOW", "MEDIUM", "HIGH"],
       "algorithm": "Random Forest",
       "hyperparameter_variant": "tuned",
       "variant": "w2h_compatible",

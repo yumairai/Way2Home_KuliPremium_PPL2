@@ -152,7 +152,9 @@ export default function DefaultNavbar() {
                           <div className="relative z-10 flex items-center gap-3">
                             <div className="flex h-12 w-12 items-center justify-center rounded-lg">
                               <Image
-                                src={user.avatarUrl || "/images/aset/avatar.jpg"}
+                                src={
+                                  user.avatarUrl || "/images/aset/avatar.jpg"
+                                }
                                 alt={`Foto profil ${user.fullName}`}
                                 width={48}
                                 height={48}

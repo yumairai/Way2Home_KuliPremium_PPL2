@@ -5,7 +5,10 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { houseDesigns } from "@/data/house-designs";
 import { toDatabaseLocation, UI_LOCATIONS } from "@/data/location-mapping";
-import type { RecommendationInput, RecommendationResponse } from "@/services/recommendation.service";
+import type {
+  RecommendationInput,
+  RecommendationResponse,
+} from "@/services/recommendation.service";
 
 export type AiPreference = RecommendationInput;
 
@@ -97,7 +100,8 @@ export default function PreferenceForm() {
   const [floors, setFloors] = useState(1);
   const [flexibility, setFlexibility] = useState(10);
   const [budget, setBudget] = useState(100000000);
-  const [priority, setPriority] = useState<RecommendationInput["priority"]>("biaya");
+  const [priority, setPriority] =
+    useState<RecommendationInput["priority"]>("biaya");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
@@ -111,7 +115,9 @@ export default function PreferenceForm() {
       })
       .then((designs) => {
         if (!active) return;
-        const availableStyles = [...new Set(designs.map((design) => design.style).filter(Boolean))];
+        const availableStyles = [
+          ...new Set(designs.map((design) => design.style).filter(Boolean)),
+        ];
         if (availableStyles.length > 0) {
           setStyles(availableStyles);
           setDesignCount(designs.length);
@@ -154,8 +160,7 @@ export default function PreferenceForm() {
         body: JSON.stringify(requestInput),
       });
       const payload = (await response.json()) as
-        | RecommendationResponse
-        | { message?: string };
+        RecommendationResponse | { message?: string };
 
       if (!response.ok) {
         throw new Error(
@@ -166,10 +171,7 @@ export default function PreferenceForm() {
       }
 
       localStorage.setItem("w2h_ai_preferensi", JSON.stringify(preference));
-      localStorage.setItem(
-        "w2h_ai_rekomendasi",
-        JSON.stringify(payload),
-      );
+      localStorage.setItem("w2h_ai_rekomendasi", JSON.stringify(payload));
       router.push("/ai-planning-based/hasil");
     } catch (error) {
       setSubmitError(
@@ -411,8 +413,8 @@ export default function PreferenceForm() {
             </p>
           )}
           <p className="mt-4 text-center text-sm text-[#64748b]">
-            Sistem akan membandingkan preferensi Anda dengan{" "}
-            {designCount} desain rumah Way2Home.
+            Sistem akan membandingkan preferensi Anda dengan {designCount}{" "}
+            desain rumah Way2Home.
           </p>
         </div>
       </section>

@@ -2,9 +2,9 @@
 
 **LOGO WAY2HOME**
 
-| | |
-|---|---|
-| **Nomor Kontrak** | [NOMOR KONTRAK] |
+|                    |                   |
+| ------------------ | ----------------- |
+| **Nomor Kontrak**  | [NOMOR KONTRAK]   |
 | **Hari / Tanggal** | [HARI], [TANGGAL] |
 
 Para pihak yang bertanda tangan di bawah ini sepakat untuk mengadakan perjanjian kerja sama pembangunan rumah dengan ketentuan sebagai berikut.
@@ -15,44 +15,44 @@ Para pihak yang bertanda tangan di bawah ini sepakat untuk mengadakan perjanjian
 
 ### Pihak Pertama — Penyedia Jasa
 
-| | |
-|---|---|
-| Nama Perusahaan | PT Way2Home Konstruksi |
-| Penanggung Jawab | KuliPremium |
-| Kontak | 081384310179 |
+|                  |                        |
+| ---------------- | ---------------------- |
+| Nama Perusahaan  | PT Way2Home Konstruksi |
+| Penanggung Jawab | KuliPremium            |
+| Kontak           | 081384310179           |
 
 ### Pihak Kedua — Customer
 
-| | |
-|---|---|
-| Nama Lengkap | [NAMA CUSTOMER] |
-| NIK | [NIK CUSTOMER] |
-| Nomor Telepon | [NOMOR TELEPON] |
-| Email | [EMAIL CUSTOMER] |
+|               |                  |
+| ------------- | ---------------- |
+| Nama Lengkap  | [NAMA CUSTOMER]  |
+| NIK           | [NIK CUSTOMER]   |
+| Nomor Telepon | [NOMOR TELEPON]  |
+| Email         | [EMAIL CUSTOMER] |
 
 ### Tim Pelaksana Proyek
 
-| Peran | Nama |
-|---|---|
-| Pengawas | [NAMA PENGAWAS] |
-| Mandor 1 | [NAMA MANDOR 1] |
-| Mandor 2 | [NAMA MANDOR 2] |
-| Mandor 3 | [NAMA MANDOR 3] |
-// Data mandor tergantung saat pengawas mengalokasikan, jika memang 1, ya 1. Maks 3 mandor.
+| Peran                                                                                       | Nama            |
+| ------------------------------------------------------------------------------------------- | --------------- |
+| Pengawas                                                                                    | [NAMA PENGAWAS] |
+| Mandor 1                                                                                    | [NAMA MANDOR 1] |
+| Mandor 2                                                                                    | [NAMA MANDOR 2] |
+| Mandor 3                                                                                    | [NAMA MANDOR 3] |
+| // Data mandor tergantung saat pengawas mengalokasikan, jika memang 1, ya 1. Maks 3 mandor. |
 
 ---
 
 ## PASAL 2 — INFORMASI PROYEK
 
-| | |
-|---|---|
-| Kode Proyek | [KODE PROYEK] |
-| Lokasi Pembangunan | [ALAMAT LOKASI] |
-| Desain Rumah | [NAMA DESAIN] |
-| Gaya Arsitektur | [GAYA ARSITEKTUR] |
-| Luas Tanah | [LUAS TANAH] m² |
-| Luas Bangunan | [LUAS BANGUNAN] m² |
-| Jumlah Lantai | [JUMLAH LANTAI] |
+|                    |                      |
+| ------------------ | -------------------- |
+| Kode Proyek        | [KODE PROYEK]        |
+| Lokasi Pembangunan | [ALAMAT LOKASI]      |
+| Desain Rumah       | [NAMA DESAIN]        |
+| Gaya Arsitektur    | [GAYA ARSITEKTUR]    |
+| Luas Tanah         | [LUAS TANAH] m²      |
+| Luas Bangunan      | [LUAS BANGUNAN] m²   |
+| Jumlah Lantai      | [JUMLAH LANTAI]      |
 | Jumlah Kamar Tidur | [JUMLAH KAMAR TIDUR] |
 | Jumlah Kamar Mandi | [JUMLAH KAMAR MANDI] |
 
@@ -83,13 +83,13 @@ Total nilai pembangunan rumah yang disepakati adalah **Rp [TOTAL BIAYA]**.
 
 Pembayaran dilakukan secara bertahap. Setiap tahap pembayaran menentukan **batas maksimal progres pembangunan** yang boleh dilaksanakan.
 
-| Tahap | Persentase | Nominal | 
-|---|---|---|
-| Uang Muka (DP) | [30]% | Rp [NOMINAL] | 
-| Termin 1 | [25]% | Rp [NOMINAL] | 
-| Termin 2 | [25]% | Rp [NOMINAL] | 
-| Termin 3 (Pelunasan) | [20]% | Rp [NOMINAL] | 
-| **Total** | **100%** | **Rp [TOTAL]** | |
+| Tahap                | Persentase | Nominal        |
+| -------------------- | ---------- | -------------- |
+| Uang Muka (DP)       | [30]%      | Rp [NOMINAL]   |
+| Termin 1             | [25]%      | Rp [NOMINAL]   |
+| Termin 2             | [25]%      | Rp [NOMINAL]   |
+| Termin 3 (Pelunasan) | [20]%      | Rp [NOMINAL]   |
+| **Total**            | **100%**   | **Rp [TOTAL]** |     |
 
 ### 4.3 Ketentuan Pembayaran
 
@@ -112,11 +112,11 @@ Pembayaran dilakukan secara bertahap. Setiap tahap pembayaran menentukan **batas
 
 ## PASAL 5 — JADWAL DAN DURASI PEMBANGUNAN
 
-| | |
-|---|---|
-| Tanggal Mulai | [TANGGAL MULAI] |
+|                       |                   |
+| --------------------- | ----------------- |
+| Tanggal Mulai         | [TANGGAL MULAI]   |
 | Estimasi Penyelesaian | [TANGGAL SELESAI] |
-| Durasi Pembangunan | [DURASI] bulan |
+| Durasi Pembangunan    | [DURASI] bulan    |
 
 Pembangunan dilaksanakan berdasarkan tahapan dan jadwal yang telah disepakati. Apabila terjadi perubahan jadwal, PIHAK PERTAMA wajib memberikan informasi dan penjelasan kepada PIHAK KEDUA melalui sistem Way2Home.
 
@@ -200,7 +200,7 @@ Pembangunan dilaksanakan berdasarkan tahapan dan jadwal yang telah disepakati. A
 1. Setiap kendala yang memengaruhi pembangunan wajib dilaporkan melalui sistem Way2Home.
 2. Pengawas bertanggung jawab memeriksa laporan kendala.
 3. Apabila terjadi keterlambatan, Penyedia Jasa wajib menjelaskan penyebab dan rencana penyelesaiannya.
-4. Apabila terjadi keadaan kahar (*force majeure*), para pihak akan membahas penyesuaian jadwal dan ketentuan pelaksanaan pekerjaan.
+4. Apabila terjadi keadaan kahar (_force majeure_), para pihak akan membahas penyesuaian jadwal dan ketentuan pelaksanaan pekerjaan.
 
 ---
 
@@ -216,7 +216,6 @@ Pembangunan dilaksanakan berdasarkan tahapan dan jadwal yang telah disepakati. A
 4. Apabila Customer menyetujui penambahan biaya, PARA PIHAK wajib menyepakati perubahan nilai kontrak dan, apabila diperlukan, perubahan jadwal pembangunan melalui dokumen perubahan kontrak (addendum).
 5. Apabila Customer tidak menyetujui penambahan biaya, PARA PIHAK akan melakukan pembahasan untuk menentukan alternatif penyelesaian yang memungkinkan tanpa mengurangi standar keselamatan dan kualitas konstruksi.
 6. Penyedia Jasa tidak diperkenankan membebankan biaya tambahan kepada Customer secara sepihak tanpa persetujuan sebagaimana dimaksud dalam pasal ini.
-
 
 ---
 
@@ -260,25 +259,26 @@ Pembangunan dilaksanakan berdasarkan tahapan dan jadwal yang telah disepakati. A
 
 Dengan menyetujui kontrak ini, para pihak menyatakan telah membaca, memahami, dan menyetujui seluruh ketentuan di dalamnya.
 
-| | Pihak Pertama — Penyedia Jasa | Pihak Kedua — Customer | Pengawas Proyek |
-|---|---|---|---|
-| **Nama** | KuliPremium | [NAMA CUSTOMER] | [NAMA PENGAWAS] |
-| **Tanggal Persetujuan** | [TANGGAL] | [TANGGAL] | [TANGGAL] |
-| **Tanda Tangan Digital** | [TANDA TANGAN KuliPremium] | [TANDA TANGAN] | [TANDA TANGAN] |
+|                          | Pihak Pertama — Penyedia Jasa | Pihak Kedua — Customer | Pengawas Proyek |
+| ------------------------ | ----------------------------- | ---------------------- | --------------- |
+| **Nama**                 | KuliPremium                   | [NAMA CUSTOMER]        | [NAMA PENGAWAS] |
+| **Tanggal Persetujuan**  | [TANGGAL]                     | [TANGGAL]              | [TANGGAL]       |
+| **Tanda Tangan Digital** | [TANDA TANGAN KuliPremium]    | [TANDA TANGAN]         | [TANDA TANGAN]  |
 
 Layout tanda tangan seperti huruf Y besar 2 pihak di atas dan 1 pihak di bawah.
 ---
 
 ## LAMPIRAN — CATATAN UNTUK DEVELOPER
-*(Bukan bagian dari isi kontrak; hapus saat dirender ke Customer.)*
 
-| Placeholder | Sumber / Catatan |
-|---|---|
-| `[KODE PROYEK]` | Ambil dari **ID Proyek** |
-| `[TANDA TANGAN KuliPremium]` | Tanda tangan fiktif/dummy untuk Pihak Pertama |
-| `[30]%`, `[25]%`, `[20]%` | Persentase termin; bisa dikonfigurasi per proyek, total harus 100% |
+_(Bukan bagian dari isi kontrak; hapus saat dirender ke Customer.)_
+
+| Placeholder                             | Sumber / Catatan                                                     |
+| --------------------------------------- | -------------------------------------------------------------------- |
+| `[KODE PROYEK]`                         | Ambil dari **ID Proyek**                                             |
+| `[TANDA TANGAN KuliPremium]`            | Tanda tangan fiktif/dummy untuk Pihak Pertama                        |
+| `[30]%`, `[25]%`, `[20]%`               | Persentase termin; bisa dikonfigurasi per proyek, total harus 100%   |
 | Batas progres `[25]%`, `[50]%`, `[75]%` | Terhubung ke fitur Monitoring Pembayaran Pengawas & validasi progres |
-| `[NOMINAL]` | Persentase × `[TOTAL BIAYA]` |
-| Mandor 1–3 | Jumlah baris mengikuti jumlah Mandor yang ditugaskan di proyek |
+| `[NOMINAL]`                             | Persentase × `[TOTAL BIAYA]`                                         |
+| Mandor 1–3                              | Jumlah baris mengikuti jumlah Mandor yang ditugaskan di proyek       |
 
 **Perubahan struktur dibanding versi sebelumnya:** lihat ringkasan di balasan chat.

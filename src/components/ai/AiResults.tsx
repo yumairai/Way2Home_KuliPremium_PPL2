@@ -61,8 +61,8 @@ export default function AiResults() {
               Rekomendasi rumah untuk Anda
             </h1>
             <p className="mt-4 max-w-2xl text-base leading-7 text-[#64748b]">
-              Desain diurutkan berdasarkan kecocokan budget, luas lahan,
-              kamar, lantai, gaya arsitektur, durasi, dan iklim.
+              Desain diurutkan berdasarkan kecocokan budget, luas lahan, kamar,
+              lantai, gaya arsitektur, durasi, dan iklim.
             </p>
           </div>
           <Link
@@ -110,118 +110,116 @@ export default function AiResults() {
 
         <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
           {results.map((design, index) => (
-              <article
-                key={design.slug}
-                className="group overflow-hidden rounded-[2rem] border border-[#dbe4f2] bg-white shadow-[0_12px_30px_rgba(17,30,63,0.05)] transition hover:-translate-y-1 hover:shadow-[0_20px_45px_rgba(17,30,63,0.1)]"
-              >
-                <div className="relative aspect-[16/10] overflow-hidden">
-                  <Image
-                    src={design.image}
-                    alt={`Desain rumah ${design.name}`}
-                    fill
-                    sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
-                    className="object-cover transition duration-500 group-hover:scale-105"
+            <article
+              key={design.slug}
+              className="group overflow-hidden rounded-[2rem] border border-[#dbe4f2] bg-white shadow-[0_12px_30px_rgba(17,30,63,0.05)] transition hover:-translate-y-1 hover:shadow-[0_20px_45px_rgba(17,30,63,0.1)]"
+            >
+              <div className="relative aspect-[16/10] overflow-hidden">
+                <Image
+                  src={design.image}
+                  alt={`Desain rumah ${design.name}`}
+                  fill
+                  sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
+                  className="object-cover transition duration-500 group-hover:scale-105"
+                />
+                <span className="absolute left-4 top-4 rounded-full bg-[#111e3f]/85 px-4 py-1.5 text-xs font-bold text-white backdrop-blur">
+                  Desain #{index + 1}
+                </span>
+                <span
+                  className={`absolute right-4 top-4 rounded-full bg-white/95 px-4 py-1.5 text-xs font-bold backdrop-blur ${matchColor(design.match)}`}
+                >
+                  {design.match}% Match
+                </span>
+              </div>
+              <div className="p-6">
+                <p className="text-xs font-bold uppercase tracking-wider text-[#045ec2]">
+                  {design.style}
+                </p>
+                <h2 className="mt-2 text-2xl font-bold tracking-[-0.02em]">
+                  {design.name}
+                </h2>
+                <p className="mt-2 text-sm text-[#64748b]">{design.location}</p>
+                <p className="mt-2 text-xs font-semibold text-[#477c50]">
+                  {design.locationSuitable && design.climateScore !== null
+                    ? `Kecocokan iklim ${(design.climateScore * 100).toFixed(0)}%`
+                    : "Skor iklim tidak tersedia untuk lokasi ini"}
+                </p>
+
+                <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#f1f5f9]">
+                  <div
+                    className={`h-full rounded-full ${matchBar(design.match)}`}
+                    style={{ width: `${design.match}%` }}
                   />
-                  <span className="absolute left-4 top-4 rounded-full bg-[#111e3f]/85 px-4 py-1.5 text-xs font-bold text-white backdrop-blur">
-                    Desain #{index + 1}
-                  </span>
-                  <span
-                    className={`absolute right-4 top-4 rounded-full bg-white/95 px-4 py-1.5 text-xs font-bold backdrop-blur ${matchColor(design.match)}`}
-                  >
-                    {design.match}% Match
-                  </span>
                 </div>
-                <div className="p-6">
-                  <p className="text-xs font-bold uppercase tracking-wider text-[#045ec2]">
-                    {design.style}
-                  </p>
-                  <h2 className="mt-2 text-2xl font-bold tracking-[-0.02em]">
-                    {design.name}
-                  </h2>
-                  <p className="mt-2 text-sm text-[#64748b]">
-                    {design.location}
-                  </p>
-                  <p className="mt-2 text-xs font-semibold text-[#477c50]">
-                    {design.locationSuitable && design.climateScore !== null
-                      ? `Kecocokan iklim ${(design.climateScore * 100).toFixed(0)}%`
-                      : "Skor iklim tidak tersedia untuk lokasi ini"}
-                  </p>
 
-                  <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#f1f5f9]">
+                <dl className="mt-5 space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <dt className="text-[#64748b]">Luas tanah/bangunan</dt>
+                    <dd className="font-bold">
+                      {design.landArea} / {design.buildingArea} m²
+                    </dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-[#64748b]">Kamar</dt>
+                    <dd className="font-bold">
+                      {design.bedrooms} kamar · {design.floors} lantai
+                    </dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-[#64748b]">Estimasi biaya</dt>
+                    <dd className="font-bold text-[#004796]">
+                      {money(design.estimatedCost)}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-[#64748b]">Durasi</dt>
+                    <dd className="font-bold">
+                      {design.estimatedDuration} bulan
+                    </dd>
+                  </div>
+                </dl>
+
+                <div className="mt-5 space-y-1.5 rounded-2xl bg-[#f7f9fc] p-4">
+                  {design.factors.map((factor) => (
                     <div
-                      className={`h-full rounded-full ${matchBar(design.match)}`}
-                      style={{ width: `${design.match}%` }}
-                    />
-                  </div>
-
-                  <dl className="mt-5 space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <dt className="text-[#64748b]">Luas tanah/bangunan</dt>
-                      <dd className="font-bold">
-                        {design.landArea} / {design.buildingArea} m²
-                      </dd>
-                    </div>
-                    <div className="flex justify-between">
-                      <dt className="text-[#64748b]">Kamar</dt>
-                      <dd className="font-bold">
-                        {design.bedrooms} kamar · {design.floors} lantai
-                      </dd>
-                    </div>
-                    <div className="flex justify-between">
-                      <dt className="text-[#64748b]">Estimasi biaya</dt>
-                      <dd className="font-bold text-[#004796]">
-                        {money(design.estimatedCost)}
-                      </dd>
-                    </div>
-                    <div className="flex justify-between">
-                      <dt className="text-[#64748b]">Durasi</dt>
-                      <dd className="font-bold">
-                        {design.estimatedDuration} bulan
-                      </dd>
-                    </div>
-                  </dl>
-
-                  <div className="mt-5 space-y-1.5 rounded-2xl bg-[#f7f9fc] p-4">
-                    {design.factors.map((factor) => (
-                      <div
-                        key={factor.label}
-                        className="flex items-center justify-between text-xs"
-                      >
-                        <span className="text-[#64748b]">{factor.label}</span>
-                        <span className="font-bold">{factor.score}%</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="mt-5 grid grid-cols-2 gap-3">
-                    <Link
-                      href={`/katalog/${design.slug}`}
-                      className="cursor-pointer rounded-full border border-[#dbe4f2] px-4 py-3 text-center text-sm font-bold text-[#475569] transition hover:border-[#8fb9ed] hover:bg-[#eef5ff]"
+                      key={factor.label}
+                      className="flex items-center justify-between text-xs"
                     >
-                      Lihat detail
-                    </Link>
-                    <Link
-                      href={`/bangun/${design.slug}`}
-                      className="cursor-pointer rounded-full bg-gradient-to-r from-[#004796] to-[#045ec2] px-4 py-3 text-center text-sm font-bold text-white transition hover:-translate-y-0.5 hover:shadow-lg"
-                    >
-                      Pilih desain
-                    </Link>
-                  </div>
+                      <span className="text-[#64748b]">{factor.label}</span>
+                      <span className="font-bold">{factor.score}%</span>
+                    </div>
+                  ))}
                 </div>
-              </article>
-            ))}
+
+                <div className="mt-5 grid grid-cols-2 gap-3">
+                  <Link
+                    href={`/katalog/${design.slug}`}
+                    className="cursor-pointer rounded-full border border-[#dbe4f2] px-4 py-3 text-center text-sm font-bold text-[#475569] transition hover:border-[#8fb9ed] hover:bg-[#eef5ff]"
+                  >
+                    Lihat detail
+                  </Link>
+                  <Link
+                    href={`/bangun/${design.slug}`}
+                    className="cursor-pointer rounded-full bg-gradient-to-r from-[#004796] to-[#045ec2] px-4 py-3 text-center text-sm font-bold text-white transition hover:-translate-y-0.5 hover:shadow-lg"
+                  >
+                    Pilih desain
+                  </Link>
+                </div>
+              </div>
+            </article>
+          ))}
         </div>
 
         {results.length === 0 && (
           <div className="mt-16 rounded-[2rem] border border-dashed border-[#b8c7dc] bg-white px-6 py-16 text-center">
-              <h2 className="text-2xl font-bold">
-                {response
-                  ? "Belum ada desain untuk direkomendasikan"
-                  : "Belum ada hasil rekomendasi"}
-              </h2>
+            <h2 className="text-2xl font-bold">
+              {response
+                ? "Belum ada desain untuk direkomendasikan"
+                : "Belum ada hasil rekomendasi"}
+            </h2>
             <p className="mt-3 text-[#64748b]">
-                {response?.message ??
-                  "Lengkapi preferensi Anda terlebih dahulu, lalu sistem akan menyusun rekomendasi terbaik."}
+              {response?.message ??
+                "Lengkapi preferensi Anda terlebih dahulu, lalu sistem akan menyusun rekomendasi terbaik."}
             </p>
             <Link
               href="/ai-planning-based"

@@ -12,13 +12,7 @@ import {
 } from "@/data/pengawas";
 import SupervisorContractModal from "@/components/pengawas/SupervisorContractModal";
 import { useSupervisorProject } from "@/hooks/useSupervisorProject";
-import {
-  errorMessage,
-  apiGet,
-  apiPatch,
-  apiPost,
-  apiPut,
-} from "@/lib/api";
+import { errorMessage, apiGet, apiPatch, apiPost, apiPut } from "@/lib/api";
 import { compressImage } from "@/utils/image";
 import type { MandorIssueReport } from "@/data/mandor";
 import type { IssueAiAnalysisResult } from "@/services/ai-kendala.service";
@@ -267,7 +261,9 @@ function AssignmentDialog({
         <footer className="flex items-center justify-between border-t border-[#e8edf1] bg-[#fafbfc] px-5 py-4">
           {assignError ? (
             <p className="text-xs text-red-600 font-medium">{assignError}</p>
-          ) : <span />}
+          ) : (
+            <span />
+          )}
           <div className="flex gap-2">
             <button
               type="button"
@@ -293,7 +289,9 @@ function AssignmentDialog({
               disabled={selected.length === 0 || submitting}
               className="h-10 rounded-lg bg-[#183b57] px-4 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45"
             >
-              {submitting ? "Menyimpan..." : `Tambahkan ${selected.length || ""} mandor`}
+              {submitting
+                ? "Menyimpan..."
+                : `Tambahkan ${selected.length || ""} mandor`}
             </button>
           </div>
         </footer>
@@ -444,14 +442,20 @@ function IssueWorkflow({
     setAiLoading(true);
     setSelectedOption(null);
     try {
-      const res = await apiPost<{ success: boolean; analysis: IssueAiAnalysisResult }>(
-        `/api/pengawas/kendala/${issue.id}/ai-analysis`,
-      );
+      const res = await apiPost<{
+        success: boolean;
+        analysis: IssueAiAnalysisResult;
+      }>(`/api/pengawas/kendala/${issue.id}/ai-analysis`);
       if (res?.analysis) {
         setAiData(res.analysis);
       }
     } catch (error) {
-      onNotify(errorMessage(error, "Gagal menjalankan analisis AI, menggunakan rekomendasi standar."));
+      onNotify(
+        errorMessage(
+          error,
+          "Gagal menjalankan analisis AI, menggunakan rekomendasi standar.",
+        ),
+      );
     } finally {
       setAiLoading(false);
     }
@@ -548,7 +552,9 @@ function IssueWorkflow({
       status: approved
         ? ("Ditindaklanjuti" as const)
         : ("Diskusi dengan pengawas" as const),
-      customerFeedback: approved ? feedback : resolution.customerFeedback.trim(),
+      customerFeedback: approved
+        ? feedback
+        : resolution.customerFeedback.trim(),
       discussion: [
         ...resolution.discussion,
         { ...entry, id: crypto.randomUUID() },
@@ -878,7 +884,9 @@ function IssueWorkflow({
                   <span>Menunggu Keputusan Customer ({customerName})</span>
                 </div>
                 <p className="mt-1 text-[11px] leading-5 text-slate-600">
-                  Usulan penanganan ini telah dikirim ke portal tracking customer. Customer dapat menyetujui langsung atau meminta penyesuaian melalui portal mereka.
+                  Usulan penanganan ini telah dikirim ke portal tracking
+                  customer. Customer dapat menyetujui langsung atau meminta
+                  penyesuaian melalui portal mereka.
                 </p>
               </div>
             )}
@@ -932,7 +940,8 @@ function IssueWorkflow({
                   Tentukan penanganan kendala
                 </h4>
                 <p className="mt-1 text-[10px] text-slate-500">
-                  Pilih solusi langsung atau gunakan analisis AI sebagai bahan pertimbangan.
+                  Pilih solusi langsung atau gunakan analisis AI sebagai bahan
+                  pertimbangan.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -963,7 +972,8 @@ function IssueWorkflow({
                       Analisis Kendala AI
                     </h5>
                     <p className="mt-1 text-[10px] leading-4 text-slate-500">
-                      Model menganalisis dampak risiko jadwal, estimasi deviasi biaya, dan opsi mitigasi.
+                      Model menganalisis dampak risiko jadwal, estimasi deviasi
+                      biaya, dan opsi mitigasi.
                     </p>
                   </div>
                   {aiData && (
@@ -985,7 +995,8 @@ function IssueWorkflow({
                   <div className="py-6 text-center">
                     <div className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-[#315f7d] border-t-transparent mb-2" />
                     <p className="text-xs text-[#55718a]">
-                      Menganalisis dampak struktural, jadwal, dan rekomendasi mitigasi...
+                      Menganalisis dampak struktural, jadwal, dan rekomendasi
+                      mitigasi...
                     </p>
                   </div>
                 ) : (
@@ -993,13 +1004,17 @@ function IssueWorkflow({
                     {aiData && (
                       <div className="mt-3 grid gap-2 sm:grid-cols-2">
                         <div className="rounded-lg bg-white p-2.5 border border-[#e2eaf0]">
-                          <p className="text-[9px] text-slate-400">Estimasi Keterlambatan</p>
+                          <p className="text-[9px] text-slate-400">
+                            Estimasi Keterlambatan
+                          </p>
                           <p className="mt-0.5 text-xs font-bold text-[#274863]">
                             {aiData.metrics.delay_estimate_days}
                           </p>
                         </div>
                         <div className="rounded-lg bg-white p-2.5 border border-[#e2eaf0]">
-                          <p className="text-[9px] text-slate-400">Risiko Biaya / Overbudget</p>
+                          <p className="text-[9px] text-slate-400">
+                            Risiko Biaya / Overbudget
+                          </p>
                           <p className="mt-0.5 text-xs font-bold text-[#274863]">
                             {aiData.metrics.overbudget_risk}
                           </p>
@@ -1031,73 +1046,82 @@ function IssueWorkflow({
                               ? ` dengan estimasi dampak keterlambatan sekitar ${report.estimatedDelayDays} hari`
                               : ""}
                             . Prioritaskan pekerjaan yang tidak terdampak dan
-                            pastikan spesifikasi material sesuai sebelum pekerjaan
-                            dilanjutkan.
+                            pastikan spesifikasi material sesuai sebelum
+                            pekerjaan dilanjutkan.
                           </>
                         )}
                       </p>
                     </div>
 
-                    {aiData?.checklist_factors && aiData.checklist_factors.length > 0 && (
-                      <div className="mt-3 rounded-lg border border-[#e5edf2] bg-white/70 p-3">
-                        <p className="text-[10px] font-bold text-[#355873]">
-                          Faktor Perhatian Pengawas di Lapangan:
-                        </p>
-                        <ul className="mt-1.5 space-y-1">
-                          {aiData.checklist_factors.map((item: string, idx: number) => (
-                            <li key={idx} className="flex items-start gap-1.5 text-[11px] text-slate-600">
-                              <span className="text-[#355873]">•</span>
-                              <span>{item}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
+                    {aiData?.checklist_factors &&
+                      aiData.checklist_factors.length > 0 && (
+                        <div className="mt-3 rounded-lg border border-[#e5edf2] bg-white/70 p-3">
+                          <p className="text-[10px] font-bold text-[#355873]">
+                            Faktor Perhatian Pengawas di Lapangan:
+                          </p>
+                          <ul className="mt-1.5 space-y-1">
+                            {aiData.checklist_factors.map(
+                              (item: string, idx: number) => (
+                                <li
+                                  key={idx}
+                                  className="flex items-start gap-1.5 text-[11px] text-slate-600"
+                                >
+                                  <span className="text-[#355873]">•</span>
+                                  <span>{item}</span>
+                                </li>
+                              ),
+                            )}
+                          </ul>
+                        </div>
+                      )}
 
                     <p className="mt-3 text-[10px] font-semibold text-slate-600">
-                      Pilihan rekomendasi penanganan · pilih satu untuk otomatis mengisi instruksi, atau tulis manual:
+                      Pilihan rekomendasi penanganan · pilih satu untuk otomatis
+                      mengisi instruksi, atau tulis manual:
                     </p>
                     <div className="mt-2 space-y-2">
-                      {aiData?.recommended_options ? (
-                        aiData.recommended_options.map((rec, index: number) => (
-                          <button
-                            type="button"
-                            key={rec.id || rec.title}
-                            onClick={() => selectAiOption(index)}
-                            className={`w-full rounded-lg border p-3 text-left text-xs leading-5 transition-colors ${selectedOption === index ? "border-[#557d9a] bg-white text-[#294b65] shadow-xs" : "border-[#e0e8ed] bg-white/70 text-slate-600 hover:bg-white"}`}
-                          >
-                            <div className="flex items-center justify-between gap-2 mb-1">
-                              <span className="text-[9px] font-bold text-[#456d8c]">
-                                Opsi {index + 1}: {rec.title}
+                      {aiData?.recommended_options
+                        ? aiData.recommended_options.map(
+                            (rec, index: number) => (
+                              <button
+                                type="button"
+                                key={rec.id || rec.title}
+                                onClick={() => selectAiOption(index)}
+                                className={`w-full rounded-lg border p-3 text-left text-xs leading-5 transition-colors ${selectedOption === index ? "border-[#557d9a] bg-white text-[#294b65] shadow-xs" : "border-[#e0e8ed] bg-white/70 text-slate-600 hover:bg-white"}`}
+                              >
+                                <div className="flex items-center justify-between gap-2 mb-1">
+                                  <span className="text-[9px] font-bold text-[#456d8c]">
+                                    Opsi {index + 1}: {rec.title}
+                                  </span>
+                                  <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                                    {rec.cost_impact}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-slate-700">
+                                  {rec.description}
+                                </p>
+                                {rec.requires_approval && (
+                                  <span className="mt-1.5 inline-block text-[9px] font-semibold text-[#8b5e1e]">
+                                    ⚠️ Memerlukan persetujuan customer
+                                  </span>
+                                )}
+                              </button>
+                            ),
+                          )
+                        : aiOptions.map((option, index) => (
+                            <button
+                              type="button"
+                              key={option}
+                              onClick={() => selectAiOption(index)}
+                              className={`w-full rounded-lg border p-3 text-left text-xs leading-5 transition-colors ${selectedOption === index ? "border-[#557d9a] bg-white text-[#294b65]" : "border-[#e0e8ed] bg-white/70 text-slate-600 hover:bg-white"}`}
+                            >
+                              <span className="mb-1 block text-[9px] font-semibold text-[#6d879b]">
+                                Opsi {index + 1}
+                                {index === 2 ? " · perlu persetujuan" : ""}
                               </span>
-                              <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                                {rec.cost_impact}
-                              </span>
-                            </div>
-                            <p className="text-xs text-slate-700">{rec.description}</p>
-                            {rec.requires_approval && (
-                              <span className="mt-1.5 inline-block text-[9px] font-semibold text-[#8b5e1e]">
-                                ⚠️ Memerlukan persetujuan customer
-                              </span>
-                            )}
-                          </button>
-                        ))
-                      ) : (
-                        aiOptions.map((option, index) => (
-                          <button
-                            type="button"
-                            key={option}
-                            onClick={() => selectAiOption(index)}
-                            className={`w-full rounded-lg border p-3 text-left text-xs leading-5 transition-colors ${selectedOption === index ? "border-[#557d9a] bg-white text-[#294b65]" : "border-[#e0e8ed] bg-white/70 text-slate-600 hover:bg-white"}`}
-                          >
-                            <span className="mb-1 block text-[9px] font-semibold text-[#6d879b]">
-                              Opsi {index + 1}
-                              {index === 2 ? " · perlu persetujuan" : ""}
-                            </span>
-                            {option}
-                          </button>
-                        ))
-                      )}
+                              {option}
+                            </button>
+                          ))}
                     </div>
                   </>
                 )}
@@ -1208,8 +1232,12 @@ function IssueWorkflow({
 }
 
 export default function ProjectDetail({ projectId }: { projectId: string }) {
-  const { project: loaded, loading, error, reload } =
-    useSupervisorProject(projectId);
+  const {
+    project: loaded,
+    loading,
+    error,
+    reload,
+  } = useSupervisorProject(projectId);
   const [addedForemanNames, setAddedForemanNames] = useState<string[]>([]);
   const [resolutionPatches, setResolutionPatches] = useState<
     Record<string, IssueResolution>
@@ -1383,9 +1411,7 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
           : "Catatan revisi disimpan untuk mandor.",
       );
     } catch (caught) {
-      notify(
-        errorMessage(caught, "Gagal menyimpan keputusan verifikasi."),
-      );
+      notify(errorMessage(caught, "Gagal menyimpan keputusan verifikasi."));
     }
   };
   const addCustomerUpdate = async () => {
@@ -1551,12 +1577,14 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
               })}
               {(project.foremen ?? (project.foreman ? [project.foreman] : []))
                 .length === 0 && (
-                  <p className="text-xs text-slate-500">
-                    Belum ada mandor ditetapkan.
-                  </p>
-                )}
+                <p className="text-xs text-slate-500">
+                  Belum ada mandor ditetapkan.
+                </p>
+              )}
               {(project.foremen ?? (project.foreman ? [project.foreman] : []))
-                .length < 3 && !project.supervisorSignedAt && project.contractStatus !== "menunggu_ttd" && (
+                .length < 3 &&
+                !project.supervisorSignedAt &&
+                project.contractStatus !== "menunggu_ttd" && (
                   <button
                     onClick={() => setShowForemen(true)}
                     className="h-10 rounded-lg border border-[#cfdce6] px-4 text-xs font-semibold text-[#355c78] hover:bg-[#f3f7fa] hover:cursor-pointer"
@@ -1617,18 +1645,29 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
                     Belum ada tahapan pekerjaan untuk proyek ini
                   </p>
                   <p className="mt-1 text-[11px] text-slate-500 max-w-md mx-auto">
-                    Inisialisasi 6 tahapan konstruksi standar (24 subtask berbobot) agar Mandor dapat mulai melaporkan progres harian.
+                    Inisialisasi 6 tahapan konstruksi standar (24 subtask
+                    berbobot) agar Mandor dapat mulai melaporkan progres harian.
                   </p>
                   <button
                     type="button"
                     onClick={async () => {
                       setInitializingStages(true);
                       try {
-                        await apiPost(`/api/pengawas/projects/${project.id}/stages`, { template: true });
-                        notify("6 tahapan dan 24 subtask standar berhasil diinisialisasi.");
+                        await apiPost(
+                          `/api/pengawas/projects/${project.id}/stages`,
+                          { template: true },
+                        );
+                        notify(
+                          "6 tahapan dan 24 subtask standar berhasil diinisialisasi.",
+                        );
                         await reload();
                       } catch (e) {
-                        notify(errorMessage(e, "Gagal menginisialisasi tahapan pekerjaan."));
+                        notify(
+                          errorMessage(
+                            e,
+                            "Gagal menginisialisasi tahapan pekerjaan.",
+                          ),
+                        );
                       } finally {
                         setInitializingStages(false);
                       }
@@ -1636,7 +1675,9 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
                     disabled={initializingStages}
                     className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg bg-[#183b57] px-4 text-xs font-semibold text-white shadow-sm hover:bg-[#204a6e] disabled:opacity-50"
                   >
-                    {initializingStages ? "Menginisialisasi..." : "Inisialisasi 6 Tahapan Standar"}
+                    {initializingStages
+                      ? "Menginisialisasi..."
+                      : "Inisialisasi 6 Tahapan Standar"}
                   </button>
                 </div>
               ) : (
@@ -1673,7 +1714,9 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
                         <div className="border-t border-[#e8edf1] px-3 pb-3 pt-2">
                           <ul className="space-y-1.5">
                             {project.tasks
-                              .filter((task) => task.milestoneId === milestone.id)
+                              .filter(
+                                (task) => task.milestoneId === milestone.id,
+                              )
                               .map((task) => {
                                 const verified = milestoneReports.some(
                                   (report) =>
@@ -1721,33 +1764,33 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
                   issue: SupervisorIssue;
                   report?: MandorIssueReport;
                 }[] = [
-                    ...syncedIssueReports.map((report) => ({
-                      issue: {
-                        id: report.id,
-                        title: report.categoryLabel,
-                        description: report.description,
-                        priority:
-                          report.workCondition === "BERHENTI"
-                            ? ("Tinggi" as const)
-                            : ("Sedang" as const),
-                        state:
-                          report.status === "Menunggu"
-                            ? ("Baru" as const)
-                            : ("Ditindaklanjuti" as const),
-                        reportDate: report.submitted,
-                        followUp: report.followUp,
-                      },
-                      report,
-                    })),
-                    ...project.issues
-                      .filter(
-                        (issue) =>
-                          !syncedIssueReports.some(
-                            (report) => report.id === issue.id,
-                          ),
-                      )
-                      .map((issue) => ({ issue })),
-                  ];
+                  ...syncedIssueReports.map((report) => ({
+                    issue: {
+                      id: report.id,
+                      title: report.categoryLabel,
+                      description: report.description,
+                      priority:
+                        report.workCondition === "BERHENTI"
+                          ? ("Tinggi" as const)
+                          : ("Sedang" as const),
+                      state:
+                        report.status === "Menunggu"
+                          ? ("Baru" as const)
+                          : ("Ditindaklanjuti" as const),
+                      reportDate: report.submitted,
+                      followUp: report.followUp,
+                    },
+                    report,
+                  })),
+                  ...project.issues
+                    .filter(
+                      (issue) =>
+                        !syncedIssueReports.some(
+                          (report) => report.id === issue.id,
+                        ),
+                    )
+                    .map((issue) => ({ issue })),
+                ];
                 return issueCards.length ? (
                   issueCards.map(({ issue, report }) => (
                     <IssueWorkflow
@@ -1905,7 +1948,8 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
             </div>
             {mergedDocs.length === 0 && (
               <p className="rounded-lg bg-[#f7f9fb] p-6 text-center text-xs text-slate-500">
-                Belum ada dokumentasi lapangan. Klik tombol di atas untuk menambahkan foto pertama.
+                Belum ada dokumentasi lapangan. Klik tombol di atas untuk
+                menambahkan foto pertama.
               </p>
             )}
           </Surface>
@@ -1938,7 +1982,9 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
                 onClick={() => setShowContract(true)}
                 className="mt-3 h-10 w-full rounded-lg border border-[#cfdce6] px-4 text-xs font-semibold text-[#355c78] transition hover:bg-[#f3f7fa] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#477ba6]"
               >
-                {project.supervisorSignedAt ? "Lihat Kontrak · Tanda tangan tersimpan" : "Lihat & Tanda Tangani Kontrak"}
+                {project.supervisorSignedAt
+                  ? "Lihat Kontrak · Tanda tangan tersimpan"
+                  : "Lihat & Tanda Tangani Kontrak"}
               </button>
             </div>
           </Surface>
@@ -2023,7 +2069,9 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
               mandor_ids: selectedIds,
             });
             setShowForemen(false);
-            notify(`${selectedIds.length} mandor berhasil ditugaskan ke proyek.`);
+            notify(
+              `${selectedIds.length} mandor berhasil ditugaskan ke proyek.`,
+            );
             await reload();
           }}
         />
@@ -2032,7 +2080,8 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
         <div
           className="fixed inset-0 z-[70] grid place-items-center bg-[#0c1b2b]/60 p-4 backdrop-blur-sm"
           onMouseDown={(e) => {
-            if (e.target === e.currentTarget && !docUploading) setShowAddDoc(false);
+            if (e.target === e.currentTarget && !docUploading)
+              setShowAddDoc(false);
           }}
         >
           <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
@@ -2143,7 +2192,11 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
       {showContract && (
         <SupervisorContractModal
           project={project}
-          onClose={() => { setShowContract(false); setSignatureError(null); void reload(); }}
+          onClose={() => {
+            setShowContract(false);
+            setSignatureError(null);
+            void reload();
+          }}
         />
       )}
     </div>

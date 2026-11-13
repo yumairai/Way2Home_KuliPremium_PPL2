@@ -39,10 +39,7 @@ export async function POST(
 
     const serverKey = process.env.MIDTRANS_SERVER_KEY;
     if (!serverKey) {
-      throw new ServiceError(
-        "Konfigurasi payment gateway belum lengkap.",
-        500,
-      );
+      throw new ServiceError("Konfigurasi payment gateway belum lengkap.", 500);
     }
 
     const supabase = await createClient();
@@ -64,10 +61,7 @@ export async function POST(
       "berjalan",
     ];
     if (!allowedStatuses.includes(project.status)) {
-      throw new ServiceError(
-        "Pembayaran tidak tersedia pada tahap ini.",
-        409,
-      );
+      throw new ServiceError("Pembayaran tidak tersedia pada tahap ini.", 409);
     }
 
     const { data: stages, error: stagesErr } = await supabase
@@ -91,7 +85,10 @@ export async function POST(
     if (targetStage.status === "lunas") {
       throw new ServiceError("Tahap pembayaran ini sudah lunas.", 409);
     }
-    if (!Number.isSafeInteger(targetStage.nominal) || targetStage.nominal <= 0) {
+    if (
+      !Number.isSafeInteger(targetStage.nominal) ||
+      targetStage.nominal <= 0
+    ) {
       throw new ServiceError("Nominal pembayaran tidak valid.", 409);
     }
 

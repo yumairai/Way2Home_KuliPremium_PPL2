@@ -5,11 +5,7 @@
   "task": "risk_classification",
   "problem_type": "multiclass_classification",
   "target": "risk_level",
-  "class_order": [
-    "LOW",
-    "MEDIUM",
-    "HIGH"
-  ],
+  "class_order": ["LOW", "MEDIUM", "HIGH"],
   "algorithm": "Random Forest",
   "hyperparameter_variant": "tuned",
   "variant": "w2h_compatible",

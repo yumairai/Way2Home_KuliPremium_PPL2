@@ -87,7 +87,7 @@ export default function LocationMarquee({ locations }: LocationMarqueeProps) {
     const half = halfRef.current;
     let next = drag.startOffset + (event.clientX - drag.startX);
     if (half > 0) {
-      next = ((next % half) + half) % half - half;
+      next = (((next % half) + half) % half) - half;
     }
     offsetRef.current = next;
     track.style.transform = `translate3d(${offsetRef.current}px, 0, 0)`;
@@ -110,8 +110,9 @@ export default function LocationMarquee({ locations }: LocationMarqueeProps) {
         onPointerMove={handlePointerMove}
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
-        className={`w-full overflow-hidden select-none ${fits ? "" : dragging ? "cursor-grabbing" : "cursor-grab"
-          }`}
+        className={`w-full overflow-hidden select-none ${
+          fits ? "" : dragging ? "cursor-grabbing" : "cursor-grab"
+        }`}
         style={{ touchAction: "pan-y" }}
       >
         <div

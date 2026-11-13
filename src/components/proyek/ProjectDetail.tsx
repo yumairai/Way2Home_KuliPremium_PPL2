@@ -98,7 +98,9 @@ export default function ProjectDetail({ project }: { project: Project }) {
             <p className="text-xs font-bold uppercase tracking-wider text-[#64748b]">
               Nama Desain
             </p>
-            <p className="mt-1 text-lg font-bold text-[#111e3f]">{project.designName}</p>
+            <p className="mt-1 text-lg font-bold text-[#111e3f]">
+              {project.designName}
+            </p>
           </div>
           <div>
             <p className="text-xs font-bold uppercase tracking-wider text-[#64748b]">
@@ -146,9 +148,7 @@ export default function ProjectDetail({ project }: { project: Project }) {
         </Link>
       )}
 
-      {showPayments && (
-        <PaymentsSection project={project} />
-      )}
+      {showPayments && <PaymentsSection project={project} />}
     </div>
   );
 }
