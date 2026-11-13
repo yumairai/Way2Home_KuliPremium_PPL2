@@ -7,16 +7,10 @@ import { logout } from "@/services/auth.service";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { clearDemoRole, useDemoRole } from "@/utils/demo-auth";
 
-const navigation = [
-  { label: "Dashboard", href: "/admin" },
-  {
-    label: "Verifikasi dokumen",
-    href: "/admin/verifikasi-dokumen",
-    badge: "12",
-  },
-  { label: "Verifikasi Mandor", href: "/admin/verifikasi-mandor", badge: "4" },
-  { label: "Manajemen Pengawas", href: "/admin/manajemen-pengawas" },
-];
+type BadgeCounts = {
+  documentVerifications: number;
+  mandorVerifications: number;
+};
 
 export default function AdminLayout({
   children,
@@ -29,6 +23,53 @@ export default function AdminLayout({
   const demoRole = useDemoRole();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [badgeCounts, setBadgeCounts] = useState<BadgeCounts>({
+    documentVerifications: 0,
+    mandorVerifications: 0,
+  });
+
+  // Fetch badge counts
+  useEffect(() => {
+    async function fetchBadgeCounts() {
+      try {
+        const response = await fetch("/api/admin/badge-counts");
+        if (response.ok) {
+          const data = await response.json();
+          setBadgeCounts(data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch badge counts:", error);
+      }
+    }
+
+    if (!loading && (user?.role === "admin" || demoRole === "admin")) {
+      fetchBadgeCounts();
+      // Refresh counts every 30 seconds
+      const interval = setInterval(fetchBadgeCounts, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [loading, user, demoRole]);
+
+  const navigation = [
+    { label: "Dashboard", href: "/admin" },
+    {
+      label: "Verifikasi dokumen",
+      href: "/admin/verifikasi-dokumen",
+      badge:
+        badgeCounts.documentVerifications > 0
+          ? String(badgeCounts.documentVerifications)
+          : undefined,
+    },
+    {
+      label: "Verifikasi Mandor",
+      href: "/admin/verifikasi-mandor",
+      badge:
+        badgeCounts.mandorVerifications > 0
+          ? String(badgeCounts.mandorVerifications)
+          : undefined,
+    },
+    { label: "Manajemen Pengawas", href: "/admin/manajemen-pengawas" },
+  ];
   useEffect(() => {
     if (demoRole) {
       if (demoRole !== "admin")
@@ -87,7 +128,7 @@ export default function AdminLayout({
               href={item.href}
               aria-current={
                 pathname === item.href ||
-                  (item.href !== "/admin" && pathname.startsWith(`${item.href}/`))
+                (item.href !== "/admin" && pathname.startsWith(`${item.href}/`))
                   ? "page"
                   : undefined
               }
