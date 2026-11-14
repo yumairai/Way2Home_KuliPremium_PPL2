@@ -17,6 +17,7 @@ export type Database = {
           created_at: string;
           created_by: string | null;
           deskripsi: string | null;
+          durasi_bulan: number | null;
           estimasi_biaya: number;
           estimasi_durasi_hari: number;
           gaya_arsitektur: string;
@@ -37,6 +38,7 @@ export type Database = {
           created_at?: string;
           created_by?: string | null;
           deskripsi?: string | null;
+          durasi_bulan?: number | null;
           estimasi_biaya: number;
           estimasi_durasi_hari: number;
           gaya_arsitektur: string;
@@ -57,6 +59,7 @@ export type Database = {
           created_at?: string;
           created_by?: string | null;
           deskripsi?: string | null;
+          durasi_bulan?: number | null;
           estimasi_biaya?: number;
           estimasi_durasi_hari?: number;
           gaya_arsitektur?: string;
@@ -216,6 +219,12 @@ export type Database = {
           portofolio_url: string | null;
           status: Database["public"]["Enums"]["verifikasi_status"];
           created_at: string;
+          ringkasan_pengalaman: string | null;
+          proyek_sebelumnya: string | null;
+          cv_path: string | null;
+          catatan_verifikasi: string | null;
+          verified_at: string | null;
+          verified_by: string | null;
         };
         Insert: {
           id: string;
@@ -225,6 +234,12 @@ export type Database = {
           portofolio_url?: string | null;
           status?: Database["public"]["Enums"]["verifikasi_status"];
           created_at?: string;
+          ringkasan_pengalaman?: string | null;
+          proyek_sebelumnya?: string | null;
+          cv_path?: string | null;
+          catatan_verifikasi?: string | null;
+          verified_at?: string | null;
+          verified_by?: string | null;
         };
         Update: {
           id?: string;
@@ -234,6 +249,12 @@ export type Database = {
           portofolio_url?: string | null;
           status?: Database["public"]["Enums"]["verifikasi_status"];
           created_at?: string;
+          ringkasan_pengalaman?: string | null;
+          proyek_sebelumnya?: string | null;
+          cv_path?: string | null;
+          catatan_verifikasi?: string | null;
+          verified_at?: string | null;
+          verified_by?: string | null;
         };
       };
       pengawas_profiles: {
@@ -350,6 +371,217 @@ export type Database = {
           nominal?: number;
           status?: Database["public"]["Enums"]["payment_status"];
           tanggal_bayar?: string | null;
+        };
+      };
+      project_stages: {
+        Row: {
+          id: string;
+          project_id: string;
+          nama_tahap: string;
+          urutan: number;
+          progress_percentage: number;
+          status: string;
+          keterangan: string | null;
+          tanggal_mulai: string | null;
+          tanggal_selesai: string | null;
+          updated_by: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          nama_tahap: string;
+          urutan?: number;
+          progress_percentage?: number;
+          status?: string;
+          keterangan?: string | null;
+          tanggal_mulai?: string | null;
+          tanggal_selesai?: string | null;
+          updated_by?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          nama_tahap?: string;
+          urutan?: number;
+          progress_percentage?: number;
+          status?: string;
+          keterangan?: string | null;
+          tanggal_mulai?: string | null;
+          tanggal_selesai?: string | null;
+          updated_by?: string | null;
+          updated_at?: string;
+        };
+      };
+      project_subtasks: {
+        Row: {
+          id: string;
+          project_stage_id: string;
+          judul: string;
+          bobot: number;
+          urutan: number;
+          target_selesai: string | null;
+          selesai: boolean;
+          completed_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_stage_id: string;
+          judul: string;
+          bobot?: number;
+          urutan?: number;
+          target_selesai?: string | null;
+          selesai?: boolean;
+          completed_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_stage_id?: string;
+          judul?: string;
+          bobot?: number;
+          urutan?: number;
+          target_selesai?: string | null;
+          selesai?: boolean;
+          completed_at?: string | null;
+          created_at?: string;
+        };
+      };
+      progress_reports: {
+        Row: {
+          id: string;
+          project_stage_id: string;
+          project_subtask_id: string | null;
+          mandor_id: string;
+          persentase: number;
+          keterangan: string | null;
+          foto_url: string | null;
+          status: Database["public"]["Enums"]["report_status"];
+          keputusan: string;
+          feedback: string | null;
+          revisi_ke: number;
+          verified_by: string | null;
+          verified_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_stage_id: string;
+          project_subtask_id?: string | null;
+          mandor_id: string;
+          persentase: number;
+          keterangan?: string | null;
+          foto_url?: string | null;
+          status?: Database["public"]["Enums"]["report_status"];
+          keputusan?: string;
+          feedback?: string | null;
+          revisi_ke?: number;
+          verified_by?: string | null;
+          verified_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_stage_id?: string;
+          project_subtask_id?: string | null;
+          mandor_id?: string;
+          persentase?: number;
+          keterangan?: string | null;
+          foto_url?: string | null;
+          status?: Database["public"]["Enums"]["report_status"];
+          keputusan?: string;
+          feedback?: string | null;
+          revisi_ke?: number;
+          verified_by?: string | null;
+          verified_at?: string | null;
+          created_at?: string;
+        };
+      };
+      kendala: {
+        Row: {
+          id: string;
+          project_id: string;
+          project_stage_id: string | null;
+          project_subtask_id: string | null;
+          reported_by: string;
+          deskripsi: string;
+          kategori: string | null;
+          kondisi_pekerjaan: string | null;
+          informasi_tambahan: string | null;
+          lampiran: string | null;
+          lampiran_nama: string | null;
+          status: Database["public"]["Enums"]["kendala_status"];
+          tindak_lanjut: string | null;
+          dampak_biaya: number | null;
+          dampak_waktu_hari: number | null;
+          visible_to_customer: boolean;
+          created_at: string;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          project_stage_id?: string | null;
+          project_subtask_id?: string | null;
+          reported_by: string;
+          deskripsi: string;
+          kategori?: string | null;
+          kondisi_pekerjaan?: string | null;
+          informasi_tambahan?: string | null;
+          lampiran?: string | null;
+          lampiran_nama?: string | null;
+          status?: Database["public"]["Enums"]["kendala_status"];
+          tindak_lanjut?: string | null;
+          dampak_biaya?: number | null;
+          dampak_waktu_hari?: number | null;
+          visible_to_customer?: boolean;
+          created_at?: string;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          project_stage_id?: string | null;
+          project_subtask_id?: string | null;
+          reported_by?: string;
+          deskripsi?: string;
+          kategori?: string | null;
+          kondisi_pekerjaan?: string | null;
+          informasi_tambahan?: string | null;
+          lampiran?: string | null;
+          lampiran_nama?: string | null;
+          status?: Database["public"]["Enums"]["kendala_status"];
+          tindak_lanjut?: string | null;
+          dampak_biaya?: number | null;
+          dampak_waktu_hari?: number | null;
+          visible_to_customer?: boolean;
+          created_at?: string;
+          updated_at?: string | null;
+        };
+      };
+      foreman_notes: {
+        Row: {
+          id: string;
+          project_id: string;
+          mandor_id: string;
+          catatan: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          mandor_id: string;
+          catatan: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          mandor_id?: string;
+          catatan?: string;
+          created_at?: string;
         };
       };
     };

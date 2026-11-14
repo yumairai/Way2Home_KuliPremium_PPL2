@@ -7,8 +7,9 @@ import { usePathname, useRouter } from "next/navigation";
 import { logout as logoutUser } from "@/services/auth.service";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { clearDemoRole, useDemoRole } from "@/utils/demo-auth";
+import { createClient } from "@/utils/supabase/client";
+import { getMandorProjects, getMandorStatus } from "@/services/mandor.service";
 import {
-  initialMandorRegistration,
   type MandorRegistrationStatus,
 } from "@/data/mandor";
 
@@ -17,20 +18,32 @@ const demoReasonKey = "way2home-mandor-rejection-reason";
 
 export function useMandorStatus() {
   const [status, setStatus] = useState<MandorRegistrationStatus>(() => {
-    if (typeof window === "undefined") return initialMandorRegistration.status;
+    if (typeof window === "undefined") return "Menunggu";
     const saved = window.sessionStorage.getItem(demoStatusKey);
     return saved === "Menunggu" || saved === "Disetujui" || saved === "Ditolak"
       ? saved
-      : initialMandorRegistration.status;
+      : "Menunggu";
   });
   const [reason, setReason] = useState(() => {
-    if (typeof window === "undefined")
-      return initialMandorRegistration.rejectionReason;
-    return (
-      window.sessionStorage.getItem(demoReasonKey) ??
-      initialMandorRegistration.rejectionReason
-    );
+    if (typeof window === "undefined") return "";
+    return window.sessionStorage.getItem(demoReasonKey) ?? "";
   });
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient();
+    getMandorStatus(supabase)
+      .then((res) => {
+        setStatus(res.status);
+        if (res.reason) setReason(res.reason);
+        setLoaded(true);
+      })
+      .catch((err) => {
+        console.error("[useMandorStatus] error fetching status:", err);
+        setLoaded(true);
+      });
+  }, []);
+
   const setDemoStatus = (
     next: MandorRegistrationStatus,
     nextReason = reason,
@@ -40,7 +53,14 @@ export function useMandorStatus() {
     setStatus(next);
     setReason(nextReason);
   };
-  return { status, reason, setDemoStatus };
+  return { status, reason, setDemoStatus, loaded };
+}
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "M";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
 export default function MandorShell({
@@ -55,6 +75,18 @@ export default function MandorShell({
   const { status } = useMandorStatus();
   const [drawer, setDrawer] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [projectCount, setProjectCount] = useState<number>(0);
+
+  useEffect(() => {
+    const supabase = createClient();
+    getMandorProjects(supabase)
+      .then((projects) => setProjectCount(projects.length))
+      .catch(() => setProjectCount(0));
+  }, []);
+
+  const displayName = user?.fullName || (demoRole ? "Mandor Demo" : "Mandor");
+  const displayInitials = getInitials(displayName);
+
   useEffect(() => {
     if (demoRole) {
       if (demoRole !== "mandor")
@@ -125,7 +157,7 @@ export default function MandorShell({
           >
             Proyek
             <span className="ml-auto rounded-md bg-white/10 px-2 py-0.5 text-[10px]">
-              {status === "Disetujui" ? "2" : "0"}
+              {projectCount}
             </span>
           </Link>
         </nav>
@@ -133,10 +165,10 @@ export default function MandorShell({
       <div className="mt-auto border-t border-white/10 p-4">
         <div className="flex items-center gap-3 rounded-xl bg-white/[.06] p-3">
           <span className="grid h-9 w-9 place-items-center rounded-full bg-[#d6e5f2] text-xs font-bold text-[#17344e]">
-            BS
+            {displayInitials}
           </span>
           <span className="min-w-0 flex-1">
-            <b className="block truncate text-xs">Bima Saputra</b>
+            <b className="block truncate text-xs">{displayName}</b>
             <small className="text-[10px] text-slate-400">Mandor</small>
           </span>
         </div>

@@ -1,18 +1,36 @@
-﻿"use client";
+"use client";
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import { mandorProjects } from "@/data/mandor";
+import { useEffect, useMemo, useState } from "react";
+import type { MandorProject } from "@/data/mandor";
 import { useMandorStatus } from "@/components/mandor/MandorShell";
+import { createClient } from "@/utils/supabase/client";
+import { getMandorProjects } from "@/services/mandor.service";
 
 export default function MandorProjectList() {
   const { status } = useMandorStatus();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("Semua proyek");
+  const [dbProjects, setDbProjects] = useState<MandorProject[]>([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient();
+    getMandorProjects(supabase)
+      .then((res) => {
+        setDbProjects(res);
+        setLoaded(true);
+      })
+      .catch((err) => {
+        console.error("[MandorProjectList] error loading projects:", err);
+        setLoaded(true);
+      });
+  }, []);
+
   const projects = useMemo(
     () =>
-      mandorProjects.filter(
+      dbProjects.filter(
         (project) =>
           `${project.id} ${project.title} ${project.location}`
             .toLowerCase()
@@ -22,7 +40,7 @@ export default function MandorProjectList() {
               ? project.overallProgress < 100
               : project.overallProgress === 100)),
       ),
-    [query, filter],
+    [dbProjects, query, filter],
   );
   if (status !== "Disetujui")
     return (
@@ -43,6 +61,15 @@ export default function MandorProjectList() {
         </section>
       </main>
     );
+
+  if (!loaded) {
+    return (
+      <main className="mx-auto max-w-[1480px] px-5 py-12 text-center text-sm text-slate-500">
+        Memuat proyek...
+      </main>
+    );
+  }
+
   return (
     <main className="mx-auto max-w-[1480px] space-y-6 px-4 py-6 sm:px-6 md:py-8">
       <header>
@@ -92,7 +119,7 @@ export default function MandorProjectList() {
                 className="object-cover"
               />
               <span className="absolute left-4 top-4 rounded-md bg-white/95 px-2.5 py-1 text-xs font-semibold text-[#365c78]">
-                #{project.id}
+                #{project.id.length > 8 ? project.id.slice(0, 8) : project.id}
               </span>
             </div>
             <div className="p-5">

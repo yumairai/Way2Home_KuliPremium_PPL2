@@ -25,6 +25,23 @@ export async function login(email: string, password: string) {
       };
     }
 
+    // Blokir login mandor yang belum diverifikasi admin
+    if (profile.role === "mandor") {
+      const { data: mandorProfile } = await supabase
+        .from("mandor_profiles")
+        .select("status")
+        .eq("id", user?.id || "")
+        .maybeSingle();
+
+      if (!mandorProfile || mandorProfile.status !== "approved") {
+        await supabase.auth.signOut();
+        return {
+          ok: false as const,
+          message: "MANDOR_PENDING",
+        };
+      }
+    }
+
     return { ok: true as const, role: profile.role as AuthRole };
   }
 

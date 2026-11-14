@@ -44,6 +44,8 @@ export default function MandorRegisterPage() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitted, setSubmitted] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const setField = (field: keyof typeof values, value: string) =>
     setValues((current) => ({ ...current, [field]: value }));
@@ -79,7 +81,7 @@ export default function MandorRegisterPage() {
     selectFile(event.dataTransfer.files[0]);
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const next: FormErrors = {};
     if (values.name.trim().length < 2) next.name = "Masukkan nama lengkap.";
@@ -110,7 +112,50 @@ export default function MandorRegisterPage() {
     if (!terms) next.terms = "Persetujuan diperlukan untuk melanjutkan.";
     setErrors(next);
     if (Object.keys(next).length) return;
-    setSubmitted(true);
+
+    setIsLoading(true);
+    setSubmitError("");
+
+    try {
+      const formData = new FormData();
+      formData.append("name", values.name.trim());
+      formData.append("email", values.email.trim());
+      formData.append("phone", values.phone.trim());
+      formData.append("password", values.password);
+      formData.append("expertise", values.expertise);
+      formData.append("experience", values.experience);
+      formData.append("area", values.area.trim());
+      formData.append("skills", values.skills.trim());
+      formData.append("experienceSummary", values.experienceSummary.trim());
+      formData.append("previousProjects", values.previousProjects.trim());
+      formData.append("terms", String(terms));
+      if (cv) {
+        formData.append("cv", cv);
+      }
+
+      const res = await fetch("/api/mandor/register", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        setSubmitError(
+          data?.message ||
+            "Pendaftaran mitra mandor gagal diproses. Silakan periksa kembali data Anda.",
+        );
+        return;
+      }
+
+      setSubmitted(true);
+    } catch {
+      setSubmitError(
+        "Terjadi kesalahan saat menghubungi server. Silakan coba beberapa saat lagi.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const inputClass = (error?: string) =>
@@ -193,13 +238,52 @@ export default function MandorRegisterPage() {
           {submitted ? (
             <div
               role="status"
-              className="mt-6 rounded-lg border border-green-300 bg-green-50 px-4 py-4 text-sm font-medium leading-6 text-green-900"
+              className="mt-6 rounded-2xl border border-green-300 bg-green-50 p-6 text-center"
             >
-              Pembuatan akun mandor berhasil, tolong ya qiya nanti hubungin ke
-              db biar bisa login beneran si mandornya.
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-700">
+                <svg
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              </div>
+              <h2 className="text-lg font-bold text-green-900">
+                Pendaftaran Berhasil Dikirim!
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-green-800">
+                Terima kasih telah mendaftar sebagai mitra mandor Way2Home.
+                Profil dan dokumen CV Anda sedang dalam proses verifikasi oleh
+                tim admin.
+              </p>
+              <p className="mt-2 text-xs text-green-700">
+                Silakan tunggu verifikasi admin sebelum Anda dapat login ke
+                dashboard mandor.
+              </p>
+              <Link
+                href="/login"
+                className="mt-5 inline-block rounded-xl bg-[#2B3361] px-5 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#21274b]"
+              >
+                Kembali ke Halaman Login
+              </Link>
             </div>
           ) : (
             <form onSubmit={handleSubmit} noValidate className="mt-6 space-y-6">
+              {submitError && (
+                <div
+                  role="alert"
+                  className="rounded-lg border border-red-300 bg-red-50 p-4 text-sm font-medium text-red-800"
+                >
+                  {submitError}
+                </div>
+              )}
               <section aria-labelledby="account-fields-title">
                 <h2
                   id="account-fields-title"
@@ -429,9 +513,13 @@ export default function MandorRegisterPage() {
               </div>
               <button
                 type="submit"
-                className="min-h-11 w-full rounded-lg bg-[#2B3361] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#21274b] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#045ec2]"
+                disabled={isLoading || !terms}
+                className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#2B3361] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#21274b] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#045ec2] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Buat akun mitra
+                {isLoading && (
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/35 border-t-white" />
+                )}
+                <span>{isLoading ? "Mengirim pendaftaran..." : "Buat akun mitra"}</span>
               </button>
             </form>
           )}
@@ -444,6 +532,8 @@ export default function MandorRegisterPage() {
             alt="Logo Way2Home"
             width={120}
             height={120}
+            style={{ width: "auto", height: "auto" }}
+            priority
             className="mx-auto mb-3 brightness-0 invert"
           />
           <p className="text-3xl font-bold">Way2Home</p>

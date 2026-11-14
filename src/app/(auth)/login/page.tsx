@@ -33,6 +33,7 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [mandorPending, setMandorPending] = useState(false);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -78,6 +79,11 @@ function LoginForm() {
     const result = await login(normalizedEmail, password);
 
     if (!result.ok) {
+      if (result.message === "MANDOR_PENDING") {
+        setMandorPending(true);
+        setIsLoading(false);
+        return;
+      }
       setErrorMessage(result.message);
       setIsLoading(false);
       return;
@@ -126,6 +132,52 @@ function LoginForm() {
             sm:px-10
           "
         >
+          {mandorPending ? (
+            <div
+              role="status"
+              className="rounded-2xl border border-orange-500 bg-orange-50/70 p-6 text-center"
+            >
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-orange-100 text-orange-500">
+                <svg
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 6v6l4 2"
+                  />
+                </svg>
+              </div>
+              <h2 className="text-lg font-bold text-orange-950">
+                Akun Anda Sedang Ditinjau
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-orange-900">
+                Pendaftaran mitra mandor Anda masih dalam proses review oleh tim
+                admin Way2Home. Saat ini Anda belum dapat mengakses dashboard.
+              </p>
+              <p className="mt-2 text-xs text-orange-800">
+                Kami akan mengirimkan notifikasi melalui email setelah akun Anda
+                berhasil diverifikasi. Terima kasih atas kesabaran Anda!
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setMandorPending(false);
+                  setIsLoading(false);
+                  setErrorMessage("");
+                }}
+                className="mt-5 inline-block rounded-xl bg-[#2B3361] px-5 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#21274b]"
+              >
+                Kembali ke Halaman Login
+              </button>
+            </div>
+          ) : (
+          <>
           {/* Heading */}
           <div className="mb-5">
             <h1 className="text-2xl font-bold text-[#2B3361]">
@@ -317,6 +369,8 @@ function LoginForm() {
               </Link>
             </p>
           </form>
+          </>
+          )}
         </div>
       </section>
 

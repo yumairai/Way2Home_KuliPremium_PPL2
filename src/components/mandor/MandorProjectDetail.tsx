@@ -1,16 +1,23 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import {
-  mandorProjects,
   type MandorIssueReport,
   type MandorMilestone,
   type MandorProgressReport,
+  type MandorProject,
 } from "@/data/mandor";
 import { useMandorStatus } from "@/components/mandor/MandorShell";
+import { createClient } from "@/utils/supabase/client";
+import {
+  getMandorProjectDetail,
+  submitForemanNote,
+  submitIssueReport,
+  submitProgressReport,
+} from "@/services/mandor.service";
 import {
   addForemanNote,
   addIssueReport,
@@ -72,15 +79,37 @@ const formatNow = () =>
 
 export default function MandorProjectDetail({ id }: { id: string }) {
   const { status } = useMandorStatus();
-  const [project, setProject] = useState(() =>
-    mandorProjects.find((item) => item.id === id),
-  );
+  const [project, setProject] = useState<MandorProject | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const [tab, setTab] = useState<Tab>("Ringkasan");
   const [progressOpen, setProgressOpen] = useState(false);
   const [issueOpen, setIssueOpen] = useState(false);
   const [toast, setToast] = useState("");
   const sync = useProjectSync();
-  if (!project) notFound();
+
+  useEffect(() => {
+    const supabase = createClient();
+    getMandorProjectDetail(supabase, id)
+      .then((res) => {
+        if (res) setProject(res);
+        setLoaded(true);
+      })
+      .catch((err) => {
+        console.error("[MandorProjectDetail] error fetching project:", err);
+        setLoaded(true);
+      });
+  }, [id]);
+
+  if (loaded && !project) notFound();
+
+  if (!project) {
+    return (
+      <main className="mx-auto max-w-[1480px] space-y-5 px-4 py-12 text-center text-sm text-slate-500">
+        Memuat detail pekerjaan...
+      </main>
+    );
+  }
+
   if (status !== "Disetujui")
     return (
       <main className="mx-auto max-w-4xl px-5 py-10">
@@ -120,11 +149,11 @@ export default function MandorProjectDetail({ id }: { id: string }) {
     sync.reports.find((report) => report.id === reportId)?.decision ??
     "Menunggu";
 
-  const addProgress = (report: MandorProgressReport) => {
+  const addProgress = async (report: MandorProgressReport) => {
     addSyncedReport({
       id: report.id,
       projectId: id,
-      foreman: "Bima Saputra",
+      foreman: project.supervisor || "Mandor",
       milestoneId: report.milestoneId,
       milestoneTitle: report.milestoneTitle,
       subtaskTitle: report.subtaskTitle,
@@ -134,11 +163,34 @@ export default function MandorProjectDetail({ id }: { id: string }) {
       decision: "Menunggu",
       weight: report.weight,
     });
+
+    try {
+      const supabase = createClient();
+      await submitProgressReport(supabase, {
+        stageId: report.milestoneId,
+        subtaskId: report.subtaskId,
+        weight: report.weight,
+        note: report.note,
+        photo: report.photo,
+      });
+      setProject((current) =>
+        current
+          ? {
+              ...current,
+              progressReports: [report, ...current.progressReports],
+            }
+          : current,
+      );
+    } catch (err) {
+      console.error("[addProgress] error saving to DB:", err);
+    }
+
     setProgressOpen(false);
     setToast("Laporan progress terkirim dan menunggu verifikasi pengawas.");
     window.setTimeout(() => setToast(""), 4000);
   };
-  const addIssue = (report: MandorIssueReport) => {
+
+  const addIssue = async (report: MandorIssueReport) => {
     const scopedReport = { ...report, projectId: id };
     addIssueReport(scopedReport);
     setProject((current) =>
@@ -146,24 +198,74 @@ export default function MandorProjectDetail({ id }: { id: string }) {
         ? { ...current, issueReports: [scopedReport, ...current.issueReports] }
         : current,
     );
+
+    try {
+      const supabase = createClient();
+      await submitIssueReport(supabase, {
+        projectId: id,
+        stageId: report.affectedMilestoneId,
+        subtaskId: report.affectedSubtaskId,
+        category: report.category,
+        workCondition: report.workCondition,
+        description: report.description,
+        estimatedDelayDays: report.estimatedDelayDays,
+        additionalInfo: report.additionalInfo,
+        attachment: report.attachment,
+        attachmentName: report.attachmentName,
+      });
+    } catch (err) {
+      console.error("[addIssue] error saving to DB:", err);
+    }
+
     setIssueOpen(false);
     setToast("Laporan kendala terkirim kepada pengawas.");
     window.setTimeout(() => setToast(""), 4000);
   };
-  const submitNote = (note: string) => {
+
+  const submitNote = async (note: string) => {
     const next: ForemanNote = {
       id: `CN-${Date.now()}`,
       projectId: id,
-      foreman: "Bima Saputra",
+      foreman: project.supervisor || "Mandor",
       note,
       submitted: formatNow(),
     };
     addForemanNote(next);
+
+    try {
+      const supabase = createClient();
+      await submitForemanNote(supabase, {
+        projectId: id,
+        note,
+      });
+      setProject((current) =>
+        current
+          ? {
+              ...current,
+              notes: [
+                {
+                  id: next.id,
+                  projectId: id,
+                  note,
+                  submitted: next.submitted,
+                },
+                ...current.notes,
+              ],
+            }
+          : current,
+      );
+    } catch (err) {
+      console.error("[submitNote] error saving to DB:", err);
+    }
+
     setToast("Catatan untuk pengawas terkirim.");
     window.setTimeout(() => setToast(""), 4000);
   };
 
-  const weightedReports = seededReports
+  const dbReports = project.progressReports || [];
+  const dbReportIds = new Set(dbReports.map((r) => r.id));
+  const extraReports = seededReports
+    .filter((r) => !dbReportIds.has(r.id))
     .map((report) => ({
       id: report.id,
       milestoneId: report.milestoneId,
@@ -175,8 +277,11 @@ export default function MandorProjectDetail({ id }: { id: string }) {
       review: report.decision,
       feedback: "",
       weight: report.weight,
-    }))
-    .sort((a, b) => b.submitted.localeCompare(a.submitted));
+    }));
+
+  const weightedReports = [...extraReports, ...dbReports].sort((a, b) =>
+    b.submitted.localeCompare(a.submitted),
+  );
 
   return (
     <main className="mx-auto max-w-[1480px] space-y-5 px-4 py-5 sm:px-6 md:py-7">
@@ -196,7 +301,7 @@ export default function MandorProjectDetail({ id }: { id: string }) {
             className="object-cover"
           />
           <span className="absolute left-4 top-4 rounded-md bg-white/95 px-3 py-1.5 text-xs font-semibold text-[#365c78]">
-            #{project.id}
+            #{project.id.length > 8 ? project.id.slice(0, 8) : project.id}
           </span>
         </div>
         <div className="flex flex-col justify-between gap-4 p-5 sm:flex-row sm:items-end sm:p-6">
@@ -692,7 +797,7 @@ function ProgressModal({
   onClose,
   onSubmit,
 }: {
-  project: (typeof mandorProjects)[number];
+  project: MandorProject;
   approvedSubtasks: ApprovedSubtask[];
   onClose: () => void;
   onSubmit: (report: MandorProgressReport) => void;
@@ -747,6 +852,7 @@ function ProgressModal({
             review: "Menunggu",
             feedback: "",
             weight: subtask.weight,
+            subtaskId: subtask.id,
           });
         }}
       >
@@ -885,7 +991,7 @@ function IssueModal({
   onClose,
   onSubmit,
 }: {
-  project: (typeof mandorProjects)[number];
+  project: MandorProject;
   approvedSubtasks: ApprovedSubtask[];
   onClose: () => void;
   onSubmit: (report: MandorIssueReport) => void;

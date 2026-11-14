@@ -2,19 +2,46 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import { mandorProjects, initialMandorRegistration } from "@/data/mandor";
+import { useEffect, useMemo, useState } from "react";
+import {
+  initialMandorRegistration,
+  type MandorProject,
+} from "@/data/mandor";
 import { useMandorStatus } from "@/components/mandor/MandorShell";
-import { useProjectSync } from "@/utils/project-events";
+import { createClient } from "@/utils/supabase/client";
+import {
+  getMandorProjects,
+  getMandorWaitingReportsCount,
+} from "@/services/mandor.service";
 
 export default function MandorDashboard() {
   const { status } = useMandorStatus();
   const [filter, setFilter] = useState("Semua proyek");
   const [query, setQuery] = useState("");
-  const sync = useProjectSync();
+  const [dbProjects, setDbProjects] = useState<MandorProject[]>([]);
+  const [waitingCount, setWaitingCount] = useState(0);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient();
+    Promise.all([
+      getMandorProjects(supabase),
+      getMandorWaitingReportsCount(supabase),
+    ])
+      .then(([projects, waiting]) => {
+        setDbProjects(projects);
+        setWaitingCount(waiting);
+        setLoaded(true);
+      })
+      .catch((err) => {
+        console.error("[MandorDashboard] error loading projects:", err);
+        setLoaded(true);
+      });
+  }, []);
+
   const projects = useMemo(
     () =>
-      mandorProjects.filter(
+      dbProjects.filter(
         (project) =>
           `${project.id} ${project.title} ${project.design} ${project.location}`
             .toLowerCase()
@@ -24,21 +51,38 @@ export default function MandorDashboard() {
               ? project.overallProgress < 100
               : project.overallProgress === 100)),
       ),
-    [query, filter],
+    [dbProjects, query, filter],
   );
-  const active = mandorProjects.filter(
+
+  const active = dbProjects.filter(
     (project) => project.overallProgress < 100,
   ).length;
-  const waiting = sync.reports.filter(
-    (report) => report.decision === "Menunggu",
-  ).length;
+
+  const todayLabel = useMemo(() => {
+    return new Intl.DateTimeFormat("id-ID", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }).format(new Date());
+  }, []);
+
   if (status !== "Disetujui") return <VerificationStatus />;
+
+  if (!loaded) {
+    return (
+      <main className="mx-auto max-w-[1480px] px-5 py-12 text-center text-sm text-slate-500">
+        Memuat data pekerjaan...
+      </main>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-[1480px] space-y-7 px-4 py-6 sm:px-6 md:py-8">
       <section className="flex flex-col justify-between gap-5 border-b border-[#dfe6ec] pb-6 md:flex-row md:items-end">
         <div>
           <p className="text-xs font-semibold text-[#64809a]">
-            Kamis, 15 Oktober 2026
+            {todayLabel}
           </p>
           <h1 className="mt-2 text-[28px] font-bold tracking-tight text-[#17344e] md:text-[34px]">
             Pekerjaan Anda
@@ -58,7 +102,7 @@ export default function MandorDashboard() {
           <div className="min-w-[112px] border-l-2 border-[#d7a348] pl-3">
             <p className="text-[10px] text-slate-500">Laporan menunggu</p>
             <strong className="mt-1 block text-2xl text-[#183b57]">
-              {waiting}
+              {waitingCount}
             </strong>
           </div>
         </div>
@@ -119,7 +163,7 @@ export default function MandorDashboard() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-[10px] font-semibold text-[#53738d]">
-                    #{project.id} Â· {project.design}
+                    #{project.id.length > 8 ? project.id.slice(0, 8) : project.id} · {project.design}
                   </p>
                   <h3 className="mt-1 text-base font-bold text-[#183b57]">
                     {project.title}

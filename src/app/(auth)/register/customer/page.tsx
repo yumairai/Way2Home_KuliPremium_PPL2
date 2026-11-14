@@ -599,6 +599,8 @@ export default function CustomerRegisterPage() {
             alt="Logo Way2Home"
             width={120}
             height={120}
+            style={{ width: "auto", height: "auto" }}
+            priority
             className="mx-auto mb-3 brightness-0 invert"
           />
 

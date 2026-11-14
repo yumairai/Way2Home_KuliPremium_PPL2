@@ -1,13 +1,60 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { mandorApplications } from "@/data/admin-mandor";
-
-const applicants = mandorApplications;
+import { useEffect, useState } from "react";
+import type { MandorApplication } from "@/services/mandor-verification.service";
 
 export default function MandorVerification() {
+  const [applicants, setApplicants] = useState<MandorApplication[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+
+  const fetchApplicants = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/mandor-verification");
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || "Gagal memuat antrean verifikasi mandor.");
+      }
+      setApplicants(data.applications || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Terjadi kesalahan sistem.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    let ignore = false;
+    fetch("/api/admin/mandor-verification")
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.message || "Gagal memuat antrean verifikasi mandor.");
+        }
+        if (!ignore) {
+          setApplicants(data.applications || []);
+        }
+      })
+      .catch((err) => {
+        if (!ignore) {
+          setError(err instanceof Error ? err.message : "Terjadi kesalahan sistem.");
+        }
+      })
+      .finally(() => {
+        if (!ignore) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
   const filtered = applicants.filter((applicant) =>
     `${applicant.name} ${applicant.email} ${applicant.city} ${applicant.expertise}`
       .toLowerCase()
@@ -68,7 +115,23 @@ export default function MandorVerification() {
           />
         </div>
         <div className="divide-y divide-[#edf0f3]">
-          {filtered.length ? (
+          {loading ? (
+            <div className="flex flex-col items-center justify-center p-12 text-center">
+              <span className="h-7 w-7 animate-spin rounded-full border-2 border-[#2B3361]/25 border-t-[#2B3361]" />
+              <p className="mt-3 text-sm text-slate-500">Memuat data pendaftar mandor...</p>
+            </div>
+          ) : error ? (
+            <div className="p-8 text-center">
+              <p className="text-sm font-medium text-red-600">{error}</p>
+              <button
+                type="button"
+                onClick={fetchApplicants}
+                className="mt-3 rounded-lg bg-[#2B3361] px-4 py-2 text-xs font-semibold text-white hover:bg-[#21274b]"
+              >
+                Coba lagi
+              </button>
+            </div>
+          ) : filtered.length ? (
             filtered.map((applicant) => (
               <Link
                 key={applicant.id}
@@ -108,7 +171,9 @@ export default function MandorVerification() {
             ))
           ) : (
             <div className="p-10 text-center text-sm text-slate-500">
-              Tidak ada pendaftar yang cocok dengan pencarian.
+              {query
+                ? "Tidak ada pendaftar yang cocok dengan pencarian."
+                : "Belum ada pendaftaran calon mandor yang menunggu verifikasi."}
             </div>
           )}
         </div>
