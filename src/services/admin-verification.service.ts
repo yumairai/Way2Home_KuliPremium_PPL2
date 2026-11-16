@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, DocumentJenis } from "@/types/database.types";
 import { requireRole, ServiceError } from "@/services/access.service";
+import { notifyDocumentVerified } from "@/services/notification.service";
 import type {
   VerificationDocumentStatus,
   VerificationRequest,
@@ -237,11 +238,15 @@ export async function saveDocumentVerification(
     "ktp_pemilik",
     "imb_pbg",
   ];
-  const allRequiredApproved = requiredKinds.every((kind) => {
-    const stored = storedDocuments.find((document) => document.jenis_dokumen === kind);
-    const decision = decisions.find((item) => item.id === stored?.id);
-    return decision?.status === "Disetujui";
-  });
+  const allRequiredApproved =
+    requiredKinds.every((kind) => {
+      const stored = storedDocuments.find((document) => document.jenis_dokumen === kind);
+      const decision = decisions.find((item) => item.id === stored?.id);
+      return decision?.status === "Disetujui";
+    }) ||
+    (!hasRejection &&
+      decisions.length > 0 &&
+      decisions.every((d) => d.status === "Disetujui"));
 
   const nextStatus = hasRejection
     ? "revisi_dokumen"
@@ -256,5 +261,11 @@ export async function saveDocumentVerification(
   if (projectUpdateError) {
     console.error("[saveDocumentVerification] project:", projectUpdateError.message);
     throw new ServiceError("Status proyek gagal diperbarui.", 500);
+  }
+
+  if (nextStatus === "alokasi_mandor_pengawas") {
+    notifyDocumentVerified(projectId).catch((err) => {
+      console.error("[saveDocumentVerification] notifyDocumentVerified error:", err);
+    });
   }
 }

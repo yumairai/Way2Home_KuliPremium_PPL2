@@ -87,6 +87,11 @@ export default function ContractModal({
     setToast(
       "Kontrak berhasil ditandatangani. Silakan lakukan pembayaran Down Payment.",
     );
+    fetch(`/api/projects/${project.id}/sign-contract`, {
+      method: "POST",
+    }).catch((err) => {
+      console.error("Gagal mengirim persetujuan kontrak:", err);
+    });
   };
 
   const tolak = () => {

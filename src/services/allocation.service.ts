@@ -15,6 +15,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
 import { requireRole, ServiceError } from "./access.service";
+import {
+  notifyTeamAssigned,
+  notifyContractReady,
+} from "./notification.service";
 
 // ============================================================
 // TYPES
@@ -152,6 +156,14 @@ export async function finalizeProjectStaffing(
       409,
     );
   }
+
+  // Kirim notifikasi alokasi tim & kontrak siap ttd ke customer
+  notifyTeamAssigned(projectId).catch((err) => {
+    console.error("[finalizeProjectStaffing] notifyTeamAssigned error:", err);
+  });
+  notifyContractReady(projectId).catch((err) => {
+    console.error("[finalizeProjectStaffing] notifyContractReady error:", err);
+  });
 }
 
 // ============================================================
@@ -341,6 +353,11 @@ export async function assignPengawasToProject(
       error.code === "23514" || error.code === "23505" ? 409 : 500,
     );
   }
+
+  // Kirim notifikasi pengawas dialokasikan ke customer (fire-and-forget)
+  notifyTeamAssigned(projectId).catch((err) => {
+    console.error("[assignPengawasToProject] notifyTeamAssigned error:", err);
+  });
 }
 
 // ============================================================

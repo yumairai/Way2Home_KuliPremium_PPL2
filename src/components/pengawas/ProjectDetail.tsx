@@ -1122,6 +1122,28 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
         ? "Laporan diverifikasi. Progres resmi proyek telah diperbarui."
         : "Catatan revisi disimpan untuk mandor.",
     );
+
+    if (decision === "Disetujui") {
+      const activeReport = localReport ?? existing;
+      const calcProgress = Math.max(
+        project.progress,
+        project.reports.find((r) => r.id === id)?.progress ??
+          project.progress + approvedProgress,
+      );
+      fetch(`/api/projects/${project.id}/approve-progress`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reportId: id,
+          subtaskTitle: activeReport?.subtaskTitle || activeReport?.title,
+          progressPercentage: calcProgress,
+          photoUrl: photo,
+          isCompleted: calcProgress >= 100,
+        }),
+      }).catch((err) => {
+        console.error("Gagal mengirim notifikasi persetujuan progres:", err);
+      });
+    }
   };
   const addCustomerUpdate = () => {
     if (!customerMessage.trim()) return;

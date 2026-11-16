@@ -584,6 +584,41 @@ export type Database = {
           created_at?: string;
         };
       };
+      notifications: {
+        Row: {
+          id: string;
+          user_id: string;
+          project_id: string | null;
+          judul: string;
+          isi: string | null;
+          tipe: string | null;
+          is_read: boolean;
+          metadata: Json | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          project_id?: string | null;
+          judul: string;
+          isi?: string | null;
+          tipe?: string | null;
+          is_read?: boolean;
+          metadata?: Json | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          project_id?: string | null;
+          judul?: string;
+          isi?: string | null;
+          tipe?: string | null;
+          is_read?: boolean;
+          metadata?: Json | null;
+          created_at?: string;
+        };
+      };
     };
     Views: Record<string, never>;
     Functions: {

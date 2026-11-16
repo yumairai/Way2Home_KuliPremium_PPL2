@@ -2,6 +2,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
 import { requireRole, ServiceError } from "@/services/access.service";
 import { createAdminClient } from "@/utils/supabase/admin";
+import {
+  notifyMandorApproved,
+  notifyMandorRejected,
+} from "./notification.service";
 
 export type MandorApplication = {
   id: string;
@@ -151,7 +155,6 @@ export async function saveMandorDecision(
   decision: "approve" | "reject",
   _reason = "",
 ): Promise<void> {
-  void _reason;
   const { user } = await requireRole(supabase, "admin");
 
   const adminClient = createAdminClient();
@@ -174,9 +177,38 @@ export async function saveMandorDecision(
     );
   }
 
-  // Jika ditolak, langsung hapus berkas CV dan akun mandor dari sistem
-  // sehingga calon mandor dapat mendaftar ulang kembali dengan email yang sama.
+  // Ambil nama dan email mandor untuk pengiriman notifikasi/email
+  let mandorName = "Mitra Mandor";
+  let mandorEmail = "";
+  try {
+    const { data: prof } = await adminClient
+      .from("profiles")
+      .select("full_name")
+      .eq("id", id)
+      .maybeSingle();
+    if (prof?.full_name) mandorName = prof.full_name;
+  } catch (err) {
+    console.warn("[saveMandorDecision] Gagal mengambil profil mandor:", err);
+  }
+
+  try {
+    const { data: authUser } = await adminClient.auth.admin.getUserById(id);
+    mandorEmail = authUser?.user?.email || "";
+  } catch (err) {
+    console.warn("[saveMandorDecision] Gagal mengambil auth user mandor:", err);
+  }
+
+  // Jika ditolak, kirim email penolakan dengan catatan admin terlebih dahulu,
+  // lalu langsung hapus berkas CV dan akun mandor dari sistem sehingga calon mandor
+  // dapat mendaftar ulang kembali dengan email yang sama.
   if (decision === "reject") {
+    // 0. Kirim notifikasi email penolakan dengan alasan admin (sebelum akun terhapus)
+    if (mandorEmail) {
+      await notifyMandorRejected(mandorEmail, mandorName, _reason).catch((err) => {
+        console.error("[saveMandorDecision] Gagal kirim email penolakan mandor:", err);
+      });
+    }
+
     // 1. Hapus berkas CV dari storage bucket jika ada
     if (mandor.cv_path) {
       try {
@@ -267,4 +299,9 @@ export async function saveMandorDecision(
       409,
     );
   }
+
+  // Kirim notifikasi mandor disetujui (in-app & email)
+  notifyMandorApproved(id).catch((err) => {
+    console.error("[saveMandorDecision] Gagal mengirim notifikasi mandor disetujui:", err);
+  });
 }
