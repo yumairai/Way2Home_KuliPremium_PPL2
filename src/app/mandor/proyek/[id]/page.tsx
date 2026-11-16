@@ -1,4 +1,4 @@
-﻿import MandorProjectDetail from "@/components/mandor/MandorProjectDetail";
+import MandorProjectDetail from "@/components/mandor/MandorProjectDetail";
 
 export const metadata = {
   title: "Detail Pekerjaan | Way2Home",

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useEffect, useMemo, useState } from "react";
 import {
   type VerificationDocumentStatus,
@@ -57,14 +57,18 @@ function VerificationModal({
       setSaved(true);
       window.setTimeout(onClose, 850);
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : "Gagal menyimpan hasil review.");
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : "Gagal menyimpan hasil review.",
+      );
       setSaving(false);
     }
   };
   const active = documents[selected];
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-[#0c1b2b]/65 p-0 backdrop-blur-[3px] sm:p-5"
+      className="fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-[#0c1b2b]/65 p-0 backdrop-blur-[3px] sm:p-5"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -73,7 +77,7 @@ function VerificationModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="verification-modal-title"
-        className="flex h-full w-full max-w-[1440px] flex-col overflow-hidden bg-[#f4f6f8] shadow-2xl sm:h-[min(92vh,900px)] sm:rounded-2xl"
+        className="flex min-h-0 h-[100dvh] w-full max-w-[1440px] flex-col overflow-hidden bg-[#f4f6f8] shadow-2xl sm:h-[min(92dvh,900px)] sm:rounded-2xl"
       >
         <header className="flex shrink-0 items-center justify-between border-b border-[#e7ebef] bg-white px-5 py-4 md:px-7">
           <div>
@@ -97,8 +101,8 @@ function VerificationModal({
           </button>
         </header>
         <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto xl:grid-cols-[250px_minmax(320px,1fr)_360px] xl:overflow-hidden">
-          <aside className="flex flex-col border-b border-[#e4e9ee] bg-white xl:border-b-0 xl:border-r">
-            <div className="p-4">
+          <aside className="flex min-w-0 flex-col border-b border-[#e4e9ee] bg-white xl:min-h-0 xl:overflow-y-auto xl:border-b-0 xl:border-r">
+            <div className="shrink-0 p-4">
               <p className="text-xs font-bold text-[#243d53]">
                 Dokumen pemohon
               </p>
@@ -106,7 +110,7 @@ function VerificationModal({
                 Pilih berkas untuk melihat pratinjau.
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-2 px-3 pb-3 xl:block xl:space-y-1 xl:px-2">
+            <div className="grid min-w-0 grid-cols-2 gap-2 px-3 pb-3 xl:block xl:space-y-1 xl:px-2">
               {documents.map((document, index) => (
                 <button
                   key={document.id}
@@ -149,7 +153,7 @@ function VerificationModal({
               </button>
             </div>
           </aside>
-          <section className="flex min-h-[440px] flex-col bg-[#e9edf1] p-4 md:p-6">
+          <section className="flex min-h-[280px] min-w-0 flex-col bg-[#e9edf1] p-4 md:min-h-[360px] md:p-6 xl:min-h-0">
             <div className="mb-3 flex items-center justify-between">
               <div>
                 <p className="text-xs font-bold text-[#263d53]">
@@ -160,7 +164,7 @@ function VerificationModal({
                 </p>
               </div>
             </div>
-            <div className="grid min-h-[350px] flex-1 place-items-center overflow-hidden rounded-xl border border-[#d9e0e6] bg-[#dfe4e9] p-3">
+            <div className="grid min-h-[220px] flex-1 place-items-center overflow-auto rounded-xl border border-[#d9e0e6] bg-[#dfe4e9] p-3 md:min-h-[280px] xl:min-h-0">
               <div className="max-h-full max-w-full overflow-auto rounded-md bg-white shadow-md">
                 {active.kind === "pdf" ? (
                   <iframe
@@ -179,7 +183,7 @@ function VerificationModal({
               </div>
             </div>
           </section>
-          <aside className="space-y-4 border-t border-[#e4e9ee] bg-white p-4 md:p-5 xl:overflow-y-auto xl:border-l xl:border-t-0">
+          <aside className="min-h-0 space-y-4 border-t border-[#e4e9ee] bg-white p-4 md:p-5 xl:overflow-y-auto xl:border-l xl:border-t-0">
             <section className="overflow-hidden rounded-xl border border-[#e4e9ee]">
               <div className="flex items-center justify-between px-4 py-3">
                 <div>
@@ -207,7 +211,7 @@ function VerificationModal({
                   {request.house.name}
                 </h4>
                 <p className="mt-1 text-[10px] text-slate-500">
-                  âŒ– {request.house.location}
+                  {request.house.location}
                 </p>
                 <p className="mt-3 text-[10px] leading-5 text-slate-600">
                   {request.house.description}
@@ -215,11 +219,11 @@ function VerificationModal({
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   <Detail
                     label="Luas tanah"
-                    value={`${request.house.landArea} mÂ²`}
+                    value={`${request.house.landArea} m²`}
                   />
                   <Detail
                     label="Luas bangunan"
-                    value={`${request.house.buildingArea} mÂ²`}
+                    value={`${request.house.buildingArea} m²`}
                   />
                   <Detail
                     label="Kamar tidur"
@@ -243,7 +247,9 @@ function VerificationModal({
                   </b>
                 </div>
                 <div className="mt-2 flex items-center justify-between rounded-lg bg-[#edf4f9] px-3 py-2">
-                  <span className="text-[10px] text-slate-600">Budget yang diajukan</span>
+                  <span className="text-[10px] text-slate-600">
+                    Budget yang diajukan
+                  </span>
                   <b className="text-xs text-[#183b57]">
                     {new Intl.NumberFormat("id-ID", {
                       style: "currency",
@@ -303,11 +309,18 @@ function VerificationModal({
                 ? "Tersimpan"
                 : saving
                   ? "Menyimpan..."
-                : pending > 0
-                  ? `Tinjau ${pending} dokumen lagi`
-                  : "Simpan hasil review"}
+                  : pending > 0
+                    ? `Tinjau ${pending} dokumen lagi`
+                    : "Simpan hasil review"}
             </button>
-            {error && <p role="alert" className="w-full text-right text-xs text-[#a75252]">{error}</p>}
+            {error && (
+              <p
+                role="alert"
+                className="w-full text-right text-xs text-[#a75252]"
+              >
+                {error}
+              </p>
+            )}
           </div>
         </div>
       </section>
@@ -344,16 +357,20 @@ export default function AdminVerification() {
     fetch("/api/admin/document-verification")
       .then(async (response) => {
         const result = await response.json();
-        if (!response.ok) throw new Error(result.message || "Gagal memuat pengajuan.");
+        if (!response.ok)
+          throw new Error(result.message || "Gagal memuat pengajuan.");
         return result.requests as VerificationRequest[];
       })
       .then((items) => {
         if (active) setRequests(items);
       })
       .catch((error: unknown) => {
-        if (active) setLoadError(error instanceof Error ? error.message : "Gagal memuat pengajuan.");
+        if (active)
+          setLoadError(
+            error instanceof Error ? error.message : "Gagal memuat pengajuan.",
+          );
       })
-      .finally(() => { 
+      .finally(() => {
         if (active) setLoading(false);
       });
     return () => {
@@ -371,9 +388,9 @@ export default function AdminVerification() {
             (filter === "Menunggu"
               ? !final(request)
               : final(request) &&
-                request.documents.some(
-                  (document) => document.status === filter,
-                ))),
+              request.documents.some(
+                (document) => document.status === filter,
+              ))),
       ),
     [requests, query, filter],
   );
@@ -386,17 +403,26 @@ export default function AdminVerification() {
       0,
     );
   const save = async (updated: VerificationRequest) => {
-    const response = await fetch(`/api/admin/document-verification/${updated.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        decisions: updated.documents.map(({ id, status }) => ({ id, status })),
-        adminNote: updated.adminNote,
-      }),
-    });
+    const response = await fetch(
+      `/api/admin/document-verification/${updated.id}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          decisions: updated.documents.map(({ id, status }) => ({
+            id,
+            status,
+          })),
+          adminNote: updated.adminNote,
+        }),
+      },
+    );
     const result = await response.json();
-    if (!response.ok) throw new Error(result.message || "Gagal menyimpan hasil review.");
-    setRequests((current) => current.filter((request) => request.id !== updated.id));
+    if (!response.ok)
+      throw new Error(result.message || "Gagal menyimpan hasil review.");
+    setRequests((current) =>
+      current.filter((request) => request.id !== updated.id),
+    );
   };
   const summaries = [
     {
@@ -431,7 +457,7 @@ export default function AdminVerification() {
             Verifikasi dokumen
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-              Periksa dokumen, budget, dan desain yang diajukan customer.
+            Periksa dokumen, budget, dan desain yang diajukan customer.
           </p>
         </div>
       </section>
@@ -485,12 +511,15 @@ export default function AdminVerification() {
             </label>
           </div>
         </div>
-          {visibleLoadError && (
-            <p role="alert" className="border-b border-[#f2d4d4] bg-[#fff6f6] px-6 py-3 text-xs text-[#a75252]">
-              {visibleLoadError}
-            </p>
-          )}
-          <div className="overflow-x-auto">
+        {visibleLoadError && (
+          <p
+            role="alert"
+            className="border-b border-[#f2d4d4] bg-[#fff6f6] px-6 py-3 text-xs text-[#a75252]"
+          >
+            {visibleLoadError}
+          </p>
+        )}
+        <div className="overflow-x-auto">
           <table className="w-full min-w-[1000px] text-left text-xs">
             <thead>
               <tr className="bg-[#f8fafc] text-[10px] font-semibold text-slate-500">
@@ -539,7 +568,7 @@ export default function AdminVerification() {
                       </td>
                     ))}
                     <td className="max-w-[200px] px-4 py-4 text-slate-500">
-                      {request.adminNote || "â€”"}
+                      {request.adminNote || "-"}
                     </td>
                     <td className="px-5 py-4 text-right">
                       {isFinal ? (
@@ -563,7 +592,10 @@ export default function AdminVerification() {
               })}
               {!isLoading && !visibleLoadError && filtered.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-slate-500">
+                  <td
+                    colSpan={8}
+                    className="px-6 py-12 text-center text-slate-500"
+                  >
                     {requests.length === 0
                       ? "Belum ada pengajuan dokumen untuk diverifikasi."
                       : "Tidak ada pengajuan yang cocok dengan pencarian atau filter."}
@@ -572,7 +604,10 @@ export default function AdminVerification() {
               )}
               {isLoading && (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-slate-500">
+                  <td
+                    colSpan={8}
+                    className="px-6 py-12 text-center text-slate-500"
+                  >
                     Memuat pengajuan customer...
                   </td>
                 </tr>

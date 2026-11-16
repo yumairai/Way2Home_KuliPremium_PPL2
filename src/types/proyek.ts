@@ -7,7 +7,12 @@ import type { ProjectTracking } from "@/types/project-tracking";
 export type DocumentStatus = "pending" | "revision" | "approved";
 
 export type ContractStatus =
-  "menunggu" | "disetujui" | "ditolak" | "revisi" | "kedaluwarsa";
+  | "belum_tersedia"
+  | "menunggu"
+  | "disetujui"
+  | "ditolak"
+  | "revisi"
+  | "kedaluwarsa";
 
 export type ProjectStatus =
   | "Verifikasi Dokumen"
@@ -55,10 +60,12 @@ export type TeamMember = {
 };
 
 export type Payment = {
+  stageId?: string;
   periode: number;
   label: string;
   amount: number;
   dueDate: string;
+  paidAt?: string;
   status: "lunas" | "menunggu" | "aktif" | "akan_datang";
 };
 
@@ -68,8 +75,17 @@ export type Contract = {
   version: number;
   issuedAt: string;
   deadlineAt: string;
+  startAt?: string | null;
+  estimatedCompletionAt?: string | null;
   rejectionReasons?: string[];
   adminNotes?: string;
+  signedCustomerAt?: string | null;
+  signedCustomerSignaturePath?: string | null;
+  signedCustomerConsentAt?: string | null;
+  signedPengawasAt?: string | null;
+  signedPengawasSignaturePath?: string | null;
+  documentVersion?: number;
+  companySignatureLabel?: string;
 };
 
 export type Project = {
@@ -81,7 +97,15 @@ export type Project = {
   style: string;
   landArea: number;
   buildingArea: number;
+  floors?: number;
+  bedrooms?: number;
+  bathrooms?: number;
   budget: number;
+  estimatedCost?: number;
+  customerName?: string;
+  customerNik?: string | null;
+  customerPhone?: string | null;
+  customerEmail?: string | null;
   duration: number;
   address: string;
   submittedAt: string;

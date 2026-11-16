@@ -292,7 +292,7 @@ export async function createProjectWithDocuments(
 
 export async function deleteCancellableProject(
   supabase: SupabaseClient<Database>,
-  projectId: string
+  projectId: string,
 ): Promise<void> {
   const { user } = await requireRole(supabase, "customer");
   const cancellableStatuses: Database["public"]["Enums"]["project_status"][] = [
@@ -300,6 +300,7 @@ export async function deleteCancellableProject(
     "verifikasi_dokumen",
     "revisi_dokumen",
     "alokasi_mandor_pengawas",
+    "finalisasi_kontrak",
   ];
 
   const { data: project, error: projectError } = await supabase
@@ -316,7 +317,32 @@ export async function deleteCancellableProject(
     status: Database["public"]["Enums"]["project_status"];
   };
   if (!cancellableStatuses.includes(projectRow.status)) {
-    throw new ServiceError("Proyek tidak dapat dibatalkan pada tahap ini.", 409);
+    throw new ServiceError(
+      "Proyek tidak dapat dibatalkan pada tahap ini.",
+      409,
+    );
+  }
+
+  if (projectRow.status === "finalisasi_kontrak") {
+    const { data: contract, error: contractError } = await supabase
+      .from("contracts")
+      .select("status, signed_customer_at")
+      .eq("project_id", projectId)
+      .maybeSingle();
+
+    if (contractError) {
+      throw new ServiceError("Gagal memeriksa status kontrak proyek.", 500);
+    }
+    if (
+      contract?.signed_customer_at ||
+      contract?.status === "aktif" ||
+      contract?.status === "selesai"
+    ) {
+      throw new ServiceError(
+        "Proyek tidak dapat dibatalkan setelah kontrak disetujui.",
+        409,
+      );
+    }
   }
 
   const { data: documents, error: documentsError } = await supabase
@@ -328,15 +354,18 @@ export async function deleteCancellableProject(
     throw new ServiceError("Gagal menyiapkan penghapusan dokumen proyek.", 500);
   }
 
-  const storagePaths = ((documents || []) as unknown as Array<{ url: string }>).map(
-    (document) => document.url
-  );
+  const storagePaths = (
+    (documents || []) as unknown as Array<{ url: string }>
+  ).map((document) => document.url);
   if (storagePaths.length > 0) {
     const { error: storageError } = await supabase.storage
       .from("project-documents")
       .remove(storagePaths);
     if (storageError) {
-      throw new ServiceError("Gagal menghapus dokumen proyek dari penyimpanan.", 500);
+      throw new ServiceError(
+        "Gagal menghapus dokumen proyek dari penyimpanan.",
+        500,
+      );
     }
   }
 
@@ -350,7 +379,10 @@ export async function deleteCancellableProject(
     .maybeSingle();
 
   if (deleteError || !deletedProject) {
-    throw new ServiceError("Proyek gagal dihapus. Muat ulang halaman dan coba lagi.", 500);
+    throw new ServiceError(
+      "Proyek gagal dihapus. Muat ulang halaman dan coba lagi.",
+      500,
+    );
   }
 }
 
@@ -381,6 +413,7 @@ export async function getSignedDocumentUrl(
 
 export function transformDBProjectToProject(
   row: Record<string, unknown>,
+  customerEmail?: string | null,
 ): Project {
   const design = (row.designs as Record<string, unknown>) || {};
   const images =
@@ -406,7 +439,9 @@ export function transformDBProjectToProject(
   const projectStatus: ProjectStatus =
     statusMap[dbStatus] || "Verifikasi Dokumen";
 
-  const docs = row.project_documents || [];
+  const docs = Array.isArray(row.project_documents)
+    ? (row.project_documents as Array<Record<string, unknown>>)
+    : [];
   const hasRevision =
     dbStatus === "revisi_dokumen" ||
     docs.some(
@@ -424,31 +459,39 @@ export function transformDBProjectToProject(
   const team: TeamMember[] = [];
   if (row.pengawas_profiles) {
     const pengawas = row.pengawas_profiles as Record<string, unknown>;
-    const pengawasProfile =
-      (pengawas.profiles as Record<string, unknown>) || {};
+    const pengawasProfile = Array.isArray(pengawas.profiles)
+      ? (pengawas.profiles[0] as Record<string, unknown>) || {}
+      : (pengawas.profiles as Record<string, unknown>) || {};
     team.push({
       id: pengawas.id as string,
-      name: (pengawasProfile.nama_lengkap as string) || "Pengawas Proyek",
+      name: (pengawasProfile.full_name as string) || "Pengawas Proyek",
       role: "Pengawas",
-      phone: (pengawasProfile.nomor_telepon as string) || "-",
-      experience: `${pengawas.pengalaman_tahun || 0} tahun`,
-      projects: (pengawas.jumlah_proyek_selesai as number) || 0,
+      phone: (pengawasProfile.phone as string) || "-",
+      experience: "Pengawas",
+      projects: 0,
     });
   }
 
   if (Array.isArray(row.project_mandors)) {
-    for (const item of row.project_mandors as Array<Record<string, unknown>>) {
+    for (const item of (
+      row.project_mandors as Array<Record<string, unknown>>
+    ).slice(0, 3)) {
       const mandor = item.mandor_profiles as
         Record<string, unknown> | undefined;
       if (mandor) {
-        const mandorProfile =
-          (mandor.profiles as Record<string, unknown>) || {};
+        const mandorProfile = Array.isArray(mandor.profiles)
+          ? (mandor.profiles[0] as Record<string, unknown>) || {}
+          : (mandor.profiles as Record<string, unknown>) || {};
         team.push({
           id: mandor.id as string,
-          name: (mandorProfile.nama_lengkap as string) || "Mandor Proyek",
+          name: (mandorProfile.full_name as string) || "Mandor Proyek",
           role: "Mandor",
-          phone: (mandorProfile.nomor_telepon as string) || "-",
-          experience: `${mandor.pengalaman_tahun || 0} tahun`,
+          phone: (mandorProfile.phone as string) || "-",
+          experience:
+            mandor.pengalaman_tahun === null ||
+            mandor.pengalaman_tahun === undefined
+              ? "-"
+              : `${mandor.pengalaman_tahun} tahun`,
           projects: (mandor.jumlah_proyek_selesai as number) || 0,
         });
       }
@@ -458,19 +501,47 @@ export function transformDBProjectToProject(
   const dbContracts = Array.isArray(row.contracts)
     ? (row.contracts as Array<Record<string, unknown>>)[0]
     : (row.contracts as Record<string, unknown> | undefined);
+  const contractSpecification = dbContracts?.spesifikasi as
+    Record<string, unknown> | undefined;
+  const contractCustomer = contractSpecification?.customer as
+    Record<string, unknown> | undefined;
+  const projectCustomer =
+    (row.profiles as Record<string, unknown> | undefined) || {};
   const contractStatusMap: Record<string, ContractStatus> = {
     draft: "menunggu",
     sent: "menunggu",
+    menunggu_ttd: "menunggu",
+    aktif: "disetujui",
     approved: "disetujui",
+    selesai: "disetujui",
     rejected: "ditolak",
     revision: "revisi",
   };
 
   const contract: Contract = {
-    id: (dbContracts?.id as string) || `CTR-${String(row.id).slice(0, 8)}`,
-    status: contractStatusMap[dbContracts?.status as string] || "menunggu",
-    version: (dbContracts?.versi as number) || 1,
+    id: (dbContracts?.id as string) || "",
+    status: dbContracts
+      ? contractStatusMap[dbContracts.status as string] || "menunggu"
+      : "belum_tersedia",
+    version: Number(dbContracts?.document_version || dbContracts?.versi || 1),
+    signedCustomerAt:
+      (dbContracts?.signed_customer_at as string | null) ?? null,
+    signedCustomerSignaturePath:
+      (dbContracts?.signed_customer_signature_path as string | null) ?? null,
+    signedCustomerConsentAt:
+      (dbContracts?.signed_customer_consent_at as string | null) ?? null,
+    signedPengawasAt:
+      (dbContracts?.signed_pengawas_at as string | null) ?? null,
+    signedPengawasSignaturePath:
+      (dbContracts?.signed_pengawas_signature_path as string | null) ?? null,
+    documentVersion: Number(dbContracts?.document_version || 1),
+    companySignatureLabel:
+      (dbContracts?.company_signature_label as string) ||
+      "Placeholder tanda tangan PT Way2Home Konstruksi",
     issuedAt: (dbContracts?.created_at as string) || (row.created_at as string),
+    startAt: (dbContracts?.tanggal_mulai as string | null) ?? null,
+    estimatedCompletionAt:
+      (dbContracts?.tanggal_selesai_estimasi as string | null) ?? null,
     deadlineAt: dbContracts?.created_at
       ? new Date(
           new Date(dbContracts.created_at as string).getTime() + 7 * 86400000,
@@ -483,26 +554,35 @@ export function transformDBProjectToProject(
       : undefined,
   };
 
-  const paymentStatusMap: Record<
-    string,
-    "lunas" | "menunggu" | "aktif" | "akan_datang"
-  > = {
-    lunas: "lunas",
-    menunggu_verifikasi: "menunggu",
-    menunggu_pembayaran: "aktif",
-    belum: "akan_datang",
-  };
-
   const dbPayments = Array.isArray(row.payment_stages)
     ? (row.payment_stages as Array<Record<string, unknown>>)
     : [];
-  const payments: Payment[] = dbPayments.map((p) => ({
-    periode: (p.urutan as number) || 0,
-    label: (p.nama_tahap as string) || `Tahap ${p.urutan}`,
-    amount: Number(p.nominal || 0),
-    dueDate: (p.tanggal_bayar as string) || (row.created_at as string),
-    status: paymentStatusMap[p.status as string] || "akan_datang",
-  }));
+  const sortedPayments = [...dbPayments].sort(
+    (a, b) => Number(a.urutan) - Number(b.urutan),
+  );
+  let nextUnpaidPaymentAvailable = true;
+  const payments: Payment[] = sortedPayments.map((p) => {
+    const periode = Number(p.urutan);
+    const isPaid = p.status === "lunas";
+    const isAvailable =
+      nextUnpaidPaymentAvailable &&
+      ((projectStatus === "Pembayaran DP" && periode === 0) ||
+        (projectStatus === "Proyek Aktif" && periode > 0));
+
+    if (!isPaid) {
+      nextUnpaidPaymentAvailable = false;
+    }
+
+    return {
+      stageId: p.id as string,
+      periode,
+      label: (p.nama_tahap as string) || `Tahap ${p.urutan}`,
+      amount: Number(p.nominal || 0),
+      dueDate: (p.tanggal_jatuh_tempo as string) || "",
+      paidAt: (p.tanggal_bayar as string) || undefined,
+      status: isPaid ? "lunas" : isAvailable ? "aktif" : "akan_datang",
+    };
+  });
 
   const scope: string[] = dbContracts?.ruang_lingkup
     ? (dbContracts.ruang_lingkup as string).split("\n").filter(Boolean)
@@ -527,17 +607,40 @@ export function transformDBProjectToProject(
     style: (design.gaya_arsitektur as string) || "Modern",
     landArea: Number(design.luas_tanah || 0),
     buildingArea: Number(design.luas_bangunan || 0),
-    budget: Number(row.budget_proyek || design.estimasi_biaya || 0),
+    floors: Number(design.jumlah_lantai || 0),
+    bedrooms: Number(design.jumlah_kamar_tidur || 0),
+    bathrooms: Number(design.jumlah_kamar_mandi || 0),
+    budget: Number(
+      dbContracts?.nilai_kontrak ||
+        row.budget_proyek ||
+        design.estimasi_biaya ||
+        0,
+    ),
+    estimatedCost: Number(design.estimasi_biaya || 0),
+    customerName:
+      (typeof contractCustomer?.nama === "string"
+        ? contractCustomer.nama
+        : undefined) ||
+      (typeof projectCustomer.full_name === "string"
+        ? projectCustomer.full_name
+        : undefined),
+    customerNik: (projectCustomer.nik as string | null) ?? null,
+    customerPhone:
+      (projectCustomer.phone as string | null) ??
+      (contractCustomer?.telepon as string | null) ??
+      null,
+    customerEmail: customerEmail ?? null,
     duration:
       Math.round(((design.estimasi_durasi_hari as number) || 0) / 30) || 8,
     address: (row.alamat_proyek as string) || "Lokasi Belum Ditentukan",
     submittedAt: row.created_at as string,
     status: projectStatus,
     documentStatus,
-    adminNote:
-      Array.isArray(docs)
-        ? (docs as Array<Record<string, unknown>>).find((document) => Boolean(document.catatan))?.catatan as string | undefined
-        : undefined,
+    adminNote: Array.isArray(docs)
+      ? ((docs as Array<Record<string, unknown>>).find((document) =>
+          Boolean(document.catatan),
+        )?.catatan as string | undefined)
+      : undefined,
     team,
     contract,
     payments,
@@ -564,12 +667,26 @@ export async function getUserProjects(
         gaya_arsitektur,
         luas_tanah,
         luas_bangunan,
+        jumlah_lantai,
+        jumlah_kamar_tidur,
+        jumlah_kamar_mandi,
         estimasi_biaya,
         estimasi_durasi_hari,
         lokasi,
         design_images (
           url,
           urutan
+        )
+      ),
+      pengawas_profiles (
+        id,
+        profiles!pengawas_profiles_id_fkey ( full_name, phone )
+      ),
+      project_mandors (
+        mandor_profiles (
+          id,
+          pengalaman_tahun,
+          profiles!mandor_profiles_id_fkey ( full_name, phone )
         )
       ),
       project_documents (
@@ -581,6 +698,7 @@ export async function getUserProjects(
         review_status,
         created_at
       ),
+      profiles!projects_customer_id_fkey ( full_name, nik, phone ),
       contracts (
         id,
         ruang_lingkup,
@@ -589,7 +707,14 @@ export async function getUserProjects(
         tanggal_mulai,
         tanggal_selesai_estimasi,
         status,
-        created_at
+        created_at,
+        signed_customer_at,
+        signed_customer_signature_path,
+        signed_customer_consent_at,
+        signed_pengawas_at,
+        signed_pengawas_signature_path,
+        document_version,
+        company_signature_label
       ),
       payment_stages (
         id,
@@ -597,7 +722,8 @@ export async function getUserProjects(
         urutan,
         nominal,
         status,
-        tanggal_bayar
+        tanggal_bayar,
+        tanggal_jatuh_tempo
       )
     `,
     )
@@ -617,12 +743,26 @@ export async function getUserProjects(
           gaya_arsitektur,
           luas_tanah,
           luas_bangunan,
+          jumlah_lantai,
+          jumlah_kamar_tidur,
+          jumlah_kamar_mandi,
           estimasi_biaya,
           estimasi_durasi_hari,
           lokasi,
           design_images (
             url,
             urutan
+          )
+        ),
+        pengawas_profiles (
+          id,
+          profiles!pengawas_profiles_id_fkey ( full_name, phone )
+        ),
+        project_mandors (
+          mandor_profiles (
+            id,
+            pengalaman_tahun,
+            profiles!mandor_profiles_id_fkey ( full_name, phone )
           )
         ),
         project_documents (
@@ -633,13 +773,34 @@ export async function getUserProjects(
           catatan,
           review_status,
           created_at
+        ),
+        contracts (
+          id,
+          ruang_lingkup,
+          spesifikasi,
+          nilai_kontrak,
+          tanggal_mulai,
+          tanggal_selesai_estimasi,
+          status,
+          created_at
+        ),
+        payment_stages (
+          id,
+          nama_tahap,
+          urutan,
+          nominal,
+          status,
+          tanggal_bayar,
+          tanggal_jatuh_tempo
         )
       `,
       )
       .eq("customer_id", user.id)
       .order("created_at", { ascending: false });
 
-    data = fallbackRes.data;
+    // Jalur cadangan memilih kolom lebih ringan (tanpa contracts/payment_stages);
+    // transformator menganggapnya opsional.
+    data = fallbackRes.data as typeof data;
     error = fallbackRes.error;
   }
 
@@ -654,7 +815,7 @@ export async function getUserProjects(
   }
 
   return data.map((row: Record<string, unknown>) =>
-    transformDBProjectToProject(row),
+    transformDBProjectToProject(row, user.email),
   );
 }
 
@@ -678,12 +839,26 @@ export async function getUserProjectById(
         gaya_arsitektur,
         luas_tanah,
         luas_bangunan,
+        jumlah_lantai,
+        jumlah_kamar_tidur,
+        jumlah_kamar_mandi,
         estimasi_biaya,
         estimasi_durasi_hari,
         lokasi,
         design_images (
           url,
           urutan
+        )
+      ),
+      pengawas_profiles (
+        id,
+        profiles!pengawas_profiles_id_fkey ( full_name, phone )
+      ),
+      project_mandors (
+        mandor_profiles (
+          id,
+          pengalaman_tahun,
+          profiles!mandor_profiles_id_fkey ( full_name, phone )
         )
       ),
       project_documents (
@@ -695,6 +870,7 @@ export async function getUserProjectById(
         review_status,
         created_at
       ),
+      profiles!projects_customer_id_fkey ( full_name, nik, phone ),
       contracts (
         id,
         ruang_lingkup,
@@ -703,7 +879,14 @@ export async function getUserProjectById(
         tanggal_mulai,
         tanggal_selesai_estimasi,
         status,
-        created_at
+        created_at,
+        signed_customer_at,
+        signed_customer_signature_path,
+        signed_customer_consent_at,
+        signed_pengawas_at,
+        signed_pengawas_signature_path,
+        document_version,
+        company_signature_label
       ),
       payment_stages (
         id,
@@ -711,7 +894,8 @@ export async function getUserProjectById(
         urutan,
         nominal,
         status,
-        tanggal_bayar
+        tanggal_bayar,
+        tanggal_jatuh_tempo
       )
     `,
     )
@@ -732,12 +916,26 @@ export async function getUserProjectById(
           gaya_arsitektur,
           luas_tanah,
           luas_bangunan,
+          jumlah_lantai,
+          jumlah_kamar_tidur,
+          jumlah_kamar_mandi,
           estimasi_biaya,
           estimasi_durasi_hari,
           lokasi,
           design_images (
             url,
             urutan
+          )
+        ),
+        pengawas_profiles (
+          id,
+          profiles!pengawas_profiles_id_fkey ( full_name, phone )
+        ),
+        project_mandors (
+          mandor_profiles (
+            id,
+            pengalaman_tahun,
+            profiles!mandor_profiles_id_fkey ( full_name, phone )
           )
         ),
         project_documents (
@@ -748,6 +946,25 @@ export async function getUserProjectById(
           catatan,
           review_status,
           created_at
+        ),
+        contracts (
+          id,
+          ruang_lingkup,
+          spesifikasi,
+          nilai_kontrak,
+          tanggal_mulai,
+          tanggal_selesai_estimasi,
+          status,
+          created_at
+        ),
+        payment_stages (
+          id,
+          nama_tahap,
+          urutan,
+          nominal,
+          status,
+          tanggal_bayar,
+          tanggal_jatuh_tempo
         )
       `,
       )
@@ -755,7 +972,9 @@ export async function getUserProjectById(
       .eq("customer_id", user.id)
       .maybeSingle();
 
-    data = fallbackRes.data;
+    // Jalur cadangan memilih kolom lebih ringan; kontrak & tahap pembayaran
+    // diambil terpisah pada langkah berikutnya.
+    data = fallbackRes.data as typeof data;
     error = fallbackRes.error;
   }
 
@@ -769,5 +988,5 @@ export async function getUserProjectById(
     return null;
   }
 
-  return transformDBProjectToProject(data);
+  return transformDBProjectToProject(data, user.email);
 }

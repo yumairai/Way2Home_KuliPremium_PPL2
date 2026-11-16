@@ -102,9 +102,11 @@ src/
     └── proyek/[id]/page.tsx           # Route detail
 ```
 
-## 8. Cara Simulasi (belum ada backend)
+## 8. Cara Simulasi
 
-Semua state hardcoded di src/data/proyek.ts. Ganti field berikut:
+Data demo di `src/data/proyek.ts` tetap hardcoded. Untuk proyek dari database,
+halaman pembayaran memakai data `payment_stages` dan transaksi Midtrans sandbox.
+Ganti field berikut untuk mengubah skenario demo:
 
 | Skenario demo                 | Setting                                                                      |
 | ----------------------------- | ---------------------------------------------------------------------------- |
@@ -116,6 +118,38 @@ Semua state hardcoded di src/data/proyek.ts. Ganti field berikut:
 | Belum ada tim                 | `team: []`, `status: "Alokasi Tim"`                                          |
 
 Deadline countdown juga relatif (`inDays()` / `agoDays()` helper di file data).
+
+### Integrasi pembayaran database
+
+Atur environment variables berikut untuk menjalankan pembayaran sandbox:
+
+- `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY` — memuat Snap.js di browser.
+- `MIDTRANS_SERVER_KEY` — membuat token transaksi, memverifikasi notifikasi, dan mengecek status transaksi ke Midtrans.
+- `SUPABASE_SERVICE_ROLE_KEY` — memperbarui pembayaran setelah status terverifikasi dari server.
+
+Saat aplikasi lokal belum memiliki URL publik, halaman sukses Snap meminta server
+memverifikasi status transaksi langsung ke API status Midtrans. URL notifikasi
+`/api/midtrans/notification` tetap disarankan untuk produksi dan menangani pembayaran
+yang penyelesaiannya tertunda atau jika customer tidak kembali ke aplikasi.
+Migrasi
+`010_create_payment_schedule.sql` membuat empat tahap pembayaran otomatis ketika
+status proyek berubah ke pembayaran DP (dan mengisi jadwal untuk proyek lama
+yang sudah berada di tahap pembayaran). Nominalnya dihitung dari nilai kontrak
+(30%, 25%, 25%, 20%); tanggal DP jatuh tempo tujuh hari setelah kontrak
+ditandatangani dan cicilan jatuh tempo bulanan dari tanggal mulai proyek. Sistem
+hanya mengizinkan tahap belum lunas pertama untuk dibayar.
+
+Terapkan juga `013_grant_service_role_payment_updates.sql` agar endpoint
+verifikasi dan notifikasi Midtrans dapat memperbarui tahap pembayaran serta
+status proyek menggunakan role server `service_role`.
+
+Terapkan migrasi `012_generate_project_contract.sql` setelah migrasi `011`.
+Migrasi `012` membuat kontrak berisi ruang lingkup,
+nilai, desain, customer, dan tim saat pengawas menyelesaikan alokasi dan status
+proyek berpindah dari `alokasi_mandor_pengawas` ke `finalisasi_kontrak`.
+Migrasi `011_sign_project_contract.sql` memfinalisasi kontrak secara atomik:
+status kontrak menjadi `aktif`, waktu tanda tangan dicatat, status proyek menjadi
+`pembayaran_dp`, lalu trigger pembayaran membuat jadwal cicilan.
 
 ## 9. Checkpoint Implementasi
 
@@ -129,19 +163,18 @@ Deadline countdown juga relatif (`inDays()` / `agoDays()` helper di file data).
 - [x] Aturan kunci tombol Batalkan Proyek
 - [x] List proyek + detail + empty state
 - [x] ESLint & `tsc --noEmit` bersih
+- [x] Tombol Bayar DP/cicilan terhubung ke Midtrans Snap sandbox dan notifikasi pembayaran
 
 **Mock / placeholder (frontend-only):**
 
-- [ ] Tombol Bayar DP / Bayar Cicilan / Pantau Progress belum terhubung apa pun
-- [ ] Aksi setuju/tolak hanya toast lokal, tidak mengubah state global
-- [ ] Nama pihak (PT Way2Home / Budi Santoso) hardcoded di `ContractModal.tsx`
+- [ ] Aksi tolak kontrak masih berupa toast lokal
+- [ ] Nama pihak pertama (PT Way2Home) hardcoded di `ContractModal.tsx`
 - [ ] Print/Download pakai `window.print()` (mock)
 
 **Backend (nanti):**
 
 - [ ] API state machine status proyek & kontrak
-- [ ] Persistensi tanda tangan kontrak & riwayat versi
-- [ ] Integrasi pembayaran (Midtrans) untuk DP & cicilan
+- [ ] Persistensi penolakan kontrak & riwayat versi
 
 ## 10. Konvensi
 

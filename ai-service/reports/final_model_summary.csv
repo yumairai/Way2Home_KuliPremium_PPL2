@@ -1,0 +1,4 @@
+tugas,model_terpilih,metrik,test_terbaik,CI95,test_dummy,w2h_compatible_test,deployable
+risk_classification,Random Forest (tuned),Macro F1,0.636,0.601–0.668,0.232,0.539,True
+delay_regression,HistGradientBoosting (sklearn) (tuned),MAE,4.156,3.933–4.367,6.458,5.079,True
+cost_prediction,Linear Regression (default),MAE,0.061,0.058–0.064,0.064,0.062,False

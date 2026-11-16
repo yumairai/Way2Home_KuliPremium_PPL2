@@ -1,0 +1,4 @@
+task,source_dataset,is_synthetic,n_test,metrik_utama,catatan
+risk_classification,CONSTRUCTION_DELAY_RISK_GH,True,1000,0.6357159164176708,satu-satunya sumber; data empiris = 0 baris -> evaluasi empiris tidak dapat dilakukan
+delay_regression,CONSTRUCTION_DELAY_RISK_GH,True,1000,4.155567051410158,satu-satunya sumber; data empiris = 0 baris -> evaluasi empiris tidak dapat dilakukan
+cost_prediction,CONSTRUCTION_DELAY_RISK_GH,True,1000,0.061096410832130035,satu-satunya sumber; data empiris = 0 baris -> evaluasi empiris tidak dapat dilakukan

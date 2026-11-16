@@ -14,7 +14,10 @@ export type HouseDesign = {
   estimatedDurationDays?: number; // raw days from DB
   description: string;
   highlights: string[];
+  dasarPemetaan?: string[];
+  lokasiCocok?: string[];
   image: string;
   images?: string[];
   spesifikasi?: Record<string, unknown>;
+  lokasi_cocok?: string[];
 };
