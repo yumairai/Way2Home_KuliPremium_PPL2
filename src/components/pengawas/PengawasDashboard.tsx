@@ -308,13 +308,12 @@ function MandorAllocationModal({
                     key={m.id}
                     onClick={() => toggleSelect(m.id)}
                     disabled={!canSelectMandor(m)}
-                    className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors ${
-                      selectedIds.has(m.id)
+                    className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors ${selectedIds.has(m.id)
                         ? "border-[#7395b1] bg-[#f0f5f8] ring-2 ring-[#7395b1]/15"
                         : canSelectMandor(m)
                           ? "border-[#e7ebef] hover:bg-slate-50"
                           : "cursor-not-allowed border-[#e7ebef] bg-slate-50 opacity-50"
-                    }`}
+                      }`}
                   >
                     <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[#d8e3eb] bg-[#eaf1f6] text-[10px] font-bold text-[#355973]">
                       {m.full_name.slice(0, 2).toUpperCase()}
@@ -348,11 +347,10 @@ function MandorAllocationModal({
                       )}
                     </span>
                     <span
-                      className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border text-[10px] font-bold ${
-                        selectedIds.has(m.id)
+                      className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border text-[10px] font-bold ${selectedIds.has(m.id)
                           ? "border-[#477ba6] bg-[#477ba6] text-white"
                           : "border-slate-300"
-                      }`}
+                        }`}
                     >
                       {selectedIds.has(m.id) ? "✓" : ""}
                     </span>

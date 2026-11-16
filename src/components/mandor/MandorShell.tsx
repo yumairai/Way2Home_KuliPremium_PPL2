@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
@@ -149,9 +149,6 @@ export default function MandorShell({
             className={`flex h-11 items-center gap-3 rounded-xl px-3 text-sm ${pathname.startsWith("/mandor/proyek") ? "border border-white/10 bg-white/10 font-semibold text-white" : "text-slate-300 hover:bg-white/[.06]"}`}
           >
             Proyek
-            <span className="ml-auto rounded-md bg-white/10 px-2 py-0.5 text-[10px]">
-              {status === "Disetujui" ? "2" : "0"}
-            </span>
           </Link>
         </nav>
       </div>

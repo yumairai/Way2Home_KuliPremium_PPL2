@@ -211,7 +211,7 @@ function VerificationModal({
                   {request.house.name}
                 </h4>
                 <p className="mt-1 text-[10px] text-slate-500">
-                  âŒ– {request.house.location}
+                  {request.house.location}
                 </p>
                 <p className="mt-3 text-[10px] leading-5 text-slate-600">
                   {request.house.description}
@@ -219,11 +219,11 @@ function VerificationModal({
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   <Detail
                     label="Luas tanah"
-                    value={`${request.house.landArea} mÂ²`}
+                    value={`${request.house.landArea} m²`}
                   />
                   <Detail
                     label="Luas bangunan"
-                    value={`${request.house.buildingArea} mÂ²`}
+                    value={`${request.house.buildingArea} m²`}
                   />
                   <Detail
                     label="Kamar tidur"
@@ -388,9 +388,9 @@ export default function AdminVerification() {
             (filter === "Menunggu"
               ? !final(request)
               : final(request) &&
-                request.documents.some(
-                  (document) => document.status === filter,
-                ))),
+              request.documents.some(
+                (document) => document.status === filter,
+              ))),
       ),
     [requests, query, filter],
   );
@@ -568,7 +568,7 @@ export default function AdminVerification() {
                       </td>
                     ))}
                     <td className="max-w-[200px] px-4 py-4 text-slate-500">
-                      {request.adminNote || "â€”"}
+                      {request.adminNote || "-"}
                     </td>
                     <td className="px-5 py-4 text-right">
                       {isFinal ? (

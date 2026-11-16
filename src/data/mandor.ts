@@ -25,6 +25,7 @@ export type MandorProgressReport = {
   milestoneId: string;
   milestoneTitle: string;
   subtaskTitle: string;
+  subtaskId?: string;
   note: string;
   photo: string | null;
   submitted: string;

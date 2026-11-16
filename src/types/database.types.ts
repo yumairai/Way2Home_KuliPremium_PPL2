@@ -567,31 +567,46 @@ export type Database = {
           area_kerja: string | null;
           catatan_verifikasi: string | null;
           created_at: string;
+          cv_path: string | null;
           id: string;
           keahlian: string[];
           pengalaman_tahun: number | null;
           portofolio_url: string | null;
+          proyek_sebelumnya: string | null;
+          ringkasan_pengalaman: string | null;
           status: Database["public"]["Enums"]["verifikasi_status"];
+          verified_at: string | null;
+          verified_by: string | null;
         };
         Insert: {
           area_kerja?: string | null;
           catatan_verifikasi?: string | null;
           created_at?: string;
+          cv_path?: string | null;
           id: string;
           keahlian?: string[];
           pengalaman_tahun?: number | null;
           portofolio_url?: string | null;
+          proyek_sebelumnya?: string | null;
+          ringkasan_pengalaman?: string | null;
           status?: Database["public"]["Enums"]["verifikasi_status"];
+          verified_at?: string | null;
+          verified_by?: string | null;
         };
         Update: {
           area_kerja?: string | null;
           catatan_verifikasi?: string | null;
           created_at?: string;
+          cv_path?: string | null;
           id?: string;
           keahlian?: string[];
           pengalaman_tahun?: number | null;
           portofolio_url?: string | null;
+          proyek_sebelumnya?: string | null;
+          ringkasan_pengalaman?: string | null;
           status?: Database["public"]["Enums"]["verifikasi_status"];
+          verified_at?: string | null;
+          verified_by?: string | null;
         };
         Relationships: [
           {
