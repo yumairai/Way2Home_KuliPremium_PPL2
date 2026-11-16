@@ -1,57 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import type { Project } from "@/types/proyek";
-import { formatDate, formatRupiah } from "@/utils/format";
-
-const KETENTUAN = [
-  "Pihak Kedua tidak dapat mengubah desain atau spesifikasi material setelah kontrak ditandatangani tanpa persetujuan tertulis dari pihak Way2Home.",
-  "Keterlambatan pembayaran sesuai tahapan akan mengakibatkan penundaan sementara pengerjaan proyek.",
-  "Pihak Way2Home berhak melakukan penyesuaian jadwal apabila terjadi kondisi cuaca ekstrem atau force majeure.",
-  "Segala bentuk pengurusan perizinan (IMB/PBG) berada di luar cakupan layanan platform Way2Home.",
-  "Garansi pekerjaan berlaku 3 bulan setelah serah terima, tidak termasuk kerusakan akibat penyalahgunaan.",
-  "Pembatalan proyek setelah kontrak ditandatangani akan dikenakan ketentuan pengembalian dana sesuai kebijakan yang berlaku.",
-];
-
-function DocSection({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="mt-8">
-      <h3 className="flex items-center gap-3 text-lg font-bold text-[#111e3f]">
-        <span className="h-7 w-1.5 rounded-full bg-[#004796]" />
-        {title}
-      </h3>
-      <div className="mt-4">{children}</div>
-    </section>
-  );
-}
-
-function DataRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between gap-6 border-b border-[#eef2f7] py-3 last:border-0">
-      <span className="text-sm text-[#64748b]">{label}</span>
-      <span className="text-right text-sm font-semibold text-[#111e3f]">
-        {value}
-      </span>
-    </div>
-  );
-}
-
-function DataTable({ rows }: { rows: [string, string][] }) {
-  return (
-    <div className="rounded-2xl border border-[#dbe4f2] bg-[#f7f9fc] px-5 py-1">
-      {rows.map(([label, value]) => (
-        <DataRow key={label} label={label} value={value} />
-      ))}
-    </div>
-  );
-}
+import { formatDate } from "@/utils/format";
+import SignaturePadModal from "@/components/contract/SignaturePadModal";
+import ContractDocument from "@/components/contract/ContractDocument";
+import SignatureSlot from "@/components/contract/SignatureSlot";
 
 export default function ContractModal({
   project,
@@ -62,10 +18,24 @@ export default function ContractModal({
   interactive: boolean;
   onClose: () => void;
 }) {
+  const router = useRouter();
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [checked, setChecked] = useState(false);
+  const [readToBottom, setReadToBottom] = useState(false);
   const [rejectMode, setRejectMode] = useState(false);
   const [reason, setReason] = useState("");
   const [toast, setToast] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [signatureOpen, setSignatureOpen] = useState(false);
+  const [signature, setSignature] = useState<string | null>(null);
+  const [customerSignature, setCustomerSignature] = useState<string | null>(
+    null,
+  );
+  const [supervisorSignature, setSupervisorSignature] = useState<string | null>(
+    null,
+  );
+  const [signatureLoading, setSignatureLoading] = useState(false);
   const [action, setAction] = useState<"menunggu" | "setuju" | "tolak">(
     "menunggu",
   );
@@ -75,31 +45,147 @@ export default function ContractModal({
       if (event.key === "Escape") onClose();
     };
     document.addEventListener("keydown", onKey);
+    const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
+      // Force restore scroll even if component unmounts quickly
+      document.body.style.overflow = previousOverflow || "";
     };
   }, [onClose]);
 
-  const setuju = () => {
-    setAction("setuju");
-    setToast(
-      "Kontrak berhasil ditandatangani. Silakan lakukan pembayaran Down Payment.",
-    );
-    fetch(`/api/projects/${project.id}/sign-contract`, {
-      method: "POST",
-    }).catch((err) => {
-      console.error("Gagal mengirim persetujuan kontrak:", err);
-    });
+  const handleScroll = () => {
+    const element = scrollAreaRef.current;
+    if (!element) return;
+    // Toleransi 24px agar user tidak harus presisi di titik terakhir
+    if (element.scrollTop + element.clientHeight >= element.scrollHeight - 24) {
+      setReadToBottom(true);
+    }
   };
+
+  useEffect(() => {
+    const element = scrollAreaRef.current;
+    if (!element) return;
+    // Konten pendek (tidak bisa scroll) langsung dianggap terbaca sampai bawah
+    if (element.scrollHeight <= element.clientHeight + 24) {
+      setReadToBottom(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    const path = project.contract.signedCustomerSignaturePath;
+    if (!path) return;
+    let active = true;
+    const load = async () => {
+      const { createClient } = await import("@/utils/supabase/client");
+      const { data } = await createClient()
+        .storage.from("contract-signatures")
+        .createSignedUrl(path, 300);
+      if (active && data?.signedUrl) setCustomerSignature(data.signedUrl);
+    };
+    void load();
+    return () => {
+      active = false;
+    };
+  }, [project.contract.signedCustomerSignaturePath]);
+
+  useEffect(() => {
+    const path = project.contract.signedPengawasSignaturePath;
+    if (!path) return;
+    let active = true;
+    const load = async () => {
+      const { createClient } = await import("@/utils/supabase/client");
+      const { data, error } = await createClient()
+        .storage.from("contract-signatures")
+        .createSignedUrl(path, 300);
+      if (active && data?.signedUrl && !error)
+        setSupervisorSignature(data.signedUrl);
+    };
+    void load();
+    return () => {
+      active = false;
+    };
+  }, [project.contract.signedPengawasSignaturePath]);
+
+  async function setuju() {
+    setError(null);
+    if (!checked) {
+      setError("Centang persetujuan setelah membaca kontrak.");
+      return;
+    }
+    if (!signature) {
+      setError("Simpan tanda tangan Anda sebelum menyetujui kontrak.");
+      return;
+    }
+    setSubmitting(true);
+
+    try {
+      const response = await fetch(
+        `/api/projects/${project.id}/contract-signature`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ signature, consent: checked }),
+        },
+      );
+      const result = (await response.json()) as { message?: string };
+      if (!response.ok) {
+        throw new Error(result.message || "Gagal memfinalisasi kontrak.");
+      }
+
+      // Close modal and let cleanup run
+      onClose();
+
+      // Wait a bit for modal unmount and cleanup to complete
+      setTimeout(() => {
+        // Force restore scroll just in case
+        document.body.style.overflow = "";
+        // Then refresh
+        router.refresh();
+      }, 100);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Terjadi kesalahan saat memfinalisasi kontrak.",
+      );
+      setSubmitting(false);
+    }
+  }
 
   const tolak = () => {
     setAction("tolak");
     setToast("Penolakan Anda telah diteruskan ke tim Way2Home.");
   };
 
-  const sumPayments = project.payments.reduce((acc, p) => acc + p.amount, 0);
+  const paymentPlan =
+    project.payments.length > 0
+      ? project.payments
+      : [
+          {
+            label: "Uang Muka (DP)",
+            amount: Math.round((project.estimatedCost ?? project.budget) * 0.3),
+          },
+          {
+            label: "Termin 1",
+            amount: Math.round(
+              (project.estimatedCost ?? project.budget) * 0.25,
+            ),
+          },
+          {
+            label: "Termin 2",
+            amount: Math.round(
+              (project.estimatedCost ?? project.budget) * 0.25,
+            ),
+          },
+          {
+            label: "Termin 3 (Pelunasan)",
+            amount:
+              (project.estimatedCost ?? project.budget) -
+              Math.round((project.estimatedCost ?? project.budget) * 0.3) -
+              Math.round((project.estimatedCost ?? project.budget) * 0.25) * 2,
+          },
+        ];
 
   return (
     <div
@@ -112,13 +198,11 @@ export default function ContractModal({
         onClick={onClose}
       />
 
-      <div className="relative flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-[1.75rem] bg-white shadow-[0_40px_80px_rgba(15,23,42,0.35)]">
+      <div className="contract-modal relative flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-[1.75rem] bg-white shadow-[0_40px_80px_rgba(15,23,42,0.35)]">
         <div className="flex items-center justify-between border-b border-[#edf1f6] px-8 py-5">
           <div>
             <h2 className="text-lg font-bold text-[#111e3f]">Kontrak Proyek</h2>
-            <p className="mt-1 text-xs text-[#64748b]">
-              {project.contract.id} · Versi {project.contract.version}
-            </p>
+            <p className="mt-1 text-xs text-[#64748b]">{project.contract.id}</p>
           </div>
           <button
             type="button"
@@ -141,7 +225,11 @@ export default function ContractModal({
           </button>
         </div>
 
-        <div className="overflow-y-auto px-8 py-6 md:px-12">
+        <div
+          ref={scrollAreaRef}
+          onScroll={handleScroll}
+          className="contract-print-area overflow-y-auto px-8 py-6 md:px-12"
+        >
           <div className="text-center">
             <Image
               src="/images/aset/logo-w2h.png"
@@ -151,209 +239,250 @@ export default function ContractModal({
               className="mx-auto h-20 w-auto object-contain"
             />
             <p className="mt-3 text-sm font-bold tracking-wide text-[#004796]">
-              KONTRAK PEMBANGUNAN RUMAH
+              SURAT PERJANJIAN KERJA SAMA PEMBANGUNAN RUMAH
             </p>
             <p className="mt-1 text-xs text-[#64748b]">
-              Nomor: {project.contract.id} · Terbit:{" "}
+              Nomor: {project.contract.id} · Hari / Tanggal:{" "}
               {formatDate(project.contract.issuedAt)}
             </p>
           </div>
 
-          <DocSection title="Para Pihak">
-            <DataTable
-              rows={[
-                ["Pihak Pertama", "PT Way2Home Konstruksi"],
-                ["Pihak Kedua", "Budi Santoso"],
-                ["Alamat Proyek", project.address],
-              ]}
-            />
-          </DocSection>
+          <ContractDocument
+            contractNumber={project.contract.id}
+            contractDate={formatDate(project.contract.issuedAt)}
+            customerName={project.customerName || "Customer"}
+            customerNik={project.customerNik || "Belum tersedia"}
+            customerPhone={project.customerPhone || "Belum tersedia"}
+            customerEmail={project.customerEmail || "Belum tersedia"}
+            projectCode={String(project.id)}
+            address={project.address}
+            designName={project.designName}
+            architecturalStyle={project.style}
+            landArea={project.landArea}
+            buildingArea={project.buildingArea}
+            floors={project.floors}
+            bedrooms={project.bedrooms}
+            bathrooms={project.bathrooms}
+            value={project.estimatedCost ?? project.budget}
+            duration={project.duration}
+            startDate={
+              project.contract.startAt
+                ? formatDate(project.contract.startAt)
+                : "Belum ditentukan"
+            }
+            completionDate={
+              project.contract.estimatedCompletionAt
+                ? formatDate(project.contract.estimatedCompletionAt)
+                : "Belum ditentukan"
+            }
+            scope={project.scope}
+            supervisor={
+              project.team.find((member) => member.role === "Pengawas")?.name ||
+              "Belum ditugaskan"
+            }
+            foremen={project.team
+              .filter((member) => member.role === "Mandor")
+              .map((member) => member.name)}
+            paymentStages={paymentPlan.map((payment) => ({
+              label: payment.label,
+              amount: payment.amount,
+            }))}
+          />
 
-          <DocSection title="Data Proyek">
-            <DataTable
-              rows={[
-                ["Tipe Rumah", project.designName],
-                ["Gaya Arsitektur", project.style],
-                ["Lokasi", project.location],
-                [
-                  "Area (Tanah/Bangunan)",
-                  `${project.landArea} m² / ${project.buildingArea} m²`,
-                ],
-                ["Nilai Proyek", formatRupiah(project.budget)],
-                ["Durasi", `${project.duration} bulan`],
-              ]}
-            />
-          </DocSection>
+          <div className="mt-10 rounded-2xl border border-[#dbe4f2] bg-[#f7f9fc] p-5">
+            <p className="text-center text-xs font-semibold uppercase tracking-wider text-[#64748b]">
+              Tanda Tangan Para Pihak
+            </p>
 
-          <DocSection title="Ruang Lingkup Pekerjaan">
-            <ol className="space-y-2.5">
-              {project.scope.map((item, index) => (
-                <li
-                  key={item}
-                  className="flex gap-3 text-sm leading-6 text-[#334155]"
-                >
-                  <span className="font-bold text-[#004796]">
-                    {String(index + 1).padStart(2, "0")}
+            <div className="mx-auto mt-6 grid max-w-4xl grid-cols-1 gap-8 sm:grid-cols-3 sm:gap-6">
+              {/* Penyedia Jasa */}
+              <SignatureSlot
+                role="Director of Way2Home"
+                name="PT Way2Home Konstruksi"
+              >
+                <Image
+                  src="/images/signature-w2h.png"
+                  alt="Tanda tangan PT Way2Home Konstruksi"
+                  width={220}
+                  height={90}
+                  unoptimized
+                  className="h-[72px] w-[180px] object-contain object-center"
+                />
+              </SignatureSlot>
+
+              {/* Pengawas */}
+              <SignatureSlot
+                role="Pengawas"
+                name={
+                  project.team.find((member) => member.role === "Pengawas")
+                    ?.name || "Pengawas proyek"
+                }
+              >
+                {supervisorSignature ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={supervisorSignature}
+                    alt="Tanda tangan pengawas"
+                    className="h-[72px] max-w-full object-contain"
+                  />
+                ) : (
+                  <span className="pb-6 text-xs text-amber-800">
+                    Menunggu tanda tangan
                   </span>
-                  {item}
-                </li>
-              ))}
-            </ol>
-          </DocSection>
+                )}
+              </SignatureSlot>
 
-          <DocSection title="Tahapan Pembayaran">
-            <DataTable
-              rows={project.payments.map((p) => [
-                p.label,
-                formatRupiah(p.amount),
-              ])}
-            />
-            <p className="mt-3 text-xs text-[#64748b]">
-              Total nilai proyek:{" "}
-              <span className="font-bold text-[#111e3f]">
-                {formatRupiah(sumPayments)}
-              </span>
-              . Down Payment dibayarkan dalam 7×24 jam setelah kontrak
-              ditandatangani.
-            </p>
-          </DocSection>
-
-          <DocSection title="Tim Pelaksana">
-            <div className="grid gap-4 sm:grid-cols-2">
-              {project.team.map((member) => (
-                <div
-                  key={member.id}
-                  className="rounded-2xl border border-[#dbe4f2] bg-[#f7f9fc] p-5"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#eef5ff] font-bold text-[#004796]">
-                      {member.name
-                        .split(" ")
-                        .map((w) => w[0])
-                        .slice(0, 2)
-                        .join("")}
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-[#111e3f]">
-                        {member.name}
-                      </p>
-                      <p className="text-xs font-semibold text-[#045ec2]">
-                        {member.role}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-3 space-y-1 text-xs text-[#64748b]">
-                    <p>Pengalaman: {member.experience}</p>
-                    <p>{member.projects} proyek selesai</p>
-                    <p>{member.phone}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </DocSection>
-
-          <DocSection title="Ketentuan Proyek">
-            <ol className="space-y-3">
-              {KETENTUAN.map((item, index) => (
-                <li
-                  key={item}
-                  className="flex gap-3 text-sm leading-6 text-[#334155]"
-                >
-                  <span className="font-bold text-[#004796]">{index + 1}.</span>
-                  {item}
-                </li>
-              ))}
-            </ol>
-          </DocSection>
-
-          <div className="mt-10 rounded-2xl border border-[#dbe4f2] bg-[#f7f9fc] p-5 text-center">
-            <p className="text-xs font-semibold uppercase tracking-wider text-[#64748b]">
-              Tanda Tangan
-            </p>
-            <div className="mt-4 grid gap-6 sm:grid-cols-2">
-              <div>
-                <p className="text-sm font-bold text-[#111e3f]">
-                  Pihak Pertama
-                </p>
-                <p className="mt-1 text-xs text-[#64748b]">
-                  PT Way2Home Konstruksi
-                </p>
-              </div>
-              <div>
-                <p className="text-sm font-bold text-[#111e3f]">Pihak Kedua</p>
-                <p className="mt-1 text-xs text-[#64748b]">Budi Santoso</p>
-              </div>
+              {/* Customer */}
+              <SignatureSlot
+                role="Customer"
+                name={project.customerName || "Customer"}
+              >
+                {signature || customerSignature ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={signature || customerSignature || ""}
+                    alt="Tanda tangan customer"
+                    className="h-[72px] max-w-full object-contain"
+                  />
+                ) : (
+                  <span className="pb-6 text-xs text-slate-500">
+                    Tanda tangan customer
+                  </span>
+                )}
+              </SignatureSlot>
             </div>
           </div>
         </div>
 
-        {interactive && action === "menunggu" && (
-          <div className="border-t border-[#edf1f6] bg-white px-8 py-5">
-            <label className="flex cursor-pointer items-start gap-3">
-              <input
-                type="checkbox"
-                checked={checked}
-                onChange={(event) => setChecked(event.target.checked)}
-                className="mt-0.5 h-5 w-5 cursor-pointer accent-[#004796]"
-              />
-              <span className="text-sm leading-6 text-[#334155]">
-                Saya telah membaca dan memahami seluruh isi kontrak, termasuk
-                ruang lingkup pekerjaan, nilai proyek, dan ketentuan yang
-                berlaku.
-              </span>
-            </label>
-
-            {rejectMode ? (
-              <div className="mt-4">
-                <textarea
-                  value={reason}
-                  onChange={(event) => setReason(event.target.value)}
-                  rows={3}
-                  placeholder="Jelaskan alasan Anda menolak kontrak ini"
-                  className="w-full resize-y rounded-xl border border-[#dbe4f2] px-4 py-3 text-sm outline-none transition focus:border-[#8fb9ed] focus:ring-2 focus:ring-[#045ec2]/20"
-                />
-                <div className="mt-3 flex flex-wrap gap-3">
+        {interactive &&
+          action === "menunggu" &&
+          !project.contract.signedCustomerAt && (
+            <div className="no-print border-t border-[#edf1f6] bg-white px-8 py-5">
+              {error && (
+                <p
+                  role="alert"
+                  className="mb-4 rounded-xl border border-[#fecaca] bg-[#fef2f2] px-4 py-3 text-sm font-semibold text-[#991b1b]"
+                >
+                  {error}
+                </p>
+              )}
+              {!project.contract.signedPengawasSignaturePath ? (
+                <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                  Kontrak menunggu tanda tangan pengawas. Anda dapat melihat
+                  kontrak, tetapi belum dapat menyimpan tanda tangan atau
+                  menyetujuinya.
+                </p>
+              ) : (
+                <div className="mb-4 flex flex-wrap items-center gap-3">
                   <button
                     type="button"
-                    disabled={!checked || !reason.trim()}
-                    onClick={tolak}
-                    className="min-h-12 cursor-pointer rounded-full bg-[#dc2626] px-8 font-bold text-white shadow-lg transition hover:bg-[#b91c1c] disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={() => {
+                      if (!readToBottom) {
+                        setError(
+                          "Silakan scroll dan baca ketentuan kontrak sampai bawah sebelum melakukan tanda tangan dan finalisasi.",
+                        );
+                        return;
+                      }
+                      setError(null);
+                      setSignatureOpen(true);
+                    }}
+                    disabled={submitting}
+                    className="min-h-11 rounded-lg border border-[#183b57] px-5 text-sm font-semibold text-[#183b57] hover:bg-slate-50"
                   >
-                    Kirim Penolakan
+                    {signature
+                      ? "Gambar ulang tanda tangan"
+                      : "Tanda tangan kontrak"}
+                  </button>
+                  {signature && (
+                    <span className="text-sm font-semibold text-emerald-800">
+                      Tanda tangan berhasil dibuat
+                    </span>
+                  )}
+                </div>
+              )}
+              <label
+                className={`flex items-start gap-3 ${!project.contract.signedPengawasSignaturePath ? "cursor-not-allowed opacity-55" : "cursor-pointer"}`}
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  disabled={
+                    submitting || !project.contract.signedPengawasSignaturePath
+                  }
+                  onChange={(event) => {
+                    setChecked(event.target.checked);
+                    setError(null);
+                  }}
+                  className="mt-0.5 h-5 w-5 cursor-pointer accent-[#004796]"
+                />
+                <span className="text-sm leading-6 text-[#334155]">
+                  Saya telah membaca dan memahami seluruh isi kontrak, termasuk
+                  ruang lingkup pekerjaan, nilai proyek, dan ketentuan yang
+                  berlaku.
+                </span>
+              </label>
+
+              {rejectMode ? (
+                <div className="mt-4">
+                  <textarea
+                    value={reason}
+                    disabled={submitting}
+                    onChange={(event) => {
+                      setReason(event.target.value);
+                      setError(null);
+                    }}
+                    rows={3}
+                    placeholder="Jelaskan alasan Anda menolak kontrak ini"
+                    className="w-full resize-y rounded-xl border border-[#dbe4f2] px-4 py-3 text-sm outline-none transition focus:border-[#8fb9ed] focus:ring-2 focus:ring-[#045ec2]/20"
+                  />
+                  <div className="mt-3 flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      disabled={!checked || !reason.trim() || submitting}
+                      onClick={tolak}
+                      className="min-h-12 cursor-pointer rounded-full bg-[#dc2626] px-8 font-bold text-white shadow-lg transition hover:bg-[#b91c1c] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Kirim Penolakan
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRejectMode(false)}
+                      className="min-h-12 cursor-pointer rounded-full border border-[#dbe4f2] px-8 font-bold text-[#475569] transition hover:bg-[#f1f5f9]"
+                    >
+                      Batal
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    disabled={
+                      !checked ||
+                      !signature ||
+                      !project.contract.signedPengawasSignaturePath ||
+                      submitting
+                    }
+                    onClick={setuju}
+                    className="min-h-12 cursor-pointer rounded-full bg-gradient-to-r from-[#004796] to-[#045ec2] px-8 font-bold text-white shadow-[0_10px_25px_rgba(0,71,150,0.3)] transition hover:-translate-y-0.5 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {submitting ? "Menyimpan persetujuan..." : "Setuju"}
                   </button>
                   <button
                     type="button"
-                    onClick={() => setRejectMode(false)}
-                    className="min-h-12 cursor-pointer rounded-full border border-[#dbe4f2] px-8 font-bold text-[#475569] transition hover:bg-[#f1f5f9]"
+                    disabled={submitting}
+                    onClick={() => setRejectMode(true)}
+                    className="min-h-12 cursor-pointer rounded-full border-2 border-[#dc2626] px-8 font-bold text-[#dc2626] transition hover:bg-[#fef2f2]"
                   >
-                    Batal
+                    Tolak Kontrak
                   </button>
                 </div>
-              </div>
-            ) : (
-              <div className="mt-4 flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  disabled={!checked}
-                  onClick={setuju}
-                  className="min-h-12 cursor-pointer rounded-full bg-gradient-to-r from-[#004796] to-[#045ec2] px-8 font-bold text-white shadow-[0_10px_25px_rgba(0,71,150,0.3)] transition hover:-translate-y-0.5 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Setuju & Tandatangani
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRejectMode(true)}
-                  className="min-h-12 cursor-pointer rounded-full border-2 border-[#dc2626] px-8 font-bold text-[#dc2626] transition hover:bg-[#fef2f2]"
-                >
-                  Tolak Kontrak
-                </button>
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
 
-        {!interactive && (
-          <div className="flex justify-end gap-3 border-t border-[#edf1f6] bg-white px-8 py-5">
+        {(!interactive || project.contract.signedCustomerAt) && (
+          <div className="no-print flex justify-end gap-3 border-t border-[#edf1f6] bg-white px-8 py-5">
             <button
               type="button"
               onClick={() => window.print()}
@@ -386,6 +515,18 @@ export default function ContractModal({
           </div>
         )}
 
+        {signatureOpen && (
+          <SignaturePadModal
+            onClose={() => setSignatureOpen(false)}
+            busy={signatureLoading}
+            onContinue={async (data) => {
+              setSignatureLoading(true);
+              setSignature(data);
+              setSignatureOpen(false);
+              setSignatureLoading(false);
+            }}
+          />
+        )}
         {toast && (
           <div className="fixed left-1/2 top-8 z-50 -translate-x-1/2 rounded-2xl bg-[#059669] px-6 py-4 text-sm font-bold text-white shadow-xl">
             {toast}

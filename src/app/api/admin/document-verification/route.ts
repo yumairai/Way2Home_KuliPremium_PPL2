@@ -10,7 +10,10 @@ export async function GET() {
     return NextResponse.json({ requests });
   } catch (error: unknown) {
     if (error instanceof ServiceError) {
-      return NextResponse.json({ message: error.message }, { status: error.status });
+      return NextResponse.json(
+        { message: error.message },
+        { status: error.status },
+      );
     }
     console.error("Error in GET /api/admin/document-verification:", error);
     return NextResponse.json(

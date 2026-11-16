@@ -53,6 +53,7 @@ export type ProjectForPengawas = {
   design_name: string;
   customer_name: string;
   mandors: AllocatedMandor[];
+  supervisorSignedAt?: string | null;
 };
 
 export type AllocatedMandor = {
@@ -90,7 +91,10 @@ export async function finalizeProjectStaffing(
     .single();
 
   if (projectError || !project) {
-    console.error("[finalizeProjectStaffing] project lookup error:", projectError);
+    console.error(
+      "[finalizeProjectStaffing] project lookup error:",
+      projectError,
+    );
     throw new ServiceError("Proyek tidak ditemukan.", 404);
   }
 
@@ -111,7 +115,10 @@ export async function finalizeProjectStaffing(
     .eq("project_id", projectId);
 
   if (mandorError) {
-    console.error("[finalizeProjectStaffing] mandor lookup error:", mandorError);
+    console.error(
+      "[finalizeProjectStaffing] mandor lookup error:",
+      mandorError,
+    );
     throw new ServiceError(
       "Gagal memeriksa mandor yang sudah dialokasikan.",
       500,
@@ -181,7 +188,8 @@ export async function getProjectsForAdmin(
 
   const { data, error } = await supabase
     .from("projects")
-    .select(`
+    .select(
+      `
       id,
       status,
       created_at,
@@ -192,7 +200,8 @@ export async function getProjectsForAdmin(
       pengawas_profiles (
         profiles!pengawas_profiles_id_fkey ( full_name )
       )
-    `)
+    `,
+    )
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -203,8 +212,10 @@ export async function getProjectsForAdmin(
   return (data ?? []).map((row: Record<string, unknown>) => {
     const design = (row.designs as Record<string, unknown>) || {};
     const customer = (row.profiles as Record<string, unknown>) || {};
-    const pengawasRow = (row.pengawas_profiles as Record<string, unknown>) || {};
-    const pengawasProfile = (pengawasRow.profiles as Record<string, unknown>) || {};
+    const pengawasRow =
+      (row.pengawas_profiles as Record<string, unknown>) || {};
+    const pengawasProfile =
+      (pengawasRow.profiles as Record<string, unknown>) || {};
 
     return {
       id: (row.id as string) ?? "",
@@ -229,32 +240,35 @@ export async function getActivePengawas(
 ): Promise<PengawasOption[]> {
   await requireRole(supabase, "admin");
 
-  const [
-    { data, error },
-    { data: assignedProjects, error: assignedError },
-  ] = await Promise.all([
-    supabase
-      .from("pengawas_profiles")
-      .select(`
+  const [{ data, error }, { data: assignedProjects, error: assignedError }] =
+    await Promise.all([
+      supabase
+        .from("pengawas_profiles")
+        .select(
+          `
       id,
       spesialisasi,
       aktif,
       profiles!pengawas_profiles_id_fkey ( full_name, phone )
-    `)
-      .eq("aktif", true),
-    supabase
-      .from("projects")
-      .select("pengawas_id")
-      .not("status", "in", "(selesai,batal)")
-      .not("pengawas_id", "is", null),
-  ]);
+    `,
+        )
+        .eq("aktif", true),
+      supabase
+        .from("projects")
+        .select("pengawas_id")
+        .not("status", "in", "(selesai,batal)")
+        .not("pengawas_id", "is", null),
+    ]);
 
   if (error) {
     console.error("[getActivePengawas] error:", error);
     throw new ServiceError("Gagal memuat daftar pengawas.", 500);
   }
   if (assignedError) {
-    console.error("[getActivePengawas] assigned projects error:", assignedError);
+    console.error(
+      "[getActivePengawas] assigned projects error:",
+      assignedError,
+    );
     throw new ServiceError("Gagal memeriksa ketersediaan pengawas.", 500);
   }
 
@@ -303,7 +317,10 @@ export async function assignPengawasToProject(
   }
 
   const existingRow = existing as Record<string, unknown>;
-  if (existingRow.pengawas_id !== null && existingRow.pengawas_id !== undefined) {
+  if (
+    existingRow.pengawas_id !== null &&
+    existingRow.pengawas_id !== undefined
+  ) {
     throw new ServiceError(
       "Proyek ini sudah memiliki pengawas dan tidak dapat dialokasikan ulang.",
       409,
@@ -380,13 +397,15 @@ export async function getProjectsForPengawas(
 
   const { data, error } = await supabase
     .from("projects")
-    .select(`
+    .select(
+      `
       id,
       status,
       created_at,
       alamat_proyek,
       designs ( nama ),
       profiles!projects_customer_id_fkey ( full_name ),
+      contracts ( signed_pengawas_at ),
       project_mandors (
         mandor_id,
         assigned_at,
@@ -397,7 +416,8 @@ export async function getProjectsForPengawas(
           profiles!mandor_profiles_id_fkey ( full_name, phone )
         )
       )
-    `)
+    `,
+    )
     .eq("pengawas_id", user.id)
     .order("created_at", { ascending: false });
 
@@ -409,13 +429,18 @@ export async function getProjectsForPengawas(
   return (data ?? []).map((row: Record<string, unknown>) => {
     const design = (row.designs as Record<string, unknown>) || {};
     const customer = (row.profiles as Record<string, unknown>) || {};
+    const contract = Array.isArray(row.contracts)
+      ? (row.contracts as Record<string, unknown>[])[0]
+      : (row.contracts as Record<string, unknown> | null);
     const rawMandors = Array.isArray(row.project_mandors)
       ? (row.project_mandors as Record<string, unknown>[])
       : [];
 
     const mandors: AllocatedMandor[] = rawMandors.map((pm) => {
-      const mandorProfile = (pm.mandor_profiles as Record<string, unknown>) || {};
-      const mandorUser = (mandorProfile.profiles as Record<string, unknown>) || {};
+      const mandorProfile =
+        (pm.mandor_profiles as Record<string, unknown>) || {};
+      const mandorUser =
+        (mandorProfile.profiles as Record<string, unknown>) || {};
       return {
         mandor_id: (pm.mandor_id as string) ?? "",
         full_name: (mandorUser.full_name as string) || "-",
@@ -440,6 +465,8 @@ export async function getProjectsForPengawas(
       design_name: (design.nama as string) || "-",
       customer_name: (customer.full_name as string) || "-",
       mandors,
+      supervisorSignedAt:
+        (contract?.signed_pengawas_at as string | null) ?? null,
     };
   });
 }
@@ -458,20 +485,25 @@ export async function getVerifiedMandors(
     .overrideTypes<string[], { merge: false }>();
 
   if (availabilityError) {
-    console.error("[getVerifiedMandors] availability error:", availabilityError);
+    console.error(
+      "[getVerifiedMandors] availability error:",
+      availabilityError,
+    );
     throw new ServiceError("Gagal memeriksa ketersediaan mandor.", 500);
   }
   if (availableIds.length === 0) return [];
 
   const { data, error } = await supabase
     .from("mandor_profiles")
-    .select(`
+    .select(
+      `
       id,
       keahlian,
       area_kerja,
       pengalaman_tahun,
       profiles!mandor_profiles_id_fkey ( full_name, phone )
-    `)
+    `,
+    )
     .eq("status", "approved")
     .in("id", availableIds);
 
@@ -589,7 +621,8 @@ export async function assignMandorsToProject(
   );
   const assignedSkills = new Set<string>();
   for (const mandorId of existingIds) {
-    for (const skill of skillSets.get(mandorId) ?? []) assignedSkills.add(skill);
+    for (const skill of skillSets.get(mandorId) ?? [])
+      assignedSkills.add(skill);
   }
   for (const mandorId of newMandorIds) {
     const skills = skillSets.get(mandorId) ?? [];

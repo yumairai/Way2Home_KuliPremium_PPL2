@@ -14,6 +14,9 @@ import {
   type VerifiedMandor,
 } from "@/services/allocation.service";
 import { ServiceError } from "@/services/access.service";
+import { getPengawasProgressProjects } from "@/services/progress.service";
+import SupervisorContractModal from "@/components/pengawas/SupervisorContractModal";
+import type { SupervisorProject } from "@/data/pengawas";
 
 // ─── Status helpers ────────────────────────────────────────────────────────────
 
@@ -23,7 +26,7 @@ const STATUS_LABEL: Record<string, string> = {
   revisi_dokumen: "Revisi Dokumen",
   alokasi_mandor_pengawas: "Menunggu Tim",
   finalisasi_kontrak: "Finalisasi Kontrak",
-  pembayaran_dp: "Pembayaran DP",
+  pembayaran_dp: "Menunggu Pembayaran DP",
   berjalan: "Berjalan",
   selesai: "Selesai",
   batal: "Dibatalkan",
@@ -32,6 +35,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 const STATUS_CLASS: Record<string, string> = {
   berjalan: "bg-[#eaf2f8] text-[#416f91]",
+  pembayaran_dp: "bg-amber-50 text-amber-700",
   selesai: "bg-[#edf6ef] text-[#4d7d56]",
   alokasi_mandor_pengawas: "bg-amber-50 text-amber-700",
   default: "bg-[#f0f5f8] text-[#416f91]",
@@ -147,7 +151,9 @@ function MandorAllocationModal({
       onClose();
     } catch (err) {
       setError(
-        err instanceof ServiceError ? err.message : "Gagal memfinalisasi alokasi.",
+        err instanceof ServiceError
+          ? err.message
+          : "Gagal memfinalisasi alokasi.",
       );
     } finally {
       setFinalizing(false);
@@ -302,13 +308,12 @@ function MandorAllocationModal({
                     key={m.id}
                     onClick={() => toggleSelect(m.id)}
                     disabled={!canSelectMandor(m)}
-                    className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors ${
-                      selectedIds.has(m.id)
+                    className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors ${selectedIds.has(m.id)
                         ? "border-[#7395b1] bg-[#f0f5f8] ring-2 ring-[#7395b1]/15"
                         : canSelectMandor(m)
                           ? "border-[#e7ebef] hover:bg-slate-50"
                           : "cursor-not-allowed border-[#e7ebef] bg-slate-50 opacity-50"
-                    }`}
+                      }`}
                   >
                     <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[#d8e3eb] bg-[#eaf1f6] text-[10px] font-bold text-[#355973]">
                       {m.full_name.slice(0, 2).toUpperCase()}
@@ -342,11 +347,10 @@ function MandorAllocationModal({
                       )}
                     </span>
                     <span
-                      className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border text-[10px] font-bold ${
-                        selectedIds.has(m.id)
+                      className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border text-[10px] font-bold ${selectedIds.has(m.id)
                           ? "border-[#477ba6] bg-[#477ba6] text-white"
                           : "border-slate-300"
-                      }`}
+                        }`}
                     >
                       {selectedIds.has(m.id) ? "✓" : ""}
                     </span>
@@ -419,6 +423,15 @@ export default function PengawasDashboard() {
   const [query, setQuery] = useState("");
   const [selectedProject, setSelectedProject] =
     useState<ProjectForPengawas | null>(null);
+  const [officialProgress, setOfficialProgress] = useState<
+    Record<string, number | null>
+  >({});
+  const [contractProject, setContractProject] =
+    useState<SupervisorProject | null>(null);
+  const [contractLoadingId, setContractLoadingId] = useState<string | null>(
+    null,
+  );
+  const [contractError, setContractError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     const supabase = createClient();
@@ -435,6 +448,16 @@ export default function PengawasDashboard() {
       const [projectsData, mandorsData] = await fetchData();
       setProjects(projectsData);
       setAllMandors(mandorsData);
+      const progressProjects =
+        await getPengawasProgressProjects(createClient());
+      setOfficialProgress(
+        Object.fromEntries(
+          progressProjects.map((project) => [
+            project.id,
+            project.overallProgress,
+          ]),
+        ),
+      );
     } catch (err) {
       if (err instanceof ServiceError) {
         setError(err.message);
@@ -450,10 +473,20 @@ export default function PengawasDashboard() {
     let active = true;
 
     fetchData()
-      .then(([projectsData, mandorsData]) => {
+      .then(async ([projectsData, mandorsData]) => {
         if (!active) return;
         setProjects(projectsData);
         setAllMandors(mandorsData);
+        const progressProjects =
+          await getPengawasProgressProjects(createClient());
+        setOfficialProgress(
+          Object.fromEntries(
+            progressProjects.map((project) => [
+              project.id,
+              project.overallProgress,
+            ]),
+          ),
+        );
       })
       .catch((err: unknown) => {
         if (!active) return;
@@ -497,9 +530,7 @@ export default function PengawasDashboard() {
     newMandors: AllocatedMandor[],
   ) => {
     setProjects((curr) =>
-      curr.map((p) =>
-        p.id === projectId ? { ...p, mandors: newMandors } : p,
-      ),
+      curr.map((p) => (p.id === projectId ? { ...p, mandors: newMandors } : p)),
     );
     // Also update selectedProject so the modal reflects latest state
     if (selectedProject?.id === projectId) {
@@ -517,6 +548,34 @@ export default function PengawasDashboard() {
           : project,
       ),
     );
+    const finalized = projects.find((project) => project.id === projectId);
+    if (finalized)
+      void openSupervisorContract({
+        ...finalized,
+        status: "finalisasi_kontrak",
+      });
+  };
+
+  const openSupervisorContract = async (project: ProjectForPengawas) => {
+    setContractLoadingId(project.id);
+    setContractError(null);
+    try {
+      const response = await fetch(`/api/pengawas/projects/${project.id}`, {
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        const result = (await response.json()) as { message?: string };
+        throw new Error(result.message || "Gagal memuat kontrak proyek.");
+      }
+      const detail = (await response.json()) as SupervisorProject;
+      setContractProject(detail);
+    } catch (err) {
+      setContractError(
+        err instanceof Error ? err.message : "Gagal membuka kontrak.",
+      );
+    } finally {
+      setContractLoadingId(null);
+    }
   };
 
   if (loading) {
@@ -654,50 +713,103 @@ export default function PengawasDashboard() {
                         : ""}
                     </p>
                   </div>
-                  <Link
-                    href={`/pengawas/proyek/${project.id}`}
-                    className="inline-flex h-10 shrink-0 items-center justify-center rounded-lg border border-[#cfdce6] px-4 text-xs font-semibold text-[#355c78] hover:bg-[#f3f7fa] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#477ba6]"
-                  >
-                    Buka detail
-                  </Link>
-                </div>
-
-                {/* Mandor section */}
-                <div className="border-t border-[#edf0f3] bg-[#fafbfc] px-5 py-4 sm:px-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                        Tim Mandor ({project.mandors.length})
-                      </p>
-                      {project.mandors.length > 0 ? (
-                        <div className="mt-1.5 flex flex-wrap gap-1.5">
-                          {project.mandors.map((m) => (
-                            <span
-                              key={m.mandor_id}
-                              className="inline-flex items-center gap-1 rounded-full border border-[#d8e3eb] bg-[#eaf1f6] px-2.5 py-1 text-[10px] font-semibold text-[#355973]"
-                            >
-                              {m.full_name}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="mt-1 text-xs text-slate-400 italic">
-                          Belum ada mandor dialokasikan
-                        </p>
-                      )}
-                    </div>
+                  {canAllocateStaff(project.status) ? (
                     <button
                       id={`kelola-mandor-${project.id}`}
                       onClick={() => setSelectedProject(project)}
-                      disabled={!canAllocateStaff(project.status)}
-                      className="ml-3 shrink-0 rounded-lg border border-[#183b57] px-3 py-2 text-[11px] font-semibold text-[#183b57] hover:bg-[#183b57] hover:text-white transition-colors"
+                      className="inline-flex h-10 shrink-0 items-center justify-center rounded-lg border border-[#183b57] px-4 text-xs font-semibold text-[#183b57] transition-colors hover:bg-[#183b57] hover:text-white"
                     >
-                      {!canAllocateStaff(project.status)
-                        ? "Menunggu verifikasi kontrak"
-                        : project.mandors.length === 0
-                          ? "Alokasikan Mandor"
-                          : "Kelola Mandor"}
+                      {project.mandors.length === 0
+                        ? "Alokasikan Mandor"
+                        : "Kelola Mandor"}
                     </button>
+                  ) : project.status === "finalisasi_kontrak" ? (
+                    <button
+                      type="button"
+                      onClick={() => void openSupervisorContract(project)}
+                      disabled={contractLoadingId === project.id}
+                      className="inline-flex h-10 shrink-0 items-center justify-center rounded-lg bg-[#183b57] px-4 text-xs font-semibold text-white hover:bg-[#234f70] disabled:opacity-50"
+                    >
+                      {contractLoadingId === project.id
+                        ? "Memuat kontrak…"
+                        : project.supervisorSignedAt
+                          ? "Lihat kontrak"
+                          : "Tanda tangani kontrak"}
+                    </button>
+                  ) : project.status === "berjalan" ||
+                    project.status === "selesai" ? (
+                    <Link
+                      href={`/pengawas/proyek/${project.id}`}
+                      className="inline-flex h-10 shrink-0 items-center justify-center rounded-lg border border-[#cfdce6] px-4 text-xs font-semibold text-[#355c78] hover:bg-[#f3f7fa] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#477ba6]"
+                    >
+                      Buka detail
+                    </Link>
+                  ) : (
+                    <span className="inline-flex h-10 shrink-0 items-center justify-center rounded-lg border border-[#e8d8ae] bg-[#fffaf0] px-4 text-center text-xs font-semibold text-[#946a27]">
+                      Tracking menunggu pembayaran DP
+                    </span>
+                  )}
+                </div>
+
+                {/* Sub-grid 4 Kolom dari ui-old */}
+                <div className="grid grid-cols-2 gap-y-4 border-t border-[#edf0f3] bg-[#fafbfc] px-5 py-4 sm:grid-cols-4 sm:px-6">
+                  <div>
+                    <p className="text-[9px] text-slate-500">Customer</p>
+                    <p className="mt-1 truncate text-xs font-semibold text-slate-700">
+                      {project.customer_name}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-slate-500">Progres resmi</p>
+                    <p className="mt-1 text-xs font-semibold text-slate-700">
+                      {officialProgress[project.id] !== undefined
+                        ? `${officialProgress[project.id]}%`
+                        : "0%"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-slate-500">Tim Mandor</p>
+                    <div className="mt-1 flex flex-wrap items-center gap-1">
+                      {project.mandors.length > 0 ? (
+                        project.mandors.map((m) => (
+                          <span
+                            key={m.mandor_id}
+                            className="inline-block truncate text-xs font-semibold text-slate-700"
+                            title={m.full_name}
+                          >
+                            {m.full_name}
+                          </span>
+                        ))
+                      ) : (
+                        <p className="truncate text-xs font-semibold text-slate-700">
+                          Belum ditetapkan
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-slate-500">Status proyek</p>
+                    <p className="mt-1 truncate text-xs font-semibold text-slate-700">
+                      {STATUS_LABEL[project.status] ?? project.status}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Progress bar keseluruhan dari ui-old */}
+                <div className="px-5 pb-5 sm:px-6">
+                  <div className="flex items-center justify-between text-[10px] text-slate-500">
+                    <span>Progres keseluruhan</span>
+                    <span>
+                      {officialProgress[project.id] !== undefined
+                        ? `${officialProgress[project.id]}%`
+                        : "0%"}
+                    </span>
+                  </div>
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#e9edf2]">
+                    <span
+                      className="block h-full rounded-full bg-[#5e83a0]"
+                      style={{ width: `${officialProgress[project.id] ?? 0}%` }}
+                    />
                   </div>
                 </div>
               </article>
@@ -721,6 +833,31 @@ export default function PengawasDashboard() {
         Data diambil langsung dari database. Alokasi mandor tersimpan secara
         permanen dan terlihat setelah refresh.
       </footer>
+
+      {contractError && (
+        <div
+          role="alert"
+          className="fixed bottom-5 right-5 z-[90] max-w-md rounded-xl border border-red-200 bg-white px-5 py-4 text-sm font-medium text-red-800 shadow-xl"
+        >
+          {contractError}
+          <button
+            type="button"
+            onClick={() => setContractError(null)}
+            className="ml-3 underline"
+          >
+            Tutup
+          </button>
+        </div>
+      )}
+      {contractProject && (
+        <SupervisorContractModal
+          project={contractProject}
+          onClose={() => {
+            setContractProject(null);
+            void load();
+          }}
+        />
+      )}
 
       {/* Mandor Allocation Modal */}
       {selectedProject && (

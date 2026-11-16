@@ -1,0 +1,11 @@
+input_way2home,padanan_di_dataset_eksternal,kualitas_padanan
+kategori,Aceh X1–X10 (kelompok faktor); construction_projects material/weather delay & safety_incidents; Aljazair Material/Equipment/Weather/Supplier,Sedang — perlu enum kategori Way2Home
+deskripsi,—,Tidak ada padanan (tidak ada teks bebas)
+kondisi_pekerjaan,—,Tidak ada padanan
+dampak_waktu_hari,"construction_projects material_delay_days, weather_delay_days","Lemah–sedang: agregat proyek, bukan per kendala"
+informasi_tambahan,—,Tidak ada padanan
+nama_tahap,project_risk_raw Project_Phase (Initiation/Planning/Execution…),Lemah: bukan tahap konstruksi rumah
+judul_subtask,—,Tidak ada padanan
+bobot_subtask,—,Tidak ada padanan
+nama_desain,—,Tidak ada padanan
+status_proyek,construction_projects completion_percentage; Aljazair Project_Progress_Percent,Lemah: perlu enum status Way2Home

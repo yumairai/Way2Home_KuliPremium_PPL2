@@ -96,7 +96,12 @@ function getMilestone(project: Project): Record<MilestoneKey, Step> {
       tim: step("completed", "Tim dialokasikan"),
       kontrak: contractAgreed
         ? step("completed", "Kontrak disetujui")
-        : step("active", "Menunggu tanda tangan"),
+        : step(
+            "active",
+            project.contract.id
+              ? "Menunggu tanda tangan"
+              : "Kontrak sedang disiapkan",
+          ),
       dp: step("pending", "Menunggu kontrak"),
       aktif: step("pending", "Belum dimulai"),
       selesai: step("pending", "Belum dimulai"),
@@ -136,6 +141,7 @@ function getMilestone(project: Project): Record<MilestoneKey, Step> {
 }
 
 const CONTRACT_STATUS_LABEL: Record<ContractStatus, string> = {
+  belum_tersedia: "Belum Terbit",
   menunggu: "Menunggu Tanda Tangan",
   disetujui: "Disetujui",
   ditolak: "Ditolak",
@@ -144,6 +150,7 @@ const CONTRACT_STATUS_LABEL: Record<ContractStatus, string> = {
 };
 
 const CONTRACT_STATUS_STYLE: Record<ContractStatus, string> = {
+  belum_tersedia: "bg-[#f1f5f9] text-[#475569] border-[#cbd5e1]",
   menunggu: "bg-[#eef5ff] text-[#004796] border-[#8fb9ed]",
   disetujui: "bg-[#ecfdf5] text-[#065f46] border-[#a7f3d0]",
   ditolak: "bg-[#fef2f2] text-[#991b1b] border-[#fecaca]",
@@ -274,31 +281,32 @@ export default function MilestoneSidebar({ project }: { project: Project }) {
         </div>
       </div>
 
-      {(contractStatus === "disetujui" ||
-        contractStatus === "ditolak" ||
-        contractStatus === "revisi") && (
-        <button
-          type="button"
-          onClick={() => setContractOpen(true)}
-          className="flex items-center justify-center gap-3 rounded-full border border-[#dbe4f2] bg-white px-6 py-4 text-sm font-bold text-[#004796] transition hover:-translate-y-0.5 hover:border-[#8fb9ed] hover:shadow-lg active:scale-95"
-        >
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
+      {project.contract.id &&
+        (contractStatus === "disetujui" ||
+          contractStatus === "ditolak" ||
+          contractStatus === "revisi") && (
+          <button
+            type="button"
+            onClick={() => setContractOpen(true)}
+            className="flex items-center justify-center gap-3 rounded-full border border-[#dbe4f2] bg-white px-6 py-4 text-sm font-bold text-[#004796] transition hover:-translate-y-0.5 hover:border-[#8fb9ed] hover:shadow-lg active:scale-95"
           >
-            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-            <circle cx="12" cy="12" r="3" />
-          </svg>
-          Lihat Kontrak
-        </button>
-      )}
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            Lihat Kontrak
+          </button>
+        )}
 
       <div className="rounded-[1.5rem] bg-gradient-to-br from-[#004796] to-[#045ec2] p-6 text-white shadow-[0_16px_36px_rgba(0,71,150,0.35)]">
         <div className="flex items-center gap-2 text-sm font-bold">

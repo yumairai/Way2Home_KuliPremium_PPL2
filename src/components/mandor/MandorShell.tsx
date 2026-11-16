@@ -1,66 +1,71 @@
-"use client";
+﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { logout as logoutUser } from "@/services/auth.service";
+import { apiGet, apiPost } from "@/lib/api";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { clearDemoRole, useDemoRole } from "@/utils/demo-auth";
-import { createClient } from "@/utils/supabase/client";
-import { getMandorProjects, getMandorStatus } from "@/services/mandor.service";
 import {
+  initialMandorRegistration,
   type MandorRegistrationStatus,
 } from "@/data/mandor";
 
-const demoStatusKey = "way2home-mandor-registration-status";
-const demoReasonKey = "way2home-mandor-rejection-reason";
+type RegistrationStatus = {
+  status: MandorRegistrationStatus;
+  reason: string | null;
+};
 
+/**
+ * Status verifikasi pendaftaran mandor, dibaca langsung dari
+ * `mandor_profiles.status` + `mandor_profiles.catatan_verifikasi`.
+ *
+ * `resubmit()` mengajukan ulang pendaftaran (status kembali ke pending).
+ */
 export function useMandorStatus() {
-  const [status, setStatus] = useState<MandorRegistrationStatus>(() => {
-    if (typeof window === "undefined") return "Menunggu";
-    const saved = window.sessionStorage.getItem(demoStatusKey);
-    return saved === "Menunggu" || saved === "Disetujui" || saved === "Ditolak"
-      ? saved
-      : "Menunggu";
-  });
-  const [reason, setReason] = useState(() => {
-    if (typeof window === "undefined") return "";
-    return window.sessionStorage.getItem(demoReasonKey) ?? "";
-  });
-  const [loaded, setLoaded] = useState(false);
+  const [status, setStatus] = useState<MandorRegistrationStatus>("Menunggu");
+  const [reason, setReason] = useState<string>(
+    initialMandorRegistration.rejectionReason,
+  );
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const supabase = createClient();
-    getMandorStatus(supabase)
-      .then((res) => {
-        setStatus(res.status);
-        if (res.reason) setReason(res.reason);
-        setLoaded(true);
-      })
-      .catch((err) => {
-        console.error("[useMandorStatus] error fetching status:", err);
-        setLoaded(true);
-      });
+  const resubmit = useCallback(async () => {
+    try {
+      const result = await apiPost<{ status: MandorRegistrationStatus }>(
+        "/api/mandor/registration",
+      );
+      setStatus(result.status);
+      setReason(initialMandorRegistration.rejectionReason);
+    } catch (error) {
+      console.error("[useMandorStatus] resubmit:", error);
+    }
   }, []);
 
-  const setDemoStatus = (
-    next: MandorRegistrationStatus,
-    nextReason = reason,
-  ) => {
-    window.sessionStorage.setItem(demoStatusKey, next);
-    window.sessionStorage.setItem(demoReasonKey, nextReason);
-    setStatus(next);
-    setReason(nextReason);
-  };
-  return { status, reason, setDemoStatus, loaded };
-}
+  useEffect(() => {
+    let active = true;
 
-function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (!parts.length) return "M";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    apiGet<RegistrationStatus>("/api/mandor/registration")
+      .then((result) => {
+        if (!active) return;
+        setStatus(result.status);
+        setReason(result.reason ?? initialMandorRegistration.rejectionReason);
+      })
+      .catch((error) => {
+        if (!active) return;
+        console.error("[useMandorStatus]", error);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  return { status, reason, loading, resubmit };
 }
 
 export default function MandorShell({
@@ -75,18 +80,6 @@ export default function MandorShell({
   const { status } = useMandorStatus();
   const [drawer, setDrawer] = useState(false);
   const [leaving, setLeaving] = useState(false);
-  const [projectCount, setProjectCount] = useState<number>(0);
-
-  useEffect(() => {
-    const supabase = createClient();
-    getMandorProjects(supabase)
-      .then((projects) => setProjectCount(projects.length))
-      .catch(() => setProjectCount(0));
-  }, []);
-
-  const displayName = user?.fullName || (demoRole ? "Mandor Demo" : "Mandor");
-  const displayInitials = getInitials(displayName);
-
   useEffect(() => {
     if (demoRole) {
       if (demoRole !== "mandor")
@@ -156,19 +149,16 @@ export default function MandorShell({
             className={`flex h-11 items-center gap-3 rounded-xl px-3 text-sm ${pathname.startsWith("/mandor/proyek") ? "border border-white/10 bg-white/10 font-semibold text-white" : "text-slate-300 hover:bg-white/[.06]"}`}
           >
             Proyek
-            <span className="ml-auto rounded-md bg-white/10 px-2 py-0.5 text-[10px]">
-              {projectCount}
-            </span>
           </Link>
         </nav>
       </div>
       <div className="mt-auto border-t border-white/10 p-4">
         <div className="flex items-center gap-3 rounded-xl bg-white/[.06] p-3">
           <span className="grid h-9 w-9 place-items-center rounded-full bg-[#d6e5f2] text-xs font-bold text-[#17344e]">
-            {displayInitials}
+            BS
           </span>
           <span className="min-w-0 flex-1">
-            <b className="block truncate text-xs">{displayName}</b>
+            <b className="block truncate text-xs">Bima Saputra</b>
             <small className="text-[10px] text-slate-400">Mandor</small>
           </span>
         </div>

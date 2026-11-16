@@ -1,0 +1,7 @@
+task,model,peran,metrik,nilai_test,ci95_low,ci95_high,mengungguli_dummy_signifikan
+risk_classification,Random Forest (tuned),terbaik,Macro F1,0.6357159164176708,0.6011097853092693,0.6679165664628013,True
+risk_classification,Dummy (most frequent) (default),dummy,Macro F1,0.23150565709312446,0.2228140257434532,0.2398634229620145,
+delay_regression,HistGradientBoosting (sklearn) (tuned),terbaik,MAE,4.155567051410158,3.9331916652407917,4.3665279164019,True
+delay_regression,Dummy (mean) (default),dummy,MAE,6.458284000000001,6.1493406,6.7553837,
+cost_prediction,Linear Regression (default),terbaik,MAE,0.061096410832130035,0.05804045712661458,0.06398582357162672,False
+cost_prediction,Dummy (mean) (default),dummy,MAE,0.063810909251824,0.060794338188782264,0.06677231661659062,

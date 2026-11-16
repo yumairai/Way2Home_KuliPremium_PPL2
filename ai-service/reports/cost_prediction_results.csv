@@ -1,0 +1,9 @@
+task,model,variant,role,status,cv_MAE_mean,cv_MAE_std,test_MAE,test_RMSE,test_R2,test_MedianAE,best_params,fit_seconds,note,is_best
+cost_prediction,Dummy (mean),default,rujukan naif,OK,0.06125459814066425,0.0012858762781087132,0.063810909251824,0.08042815038668684,-0.0001487378539579698,0.05371652438633041,{},0.3,,False
+cost_prediction,Linear Regression,default,baseline,OK,0.05949043062684491,0.0009792772170085875,0.061096410832130035,0.07770768828013573,0.06636654094491512,0.05220811461405052,{},0.3,,True
+cost_prediction,Random Forest,default,kandidat,OK,0.06106854260887658,0.0007151900406572823,0.06201167302857732,0.07846110023624188,0.04817476168039636,0.05037625915185247,{},21.0,,False
+cost_prediction,Random Forest,tuned,kandidat,OK,0.05971882609789249,0.0009563693231930139,0.06160492254435982,0.07817170944505006,0.05518311315852609,0.05336268195065966,"{""n_estimators"": 200, ""min_samples_leaf"": 10, ""max_features"": ""sqrt"", ""max_depth"": 6}",52.0,,False
+cost_prediction,HistGradientBoosting (sklearn),default,kandidat tambahan,OK,0.060857419787992736,0.0007953228621419636,0.06219810084694237,0.07877342507673075,0.04058194578921226,0.051744947926259444,{},1.3,,False
+cost_prediction,HistGradientBoosting (sklearn),tuned,kandidat tambahan,OK,0.06000783022209192,0.0008313323809799826,0.06167516772631646,0.07829029152871544,0.05231447093848396,0.052513752982737645,"{""min_samples_leaf"": 20, ""max_leaf_nodes"": 15, ""max_iter"": 150, ""loss"": ""absolute_error"", ""learning_rate"": 0.03, ""l2_regularization"": 0.0}",10.3,,False
+cost_prediction,XGBoost,-,kandidat,SKIPPED,,,,,,,,,library xgboost NOT INSTALLED,False
+cost_prediction,CatBoost,-,kandidat,SKIPPED,,,,,,,,,library catboost NOT INSTALLED,False

@@ -1,28 +1,21 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
-  supervisorProjects,
   verifiedForemen,
+  type IssueResolution,
   type SupervisorIssue,
   type SupervisorProject,
   type SupervisorReport,
   type VerifiedForeman,
 } from "@/data/pengawas";
 import SupervisorContractModal from "@/components/pengawas/SupervisorContractModal";
-import {
-  addDocumentationItem,
-  addIssueResolution,
-  addSyncedReport,
-  compressImage,
-  persistIssueFollowUp,
-  updateIssueResolution,
-  updateSyncedReportDecision,
-  useProjectSync,
-  type IssueResolution,
-} from "@/utils/project-events";
+import { useSupervisorProject } from "@/hooks/useSupervisorProject";
+import { errorMessage, apiGet, apiPatch, apiPost, apiPut } from "@/lib/api";
+import { compressImage } from "@/utils/image";
 import type { MandorIssueReport } from "@/data/mandor";
+import type { IssueAiAnalysisResult } from "@/services/ai-kendala.service";
 
 const money = (value: number) =>
   new Intl.NumberFormat("id-ID", {
@@ -74,19 +67,68 @@ function AssignmentDialog({
 }: {
   project: SupervisorProject;
   onClose: () => void;
-  onAssign: (foremen: VerifiedForeman[]) => void;
+  onAssign: (selectedIds: string[]) => Promise<void> | void;
 }) {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
+  const [mandors, setMandors] = useState<VerifiedForeman[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [assignError, setAssignError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    apiGet<
+      {
+        id: string;
+        full_name: string;
+        phone: string | null;
+        keahlian: string[];
+        area_kerja: string | null;
+        pengalaman_tahun: number | null;
+      }[]
+    >("/api/pengawas/mandors")
+      .then((data) => {
+        if (!active) return;
+        if (data && data.length > 0) {
+          setMandors(
+            data.map((m) => ({
+              id: m.id,
+              name: m.full_name,
+              specialties: m.keahlian,
+              experience: m.pengalaman_tahun ?? 0,
+              area: m.area_kerja ?? "Jabodetabek",
+              portfolio: `${m.pengalaman_tahun ?? 5} tahun pengerjaan konstruksi`,
+              phone: m.phone ?? "-",
+              verified: true,
+            })),
+          );
+        } else {
+          setMandors(verifiedForemen);
+        }
+      })
+      .catch(() => {
+        if (!active) return;
+        setMandors(verifiedForemen);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const assignedNames =
     project.foremen ?? (project.foreman ? [project.foreman] : []);
   const assignedIds = new Set(
     assignedNames
-      .map((name) => verifiedForemen.find((item) => item.name === name)?.id)
+      .map((name) => mandors.find((item) => item.name === name)?.id)
       .filter((id): id is string => Boolean(id)),
   );
   const remaining = Math.max(0, 3 - assignedNames.length);
-  const available = verifiedForemen.filter(
+  const available = mandors.filter(
     (foreman) =>
       foreman.verified &&
       !assignedIds.has(foreman.id) &&
@@ -202,7 +244,12 @@ function AssignmentDialog({
                 </article>
               );
             })}
-            {available.length === 0 && (
+            {loading && (
+              <p className="py-8 text-center text-xs text-slate-500">
+                Memuat daftar mandor terverifikasi...
+              </p>
+            )}
+            {!loading && available.length === 0 && (
               <p className="py-8 text-center text-xs text-slate-500">
                 {remaining === 0
                   ? "Batas tiga mandor sudah tercapai."
@@ -211,28 +258,42 @@ function AssignmentDialog({
             )}
           </div>
         </div>
-        <footer className="flex justify-end gap-2 border-t border-[#e8edf1] bg-[#fafbfc] px-5 py-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="h-10 rounded-lg border border-[#dfe6ed] px-4 text-xs font-semibold text-slate-600"
-          >
-            Batal
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              onAssign(
-                verifiedForemen.filter((foreman) =>
-                  selected.includes(foreman.id),
-                ),
-              )
-            }
-            disabled={selected.length === 0}
-            className="h-10 rounded-lg bg-[#183b57] px-4 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45"
-          >
-            Tambahkan {selected.length || ""} mandor
-          </button>
+        <footer className="flex items-center justify-between border-t border-[#e8edf1] bg-[#fafbfc] px-5 py-4">
+          {assignError ? (
+            <p className="text-xs text-red-600 font-medium">{assignError}</p>
+          ) : (
+            <span />
+          )}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              className="h-10 rounded-lg border border-[#dfe6ed] px-4 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                setSubmitting(true);
+                setAssignError("");
+                try {
+                  await onAssign(selected);
+                } catch (e) {
+                  setAssignError(errorMessage(e, "Gagal menugaskan mandor."));
+                } finally {
+                  setSubmitting(false);
+                }
+              }}
+              disabled={selected.length === 0 || submitting}
+              className="h-10 rounded-lg bg-[#183b57] px-4 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              {submitting
+                ? "Menyimpan..."
+                : `Tambahkan ${selected.length || ""} mandor`}
+            </button>
+          </div>
         </footer>
       </section>
     </div>
@@ -338,16 +399,30 @@ function IssueWorkflow({
   projectId,
   customerName,
   onNotify,
+  resolution,
+  onPersist,
 }: {
   issue: SupervisorIssue;
   report?: MandorIssueReport;
   projectId: string;
   customerName: string;
   onNotify: (message: string) => void;
+  resolution?: IssueResolution;
+  onPersist: (
+    next: IssueResolution,
+    opts?: {
+      followUp?: string;
+      discussion?: { author: "Pengawas" | "Customer"; message: string };
+      /** True bila keputusan final: kendala langsung ditutup di database. */
+      final?: boolean;
+    },
+  ) => void | Promise<void>;
+  onPatch?: (next: IssueResolution) => void;
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [mode, setMode] = useState<"manual" | "ai" | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiData, setAiData] = useState<IssueAiAnalysisResult | null>(null);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [solution, setSolution] = useState("");
   const [requiresApproval, setRequiresApproval] = useState(false);
@@ -355,31 +430,57 @@ function IssueWorkflow({
   const [evidence, setEvidence] = useState<string | null>(null);
   const [evidenceName, setEvidenceName] = useState("");
   const [discussionReply, setDiscussionReply] = useState("");
-  const sync = useProjectSync();
-  const resolution = sync.resolutions.find((item) => item.issueId === issue.id);
   const aiOptions = [
     "Koordinasikan pengiriman material pengganti dari pemasok lain, sambil melanjutkan pekerjaan pada area yang tidak terdampak.",
     "Atur ulang urutan pekerjaan untuk sementara dan minta mandor memperbarui jadwal harian setelah material tersedia.",
     "Ajukan material dengan spesifikasi setara sebagai alternatif. Perubahan ini memerlukan persetujuan customer sebelum pembelian.",
   ];
 
-  const runAiAnalysis = () => {
+  const runAiAnalysis = async () => {
     setMode("ai");
     setAiLoading(true);
     setSelectedOption(null);
-    window.setTimeout(() => setAiLoading(false), 850);
+    try {
+      const res = await apiPost<{
+        success: boolean;
+        analysis: IssueAiAnalysisResult;
+      }>(`/api/pengawas/kendala/${issue.id}/ai-analysis`);
+      if (res?.analysis) {
+        setAiData(res.analysis);
+      }
+    } catch (error) {
+      onNotify(
+        errorMessage(
+          error,
+          "Gagal menjalankan analisis AI, menggunakan rekomendasi standar.",
+        ),
+      );
+    } finally {
+      setAiLoading(false);
+    }
   };
   const selectAiOption = (index: number) => {
     setSelectedOption(index);
-    setSolution(aiOptions[index]);
-    setRequiresApproval(index === 2);
-    setApprovalReason(
-      index === 2
-        ? "Penggantian material dengan spesifikasi alternatif dapat mengubah biaya dan perlu persetujuan customer."
-        : "",
-    );
+    if (aiData?.recommended_options?.[index]) {
+      const rec = aiData.recommended_options[index];
+      setSolution(rec.description);
+      setRequiresApproval(rec.requires_approval);
+      setApprovalReason(
+        rec.requires_approval
+          ? `Perubahan ini berpotensi mengubah biaya (${rec.cost_impact}) dan memerlukan persetujuan customer.`
+          : "",
+      );
+    } else {
+      setSolution(aiOptions[index]);
+      setRequiresApproval(index === 2);
+      setApprovalReason(
+        index === 2
+          ? "Penggantian material dengan spesifikasi alternatif dapat mengubah biaya dan perlu persetujuan customer."
+          : "",
+      );
+    }
   };
-  const submitResolution = () => {
+  const submitResolution = async () => {
     if (!solution.trim() || (requiresApproval && !approvalReason.trim()))
       return;
     const now = new Date().toLocaleString("id-ID", {
@@ -396,10 +497,16 @@ function IssueWorkflow({
       aiAnalysis:
         mode === "ai"
           ? {
-            summary: `Berdasarkan laporan mandor, kendala pada ${report?.affectedSubtaskTitle ?? issue.title} berada dalam kondisi ${report?.workCondition === "BERHENTI" ? "berhenti total" : report?.workCondition === "TERHAMBAT_SEBAGIAN" ? "terhambat sebagian" : "masih dapat berjalan"}${report ? ` dengan estimasi dampak keterlambatan sekitar ${report.estimatedDelayDays} hari` : ""}. Prioritaskan pekerjaan yang tidak terdampak dan pastikan spesifikasi material sesuai sebelum pekerjaan dilanjutkan. Opsi perubahan material atau biaya perlu persetujuan customer terlebih dahulu.`,
-            options: aiOptions,
-            selectedOption,
-          }
+              summary:
+                aiData?.summary ??
+                `Berdasarkan laporan mandor, kendala pada ${report?.affectedSubtaskTitle ?? issue.title} berada dalam kondisi ${report?.workCondition === "BERHENTI" ? "berhenti total" : report?.workCondition === "TERHAMBAT_SEBAGIAN" ? "terhambat sebagian" : "masih dapat berjalan"}${report ? ` dengan estimasi dampak keterlambatan sekitar ${report.estimatedDelayDays} hari` : ""}. Prioritaskan pekerjaan yang tidak terdampak dan pastikan spesifikasi material sesuai sebelum pekerjaan dilanjutkan. Opsi perubahan material atau biaya perlu persetujuan customer terlebih dahulu.`,
+              options: aiData
+                ? aiData.recommended_options.map(
+                    (r) => `${r.title}: ${r.description} (${r.cost_impact})`,
+                  )
+                : aiOptions,
+              selectedOption,
+            }
           : null,
       status: requiresApproval
         ? "Menunggu approval customer"
@@ -411,73 +518,54 @@ function IssueWorkflow({
       discussion: [],
       submitted: now,
     };
-    addIssueResolution(next);
-    if (!requiresApproval) persistIssueFollowUp(issue.id, next.solution);
-    onNotify(
-      requiresApproval
-        ? "Usulan dikirim. Kendala menunggu persetujuan customer."
-        : "Solusi dikirim ke mandor dan status kendala diperbarui.",
-    );
+    try {
+      await onPersist(
+        next,
+        requiresApproval ? undefined : { followUp: next.solution },
+      );
+      onNotify(
+        requiresApproval
+          ? "Usulan dikirim. Kendala menunggu persetujuan customer."
+          : "Solusi dikirim ke mandor dan status kendala diperbarui.",
+      );
+    } catch (error) {
+      onNotify(errorMessage(error, "Gagal menyimpan penanganan kendala."));
+    }
   };
-  const customerDecision = (approved: boolean) => {
-    if (!resolution) return;
-    const feedback = approved
-      ? "Usulan disetujui customer."
-      : resolution.customerFeedback.trim();
-    if (!approved && !feedback) return;
-    const next = {
-      ...resolution,
-      status: approved
-        ? ("Ditindaklanjuti" as const)
-        : ("Diskusi dengan pengawas" as const),
-      customerFeedback: approved
-        ? feedback
-        : resolution.customerFeedback.trim(),
-      discussion: [
-        ...resolution.discussion,
-        {
-          id: crypto.randomUUID(),
-          author: "Customer" as const,
-          message: feedback,
-          date: new Date().toLocaleString("id-ID", {
-            dateStyle: "medium",
-            timeStyle: "short",
-          }),
-        },
-      ],
+  const sendDiscussion = async () => {
+    if (!resolution || !discussionReply.trim()) return;
+    const entry = {
+      author: "Pengawas" as const,
+      message: discussionReply.trim(),
+      date: new Date().toLocaleString("id-ID", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }),
     };
-    updateIssueResolution(next);
-    if (approved) {
-      persistIssueFollowUp(issue.id, resolution.solution);
-      onNotify("Customer menyetujui usulan. Keputusan diteruskan ke mandor.");
-    } else onNotify("Alasan penolakan diteruskan ke pengawas untuk diskusi.");
-  };
-  const sendDiscussion = () => {
-    if (!resolution || !discussionReply.trim()) return;
-    updateIssueResolution({
-      ...resolution,
-      solution: discussionReply.trim(),
-      status: "Menunggu approval customer",
-      customerFeedback: "",
-      discussion: [
-        ...resolution.discussion,
+    try {
+      await onPersist(
         {
-          id: crypto.randomUUID(),
-          author: "Pengawas",
-          message: discussionReply.trim(),
-          date: new Date().toLocaleString("id-ID", {
-            dateStyle: "medium",
-            timeStyle: "short",
-          }),
+          ...resolution,
+          solution: discussionReply.trim(),
+          status: "Menunggu approval customer",
+          customerFeedback: "",
+          discussion: [
+            ...resolution.discussion,
+            { ...entry, id: crypto.randomUUID() },
+          ],
         },
-      ],
-    });
-    setDiscussionReply("");
-    onNotify("Tanggapan pengawas dikirim kembali ke customer.");
+        { discussion: { author: entry.author, message: entry.message } },
+      );
+      setDiscussionReply("");
+      onNotify("Tanggapan pengawas dikirim kembali ke customer.");
+    } catch (error) {
+      onNotify(errorMessage(error, "Gagal mengirim tanggapan."));
+    }
   };
-  const finalizeDiscussion = () => {
+  const finalizeDiscussion = async () => {
     if (!resolution || !discussionReply.trim()) return;
-    const finalResolution = {
+    const message = `Keputusan final: ${discussionReply.trim()}`;
+    const finalResolution: IssueResolution = {
       ...resolution,
       solution: discussionReply.trim(),
       discussion: [
@@ -485,7 +573,7 @@ function IssueWorkflow({
         {
           id: crypto.randomUUID(),
           author: "Pengawas" as const,
-          message: `Keputusan final: ${discussionReply.trim()}`,
+          message,
           date: new Date().toLocaleString("id-ID", {
             dateStyle: "medium",
             timeStyle: "short",
@@ -493,10 +581,17 @@ function IssueWorkflow({
         },
       ],
     };
-    updateIssueResolution(finalResolution);
-    persistIssueFollowUp(issue.id, finalResolution.solution);
-    setDiscussionReply("");
-    onNotify("Keputusan final dikirim ke mandor dan dicatat untuk customer.");
+    try {
+      await onPersist(finalResolution, {
+        discussion: { author: "Pengawas", message },
+        followUp: finalResolution.solution,
+        final: true,
+      });
+      setDiscussionReply("");
+      onNotify("Keputusan final dikirim ke mandor dan dicatat untuk customer.");
+    } catch (error) {
+      onNotify(errorMessage(error, "Gagal menyimpan keputusan final."));
+    }
   };
 
   const isFollowedUp =
@@ -741,10 +836,16 @@ function IssueWorkflow({
               </div>
             )}
             {resolution.status === "Menunggu approval customer" && (
-              <div className="mt-3 rounded-lg bg-[#fff6e8] p-3 text-xs text-[#8b6527]">
-                Ini simulasi ceritanya cust setuju atau engga, nanti kalo BE
-                udah jadi si simulasi setuju cust diapus ya , hubungin ke customer tracking buat setuju/ngga nya
-                ya.
+              <div className="mt-3 rounded-lg border border-[#edd9b4] bg-[#fffaf0] p-3 text-xs text-[#875d1e]">
+                <div className="flex items-center gap-2 font-semibold">
+                  <span>⏳</span>
+                  <span>Menunggu Keputusan Customer ({customerName})</span>
+                </div>
+                <p className="mt-1 text-[11px] leading-5 text-slate-600">
+                  Usulan penanganan ini telah dikirim ke portal tracking
+                  customer. Customer dapat menyetujui langsung atau meminta
+                  penyesuaian melalui portal mereka.
+                </p>
               </div>
             )}
             {resolution.status === "Diskusi dengan pengawas" && (
@@ -780,47 +881,6 @@ function IssueWorkflow({
                 </div>
               </div>
             )}
-            {resolution.status === "Menunggu approval customer" && (
-              <div className="mt-3 grid gap-3 border-t border-[#e5ebef] pt-3 md:grid-cols-2">
-                <div className="rounded-lg border border-[#e6ebef] bg-white p-3">
-                  <p className="text-[10px] font-semibold text-[#45627b]">
-                    Simulasi aksi customer
-                  </p>
-                  <p className="mt-1 text-[10px] text-slate-500">
-                    Customer: {customerName}
-                  </p>
-                  <textarea
-                    value={resolution.customerFeedback}
-                    onChange={(e) =>
-                      updateIssueResolution({
-                        ...resolution,
-                        customerFeedback: e.target.value,
-                      })
-                    }
-                    rows={2}
-                    placeholder="Jika menolak, tulis alasan customer di sini..."
-                    className="mt-2 w-full rounded-lg border border-[#dfe6ed] p-2 text-xs outline-none focus:border-[#477ba6]"
-                  />
-                  <div className="mt-2 flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => customerDecision(true)}
-                      className="h-8 rounded-lg bg-[#347454] px-3 text-[10px] font-semibold text-white"
-                    >
-                      Setujui usulan
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => customerDecision(false)}
-                      disabled={!resolution.customerFeedback.trim()}
-                      className="h-8 rounded-lg border border-[#ead5d5] px-3 text-[10px] font-semibold text-[#9a5555] disabled:opacity-50"
-                    >
-                      Tolak dan beri alasan
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
             {resolution.status === "Ditindaklanjuti" && (
               <p className="mt-3 rounded-lg bg-[#edf6ef] p-3 text-[10px] font-semibold text-[#477c50]">
                 Keputusan sudah diteruskan ke mandor dan dicatat pada informasi
@@ -838,7 +898,8 @@ function IssueWorkflow({
                   Tentukan penanganan kendala
                 </h4>
                 <p className="mt-1 text-[10px] text-slate-500">
-                  Pilih solusi langsung atau gunakan analisis AI sebagai bahan pertimbangan.
+                  Pilih solusi langsung atau gunakan analisis AI sebagai bahan
+                  pertimbangan.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -866,60 +927,159 @@ function IssueWorkflow({
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h5 className="text-xs font-bold text-[#315873]">
-                      Analisis kendala
+                      Analisis Kendala AI
                     </h5>
                     <p className="mt-1 text-[10px] leading-4 text-slate-500">
-                      Model menganalisis berdasarkan data laporan.
+                      Model menganalisis dampak risiko jadwal, estimasi deviasi
+                      biaya, dan opsi mitigasi.
                     </p>
                   </div>
+                  {aiData && (
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-[9px] font-bold ${
+                        aiData.risk_level === "HIGH"
+                          ? "bg-[#fee2e2] text-[#991b1b]"
+                          : aiData.risk_level === "MEDIUM"
+                            ? "bg-[#fef3c7] text-[#92400e]"
+                            : "bg-[#dcfce7] text-[#166534]"
+                      }`}
+                    >
+                      Risiko: {aiData.risk_level}
+                    </span>
+                  )}
                 </div>
+
                 {aiLoading ? (
-                  <p className="mt-4 animate-pulse text-xs text-[#55718a]">
-                    Menganalisis dampak dan opsi penanganan...
-                  </p>
+                  <div className="py-6 text-center">
+                    <div className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-[#315f7d] border-t-transparent mb-2" />
+                    <p className="text-xs text-[#55718a]">
+                      Menganalisis dampak struktural, jadwal, dan rekomendasi
+                      mitigasi...
+                    </p>
+                  </div>
                 ) : (
                   <>
+                    {aiData && (
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                        <div className="rounded-lg bg-white p-2.5 border border-[#e2eaf0]">
+                          <p className="text-[9px] text-slate-400">
+                            Estimasi Keterlambatan
+                          </p>
+                          <p className="mt-0.5 text-xs font-bold text-[#274863]">
+                            {aiData.metrics.delay_estimate_days}
+                          </p>
+                        </div>
+                        <div className="rounded-lg bg-white p-2.5 border border-[#e2eaf0]">
+                          <p className="text-[9px] text-slate-400">
+                            Risiko Biaya / Overbudget
+                          </p>
+                          <p className="mt-0.5 text-xs font-bold text-[#274863]">
+                            {aiData.metrics.overbudget_risk}
+                          </p>
+                          {aiData.metrics.cost_notes && (
+                            <p className="mt-1 text-[10px] leading-relaxed text-slate-500">
+                              {aiData.metrics.cost_notes}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
                     <div className="mt-3 rounded-lg border-l-2 border-[#7896aa] bg-white px-3 py-2.5">
                       <p className="text-[10px] font-semibold text-[#40596f]">
-                        Ringkasan analisis
+                        Ringkasan Analisis
                       </p>
                       <p className="mt-1 text-xs leading-5 text-slate-600">
-                        Berdasarkan laporan mandor, kendala pada{" "}
-                        {report?.affectedSubtaskTitle ?? issue.title} berada
-                        dalam kondisi{" "}
-                        {report?.workCondition === "BERHENTI"
-                          ? "berhenti total"
-                          : report?.workCondition === "TERHAMBAT_SEBAGIAN"
-                            ? "terhambat sebagian"
-                            : "masih dapat berjalan"}
-                        {report
-                          ? ` dengan estimasi dampak keterlambatan sekitar ${report.estimatedDelayDays} hari`
-                          : ""}
-                        . Prioritaskan pekerjaan yang tidak terdampak dan
-                        pastikan spesifikasi material sesuai sebelum pekerjaan
-                        dilanjutkan. Opsi perubahan material atau biaya perlu
-                        persetujuan customer terlebih dahulu.
+                        {aiData?.summary ?? (
+                          <>
+                            Berdasarkan laporan mandor, kendala pada{" "}
+                            {report?.affectedSubtaskTitle ?? issue.title} berada
+                            dalam kondisi{" "}
+                            {report?.workCondition === "BERHENTI"
+                              ? "berhenti total"
+                              : report?.workCondition === "TERHAMBAT_SEBAGIAN"
+                                ? "terhambat sebagian"
+                                : "masih dapat berjalan"}
+                            {report
+                              ? ` dengan estimasi dampak keterlambatan sekitar ${report.estimatedDelayDays} hari`
+                              : ""}
+                            . Prioritaskan pekerjaan yang tidak terdampak dan
+                            pastikan spesifikasi material sesuai sebelum
+                            pekerjaan dilanjutkan.
+                          </>
+                        )}
                       </p>
                     </div>
+
+                    {aiData?.checklist_factors &&
+                      aiData.checklist_factors.length > 0 && (
+                        <div className="mt-3 rounded-lg border border-[#e5edf2] bg-white/70 p-3">
+                          <p className="text-[10px] font-bold text-[#355873]">
+                            Faktor Perhatian Pengawas di Lapangan:
+                          </p>
+                          <ul className="mt-1.5 space-y-1">
+                            {aiData.checklist_factors.map(
+                              (item: string, idx: number) => (
+                                <li
+                                  key={idx}
+                                  className="flex items-start gap-1.5 text-[11px] text-slate-600"
+                                >
+                                  <span className="text-[#355873]">•</span>
+                                  <span>{item}</span>
+                                </li>
+                              ),
+                            )}
+                          </ul>
+                        </div>
+                      )}
+
                     <p className="mt-3 text-[10px] font-semibold text-slate-600">
-                      Tiga opsi penanganan dari hasil analisis AI · pilih satu
-                      atau tulis solusi sendiri
+                      Pilihan rekomendasi penanganan · pilih satu untuk otomatis
+                      mengisi instruksi, atau tulis manual:
                     </p>
                     <div className="mt-2 space-y-2">
-                      {aiOptions.map((option, index) => (
-                        <button
-                          type="button"
-                          key={option}
-                          onClick={() => selectAiOption(index)}
-                          className={`w-full rounded-lg border p-3 text-left text-xs leading-5 transition-colors ${selectedOption === index ? "border-[#557d9a] bg-white text-[#294b65]" : "border-[#e0e8ed] bg-white/70 text-slate-600 hover:bg-white"}`}
-                        >
-                          <span className="mb-1 block text-[9px] font-semibold text-[#6d879b]">
-                            Opsi {index + 1}
-                            {index === 2 ? " · perlu persetujuan" : ""}
-                          </span>
-                          {option}
-                        </button>
-                      ))}
+                      {aiData?.recommended_options
+                        ? aiData.recommended_options.map(
+                            (rec, index: number) => (
+                              <button
+                                type="button"
+                                key={rec.id || rec.title}
+                                onClick={() => selectAiOption(index)}
+                                className={`w-full rounded-lg border p-3 text-left text-xs leading-5 transition-colors ${selectedOption === index ? "border-[#557d9a] bg-white text-[#294b65] shadow-xs" : "border-[#e0e8ed] bg-white/70 text-slate-600 hover:bg-white"}`}
+                              >
+                                <div className="flex items-center justify-between gap-2 mb-1">
+                                  <span className="text-[9px] font-bold text-[#456d8c]">
+                                    Opsi {index + 1}: {rec.title}
+                                  </span>
+                                  <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                                    {rec.cost_impact}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-slate-700">
+                                  {rec.description}
+                                </p>
+                                {rec.requires_approval && (
+                                  <span className="mt-1.5 inline-block text-[9px] font-semibold text-[#8b5e1e]">
+                                    ⚠️ Memerlukan persetujuan customer
+                                  </span>
+                                )}
+                              </button>
+                            ),
+                          )
+                        : aiOptions.map((option, index) => (
+                            <button
+                              type="button"
+                              key={option}
+                              onClick={() => selectAiOption(index)}
+                              className={`w-full rounded-lg border p-3 text-left text-xs leading-5 transition-colors ${selectedOption === index ? "border-[#557d9a] bg-white text-[#294b65]" : "border-[#e0e8ed] bg-white/70 text-slate-600 hover:bg-white"}`}
+                            >
+                              <span className="mb-1 block text-[9px] font-semibold text-[#6d879b]">
+                                Opsi {index + 1}
+                                {index === 2 ? " · perlu persetujuan" : ""}
+                              </span>
+                              {option}
+                            </button>
+                          ))}
                     </div>
                   </>
                 )}
@@ -1030,19 +1190,137 @@ function IssueWorkflow({
 }
 
 export default function ProjectDetail({ projectId }: { projectId: string }) {
-  const initial = supervisorProjects.find(
-    (project) => project.id === projectId,
-  );
-  const [project, setProject] = useState(initial ?? null);
+  const {
+    project: loaded,
+    loading,
+    error,
+    reload,
+  } = useSupervisorProject(projectId);
+  const [addedForemanNames] = useState<string[]>([]);
+  const [resolutionPatches, setResolutionPatches] = useState<
+    Record<string, IssueResolution>
+  >({});
   const [showForemen, setShowForemen] = useState(false);
   const [showContract, setShowContract] = useState(false);
   const [customerMessage, setCustomerMessage] = useState("");
   const [toast, setToast] = useState("");
-  const sync = useProjectSync();
+  const [showAddDoc, setShowAddDoc] = useState(false);
+  const [docNote, setDocNote] = useState("");
+  const [docStageId, setDocStageId] = useState<string>("");
+  const [docPhoto, setDocPhoto] = useState<string | null>(null);
+  const [docUploading, setDocUploading] = useState(false);
+  const [docError, setDocError] = useState("");
+  const [initializingStages, setInitializingStages] = useState(false);
+
   const notify = (message: string) => {
     setToast(message);
     window.setTimeout(() => setToast(""), 3500);
   };
+
+  const handleUploadDoc = async () => {
+    if (!docPhoto) {
+      setDocError("Silakan pilih foto dokumentasi terlebih dahulu.");
+      return;
+    }
+    setDocUploading(true);
+    setDocError("");
+    try {
+      await apiPost(`/api/pengawas/projects/${projectId}/documentation`, {
+        url: docPhoto,
+        catatan: docNote.trim(),
+        project_stage_id: docStageId || null,
+      });
+      setShowAddDoc(false);
+      setDocPhoto(null);
+      setDocNote("");
+      setDocStageId("");
+      notify("Dokumentasi lapangan berhasil diunggah.");
+      await reload();
+    } catch (e) {
+      setDocError(errorMessage(e, "Gagal mengunggah dokumentasi."));
+    } finally {
+      setDocUploading(false);
+    }
+  };
+
+  /**
+   * Data resmi dari Supabase menjadi dasar tampilan. Penugasan mandor yang
+   * ditambahkan di halaman ini bersifat sementara sampai muat ulang berikutnya.
+   */
+  const project = useMemo<SupervisorProject | null>(() => {
+    if (!loaded) return null;
+    if (addedForemanNames.length === 0) return loaded;
+    const names = loaded.foremen ?? (loaded.foreman ? [loaded.foreman] : []);
+    const merged = [
+      ...names,
+      ...addedForemanNames.filter((name) => !names.includes(name)),
+    ].slice(0, 3);
+    return { ...loaded, foremen: merged, foreman: merged[0] ?? null };
+  }, [loaded, addedForemanNames]);
+
+  /** Penanganan kendala: data tersimpan ditimpa oleh suntingan lokal. */
+  const resolutions = useMemo<IssueResolution[]>(() => {
+    const stored = loaded?.resolutions ?? [];
+    const storedIds = new Set(stored.map((item) => item.id));
+    return [
+      ...stored.map((item) => resolutionPatches[item.id] ?? item),
+      ...Object.values(resolutionPatches).filter(
+        (item) => !storedIds.has(item.id),
+      ),
+    ];
+  }, [loaded, resolutionPatches]);
+
+  const patchResolution = (next: IssueResolution) => {
+    setResolutionPatches((current) => ({ ...current, [next.issueId]: next }));
+  };
+
+  /**
+   * Simpan penanganan kendala: membuat baris baru bila belum ada, atau
+   * memperbarui baris yang sudah tersimpan. Diskusi dan tindak lanjut
+   * ditulis pada permintaan yang sama sebelum halaman dimuat ulang.
+   */
+  const persistResolution = async (
+    next: IssueResolution,
+    opts?: {
+      followUp?: string;
+      discussion?: { author: "Pengawas" | "Customer"; message: string };
+      final?: boolean;
+    },
+  ) => {
+    await apiPut(`/api/pengawas/kendala/${next.issueId}/resolution`, {
+      resolution_id: loaded?.resolutions?.find(
+        (item) => item.issueId === next.issueId,
+      )?.id,
+      solusi: next.solution,
+      source: next.source,
+      analisis_ai: next.aiAnalysis,
+      butuh_persetujuan: next.requiresCustomerApproval,
+      alasan_persetujuan: next.approvalReason,
+      bukti: next.approvalEvidence,
+      umpan_balik_customer: next.customerFeedback,
+      status: next.status,
+      keputusan_final: opts?.final === true,
+      discussion: opts?.discussion,
+      tindak_lanjut: opts?.followUp,
+    });
+
+    setResolutionPatches((current) => {
+      const rest = { ...current };
+      delete rest[next.issueId];
+      return rest;
+    });
+
+    await reload();
+  };
+
+  if (loading && !project)
+    return (
+      <div className="mx-auto max-w-3xl p-10">
+        <div className="rounded-2xl border border-[#e3e9ee] bg-white p-8">
+          <p className="text-sm text-slate-500">Memuat halaman...</p>
+        </div>
+      </div>
+    );
   if (!project)
     return (
       <div className="mx-auto max-w-3xl p-10">
@@ -1051,7 +1329,7 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
             Proyek tidak ditemukan
           </h1>
           <p className="mt-2 text-sm text-slate-500">
-            Proyek ini tidak ada dalam daftar penugasan Anda.
+            {error || "Proyek ini tidak ada dalam daftar penugasan Anda."}
           </p>
           <Link
             href="/pengawas"
@@ -1063,136 +1341,54 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
       </div>
     );
 
-  const decideReport = (id: string, decision: "Disetujui" | "Perlu revisi") => {
+  const decideReport = async (
+    id: string,
+    decision: "Disetujui" | "Perlu revisi",
+  ) => {
     const localReport = project.reports.find((report) => report.id === id);
-    const existing = sync.reports.find((report) => report.id === id);
-    if (existing) {
-      updateSyncedReportDecision(id, decision);
-    } else if (localReport) {
-      addSyncedReport({
-        id: localReport.id,
-        projectId: project.id,
-        foreman: localReport.foreman,
-        milestoneId: localReport.milestoneId,
-        milestoneTitle: localReport.title,
-        subtaskTitle: localReport.subtaskTitle,
-        note: localReport.note,
-        photo: localReport.photo,
-        submitted: localReport.submitted,
-        decision,
-        weight: localReport.weight,
-      });
-    }
-    const photo = localReport?.photo ?? existing?.photo ?? null;
-    if (decision === "Disetujui" && photo) {
-      const submitted = (localReport ?? existing)?.submitted ?? "";
-      addDocumentationItem({
-        id: `DOC-${id}`,
-        projectId: project.id,
-        date: submitted.split(" · ")[0] || "Hari ini",
-        caption: `Dokumentasi mandor: ${localReport?.subtaskTitle ?? existing?.subtaskTitle ?? "pekerjaan"}`,
-        image: photo,
-      });
-    }
-    const approvedProgress = existing?.weight ?? 0;
-    setProject((current) =>
-      current
-        ? {
-          ...current,
-          reports: current.reports.map((report) =>
-            report.id === id ? { ...report, decision } : report,
-          ),
-          progress:
-            decision === "Disetujui"
-              ? Math.max(
-                current.progress,
-                current.reports.find((report) => report.id === id)
-                  ?.progress ?? current.progress + approvedProgress,
-              )
-              : current.progress,
-          status:
-            decision === "Disetujui" && current.status === "Perlu perhatian"
-              ? "Berjalan"
-              : current.status,
-        }
-        : current,
-    );
-    notify(
-      decision === "Disetujui"
-        ? "Laporan diverifikasi. Progres resmi proyek telah diperbarui."
-        : "Catatan revisi disimpan untuk mandor.",
-    );
+    const feedback =
+      (
+        document.getElementById(`revision-${id}`) as HTMLTextAreaElement | null
+      )?.value?.trim() ?? "";
+    try {
+      await apiPatch(`/api/pengawas/reports/${id}`, { decision, feedback });
 
-    if (decision === "Disetujui") {
-      const activeReport = localReport ?? existing;
-      const calcProgress = Math.max(
-        project.progress,
-        project.reports.find((r) => r.id === id)?.progress ??
-          project.progress + approvedProgress,
+      if (decision === "Disetujui" && localReport?.photo) {
+        await apiPost(`/api/pengawas/projects/${project.id}/documentation`, {
+          url: localReport.photo,
+          catatan: `Dokumentasi mandor: ${localReport.subtaskTitle ?? "pekerjaan"}`,
+          project_stage_id: localReport.milestoneId || null,
+        });
+      }
+
+      await reload();
+      notify(
+        decision === "Disetujui"
+          ? "Laporan diverifikasi. Progres resmi proyek telah diperbarui."
+          : "Catatan revisi disimpan untuk mandor.",
       );
-      fetch(`/api/projects/${project.id}/approve-progress`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          reportId: id,
-          subtaskTitle: activeReport?.subtaskTitle || activeReport?.title,
-          progressPercentage: calcProgress,
-          photoUrl: photo,
-          isCompleted: calcProgress >= 100,
-        }),
-      }).catch((err) => {
-        console.error("Gagal mengirim notifikasi persetujuan progres:", err);
-      });
+    } catch (caught) {
+      notify(errorMessage(caught, "Gagal menyimpan keputusan verifikasi."));
     }
   };
-  const addCustomerUpdate = () => {
+  const addCustomerUpdate = async () => {
     if (!customerMessage.trim()) return;
-    setProject((current) =>
-      current
-        ? {
-          ...current,
-          customerUpdates: [
-            {
-              id: `u-${Date.now()}`,
-              date: "15 Okt 2026",
-              message: customerMessage.trim(),
-            },
-            ...current.customerUpdates,
-          ],
-        }
-        : current,
-    );
-    setCustomerMessage("");
-    notify("Informasi proyek diperbarui untuk customer.");
+    try {
+      await apiPost(`/api/pengawas/projects/${project.id}/updates`, {
+        judul: "Informasi proyek",
+        isi: customerMessage.trim(),
+      });
+      setCustomerMessage("");
+      await reload();
+      notify("Informasi proyek diperbarui untuk customer.");
+    } catch (caught) {
+      notify(errorMessage(caught, "Gagal menerbitkan update proyek."));
+    }
   };
   const overdue = project.status === "Perlu perhatian";
-  const syncedIncoming = sync.reports
-    .filter((report) => report.projectId === project.id)
-    .map((report) => ({
-      id: report.id,
-      foreman: report.foreman,
-      milestoneId: report.milestoneId,
-      title: report.milestoneTitle,
-      subtaskTitle: report.subtaskTitle,
-      note: report.note,
-      submitted: report.submitted,
-      progress: Math.min(100, project.progress + report.weight),
-      decision: report.decision,
-      photo: report.photo,
-      weight: report.weight,
-    }));
-  const mergedReports: SupervisorReport[] = [
-    ...syncedIncoming,
-    ...project.reports.filter(
-      (report) => !syncedIncoming.some((synced) => synced.id === report.id),
-    ),
-  ];
-  const foremanNotes = sync.notes.filter(
-    (note) => note.projectId === project.id,
-  );
-  const mergedDocs = sync.documentation.filter(
-    (item) => item.projectId === project.id,
-  );
+  const mergedReports: SupervisorReport[] = project.reports;
+  const foremanNotes = project.foremanNotes ?? [];
+  const mergedDocs = project.documentation;
   return (
     <div className="mx-auto max-w-[1500px] space-y-6 p-5 md:p-8 xl:p-10">
       {toast && (
@@ -1338,12 +1534,14 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
               })}
               {(project.foremen ?? (project.foreman ? [project.foreman] : []))
                 .length === 0 && (
-                  <p className="text-xs text-slate-500">
-                    Belum ada mandor ditetapkan.
-                  </p>
-                )}
+                <p className="text-xs text-slate-500">
+                  Belum ada mandor ditetapkan.
+                </p>
+              )}
               {(project.foremen ?? (project.foreman ? [project.foreman] : []))
-                .length < 3 && (
+                .length < 3 &&
+                !project.supervisorSignedAt &&
+                project.contractStatus !== "menunggu_ttd" && (
                   <button
                     onClick={() => setShowForemen(true)}
                     className="h-10 rounded-lg border border-[#cfdce6] px-4 text-xs font-semibold text-[#355c78] hover:bg-[#f3f7fa] hover:cursor-pointer"
@@ -1398,72 +1596,117 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
                   {project.progress}% progres resmi
                 </span>
               </div>
-              <div className="mt-3 space-y-2">
-                {project.milestones.map((milestone) => {
-                  const milestoneReports = mergedReports.filter(
-                    (report) => report.milestoneId === milestone.id,
-                  );
-                  return (
-                    <details
-                      key={milestone.id}
-                      className={`group rounded-xl border ${milestone.status === "Selesai" ? "border-[#d5e7d8] bg-[#f4faf5] open:border-[#bdd8c3] open:bg-[#f0f8f1]" : milestone.status === "Berjalan" ? "border-[#d4e3ee] bg-[#f3f8fb] open:border-[#b8d0e1] open:bg-[#eef5fa]" : "border-[#e1e6eb] bg-[#f8f9fa] open:border-[#cbd3da] open:bg-[#f4f6f7]"}`}
-                    >
-                      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5b7c99] [&::-webkit-details-marker]:hidden">
-                        <span className="min-w-0">
-                          <span className="block text-xs font-semibold text-[#40596f]">
-                            {milestone.name}
+              {project.milestones.length === 0 ? (
+                <div className="mt-3 rounded-xl border border-dashed border-[#cbd8e2] bg-[#f8fafc] p-6 text-center">
+                  <p className="text-xs font-semibold text-[#294c65]">
+                    Belum ada tahapan pekerjaan untuk proyek ini
+                  </p>
+                  <p className="mt-1 text-[11px] text-slate-500 max-w-md mx-auto">
+                    Inisialisasi 6 tahapan konstruksi standar (24 subtask
+                    berbobot) agar Mandor dapat mulai melaporkan progres harian.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setInitializingStages(true);
+                      try {
+                        await apiPost(
+                          `/api/pengawas/projects/${project.id}/stages`,
+                          { template: true },
+                        );
+                        notify(
+                          "6 tahapan dan 24 subtask standar berhasil diinisialisasi.",
+                        );
+                        await reload();
+                      } catch (e) {
+                        notify(
+                          errorMessage(
+                            e,
+                            "Gagal menginisialisasi tahapan pekerjaan.",
+                          ),
+                        );
+                      } finally {
+                        setInitializingStages(false);
+                      }
+                    }}
+                    disabled={initializingStages}
+                    className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg bg-[#183b57] px-4 text-xs font-semibold text-white shadow-sm hover:bg-[#204a6e] disabled:opacity-50"
+                  >
+                    {initializingStages
+                      ? "Menginisialisasi..."
+                      : "Inisialisasi 6 Tahapan Standar"}
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-3 space-y-2">
+                  {project.milestones.map((milestone) => {
+                    const milestoneReports = mergedReports.filter(
+                      (report) => report.milestoneId === milestone.id,
+                    );
+                    return (
+                      <details
+                        key={milestone.id}
+                        className={`group rounded-xl border ${milestone.status === "Selesai" ? "border-[#d5e7d8] bg-[#f4faf5] open:border-[#bdd8c3] open:bg-[#f0f8f1]" : milestone.status === "Berjalan" ? "border-[#d4e3ee] bg-[#f3f8fb] open:border-[#b8d0e1] open:bg-[#eef5fa]" : "border-[#e1e6eb] bg-[#f8f9fa] open:border-[#cbd3da] open:bg-[#f4f6f7]"}`}
+                      >
+                        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5b7c99] [&::-webkit-details-marker]:hidden">
+                          <span className="min-w-0">
+                            <span className="block text-xs font-semibold text-[#40596f]">
+                              {milestone.name}
+                            </span>
+                            <span className="mt-1 block text-[9px] text-slate-400">
+                              {milestone.start} – {milestone.end}
+                            </span>
                           </span>
-                          <span className="mt-1 block text-[9px] text-slate-400">
-                            {milestone.start} – {milestone.end}
+                          <span className="flex shrink-0 items-center gap-2">
+                            <span className="text-[10px] font-semibold text-slate-500">
+                              {milestone.progress}%
+                            </span>
+                            <span
+                              className={`rounded-full px-2.5 py-1 text-[9px] font-semibold ${milestone.status === "Selesai" ? "bg-[#edf6ef] text-[#4d7d56]" : milestone.status === "Berjalan" ? "bg-[#eaf2f8] text-[#416f91]" : "bg-[#f0f3f6] text-slate-500"}`}
+                            >
+                              {milestone.status}
+                            </span>
                           </span>
-                        </span>
-                        <span className="flex shrink-0 items-center gap-2">
-                          <span className="text-[10px] font-semibold text-slate-500">
-                            {milestone.progress}%
-                          </span>
-                          <span
-                            className={`rounded-full px-2.5 py-1 text-[9px] font-semibold ${milestone.status === "Selesai" ? "bg-[#edf6ef] text-[#4d7d56]" : milestone.status === "Berjalan" ? "bg-[#eaf2f8] text-[#416f91]" : "bg-[#f0f3f6] text-slate-500"}`}
-                          >
-                            {milestone.status}
-                          </span>
-                        </span>
-                      </summary>
-                      <div className="border-t border-[#e8edf1] px-3 pb-3 pt-2">
-                        <ul className="space-y-1.5">
-                          {project.tasks
-                            .filter((task) => task.milestoneId === milestone.id)
-                            .map((task) => {
-                              const verified = milestoneReports.some(
-                                (report) =>
-                                  report.subtaskTitle === task.title &&
-                                  report.decision === "Disetujui",
-                              );
-                              const completed = task.done || verified;
-                              return (
-                                <li
-                                  key={task.id}
-                                  className="flex items-start justify-between gap-3 rounded-lg bg-white px-3 py-2"
-                                >
-                                  <span className="text-[11px] leading-5 text-slate-600">
-                                    {task.title}
-                                  </span>
-                                  <span
-                                    className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-medium ${completed ? "bg-[#edf6ef] text-[#4d7d56]" : "bg-[#f0f3f6] text-slate-500"}`}
+                        </summary>
+                        <div className="border-t border-[#e8edf1] px-3 pb-3 pt-2">
+                          <ul className="space-y-1.5">
+                            {project.tasks
+                              .filter(
+                                (task) => task.milestoneId === milestone.id,
+                              )
+                              .map((task) => {
+                                const verified = milestoneReports.some(
+                                  (report) =>
+                                    report.subtaskTitle === task.title &&
+                                    report.decision === "Disetujui",
+                                );
+                                const completed = task.done || verified;
+                                return (
+                                  <li
+                                    key={task.id}
+                                    className="flex items-start justify-between gap-3 rounded-lg bg-white px-3 py-2"
                                   >
-                                    {completed ? "Selesai" : "Belum selesai"}
-                                  </span>
-                                </li>
-                              );
-                            })}
-                        </ul>
-                        <p className="mt-2 text-[9px] text-slate-400">
-                          Verifikasi laporan mandor untuk mengupdate.
-                        </p>
-                      </div>
-                    </details>
-                  );
-                })}
-              </div>
+                                    <span className="text-[11px] leading-5 text-slate-600">
+                                      {task.title}
+                                    </span>
+                                    <span
+                                      className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-medium ${completed ? "bg-[#edf6ef] text-[#4d7d56]" : "bg-[#f0f3f6] text-slate-500"}`}
+                                    >
+                                      {completed ? "Selesai" : "Belum selesai"}
+                                    </span>
+                                  </li>
+                                );
+                              })}
+                          </ul>
+                          <p className="mt-2 text-[9px] text-slate-400">
+                            Verifikasi laporan mandor untuk mengupdate.
+                          </p>
+                        </div>
+                      </details>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </Surface>
           <Surface
@@ -1473,40 +1716,38 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
           >
             <div className="space-y-4">
               {(() => {
-                const syncedIssueReports = sync.issues.filter(
-                  (report) => report.projectId === project.id,
-                );
+                const syncedIssueReports = project.issueReports ?? [];
                 const issueCards: {
                   issue: SupervisorIssue;
                   report?: MandorIssueReport;
                 }[] = [
-                    ...syncedIssueReports.map((report) => ({
-                      issue: {
-                        id: report.id,
-                        title: report.categoryLabel,
-                        description: report.description,
-                        priority:
-                          report.workCondition === "BERHENTI"
-                            ? ("Tinggi" as const)
-                            : ("Sedang" as const),
-                        state:
-                          report.status === "Menunggu"
-                            ? ("Baru" as const)
-                            : ("Ditindaklanjuti" as const),
-                        reportDate: report.submitted,
-                        followUp: report.followUp,
-                      },
-                      report,
-                    })),
-                    ...project.issues
-                      .filter(
-                        (issue) =>
-                          !syncedIssueReports.some(
-                            (report) => report.id === issue.id,
-                          ),
-                      )
-                      .map((issue) => ({ issue })),
-                  ];
+                  ...syncedIssueReports.map((report) => ({
+                    issue: {
+                      id: report.id,
+                      title: report.categoryLabel,
+                      description: report.description,
+                      priority:
+                        report.workCondition === "BERHENTI"
+                          ? ("Tinggi" as const)
+                          : ("Sedang" as const),
+                      state:
+                        report.status === "Menunggu"
+                          ? ("Baru" as const)
+                          : ("Ditindaklanjuti" as const),
+                      reportDate: report.submitted,
+                      followUp: report.followUp,
+                    },
+                    report,
+                  })),
+                  ...project.issues
+                    .filter(
+                      (issue) =>
+                        !syncedIssueReports.some(
+                          (report) => report.id === issue.id,
+                        ),
+                    )
+                    .map((issue) => ({ issue })),
+                ];
                 return issueCards.length ? (
                   issueCards.map(({ issue, report }) => (
                     <IssueWorkflow
@@ -1516,6 +1757,11 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
                       projectId={project.id}
                       customerName={project.customer}
                       onNotify={notify}
+                      resolution={resolutions.find(
+                        (item) => item.issueId === issue.id,
+                      )}
+                      onPersist={persistResolution}
+                      onPatch={patchResolution}
                     />
                   ))
                 ) : (
@@ -1604,8 +1850,26 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
             title="Dokumentasi lapangan"
             description="Foto dan catatan hasil pemeriksaan proyek."
           >
+            <div className="mb-4 flex items-center justify-between">
+              <span className="text-[10px] text-slate-500">
+                {mergedDocs.length} foto dokumentasi tersimpan
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setDocPhoto(null);
+                  setDocNote("");
+                  setDocStageId(project.milestones[0]?.id ?? "");
+                  setDocError("");
+                  setShowAddDoc(true);
+                }}
+                className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#183b57] px-3 text-[11px] font-semibold text-white shadow-xs hover:bg-[#204a6e]"
+              >
+                + Tambah Dokumentasi
+              </button>
+            </div>
             <div className="grid gap-3 sm:grid-cols-2">
-              {[...mergedDocs, ...project.documentation].map((item) => (
+              {mergedDocs.map((item) => (
                 <article
                   key={item.id}
                   className="overflow-hidden rounded-xl border border-[#e6ebef]"
@@ -1639,6 +1903,12 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
                 </article>
               ))}
             </div>
+            {mergedDocs.length === 0 && (
+              <p className="rounded-lg bg-[#f7f9fb] p-6 text-center text-xs text-slate-500">
+                Belum ada dokumentasi lapangan. Klik tombol di atas untuk
+                menambahkan foto pertama.
+              </p>
+            )}
           </Surface>
         </div>
         <aside className="space-y-5">
@@ -1669,7 +1939,9 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
                 onClick={() => setShowContract(true)}
                 className="mt-3 h-10 w-full rounded-lg border border-[#cfdce6] px-4 text-xs font-semibold text-[#355c78] transition hover:bg-[#f3f7fa] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#477ba6]"
               >
-                Lihat Kontrak
+                {project.supervisorSignedAt
+                  ? "Lihat Kontrak · Tanda tangan tersimpan"
+                  : "Lihat & Tanda Tangani Kontrak"}
               </button>
             </div>
           </Surface>
@@ -1749,26 +2021,138 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
         <AssignmentDialog
           project={project}
           onClose={() => setShowForemen(false)}
-          onAssign={(addedForemen) => {
-            setProject((current) => {
-              if (!current) return current;
-              const existing =
-                current.foremen ?? (current.foreman ? [current.foreman] : []);
-              const additions = addedForemen
-                .map((foreman) => foreman.name)
-                .filter((name) => !existing.includes(name));
-              const foremen = [...existing, ...additions].slice(0, 3);
-              return { ...current, foremen, foreman: foremen[0] ?? null };
+          onAssign={async (selectedIds) => {
+            await apiPost(`/api/pengawas/projects/${project.id}/mandors`, {
+              mandor_ids: selectedIds,
             });
             setShowForemen(false);
-            notify(`${addedForemen.length} mandor ditambahkan ke proyek.`);
+            notify(
+              `${selectedIds.length} mandor berhasil ditugaskan ke proyek.`,
+            );
+            await reload();
           }}
         />
-      )}{" "}
+      )}
+      {showAddDoc && (
+        <div
+          className="fixed inset-0 z-[70] grid place-items-center bg-[#0c1b2b]/60 p-4 backdrop-blur-sm"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget && !docUploading)
+              setShowAddDoc(false);
+          }}
+        >
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[#e8edf1] pb-3">
+              <h3 className="text-base font-bold text-[#17344e]">
+                Unggah Dokumentasi Lapangan
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowAddDoc(false)}
+                disabled={docUploading}
+                className="text-slate-400 hover:text-slate-600 text-lg leading-none"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-[#314c63]">
+                  Tahap Pekerjaan (Opsional)
+                </label>
+                <select
+                  value={docStageId}
+                  onChange={(e) => setDocStageId(e.target.value)}
+                  className="mt-1.5 w-full rounded-lg border border-[#dfe6ed] p-2.5 text-xs outline-none focus:border-[#477ba6]"
+                >
+                  <option value="">-- Tanpa Tahap Spesifik --</option>
+                  {project.milestones.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#314c63]">
+                  Foto Lapangan <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    try {
+                      const compressed = await compressImage(file);
+                      setDocPhoto(compressed);
+                      setDocError("");
+                    } catch {
+                      setDocError("Gagal memproses file foto.");
+                    }
+                  }}
+                  className="mt-1.5 w-full text-xs text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-[#edf4f8] file:px-3 file:py-2 file:text-xs file:font-semibold file:text-[#315873] hover:file:bg-[#e0edf4]"
+                />
+                {docPhoto && (
+                  <div className="mt-2.5 overflow-hidden rounded-lg border border-[#e2eaf0]">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={docPhoto}
+                      alt="Preview"
+                      className="max-h-48 w-full object-cover"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#314c63]">
+                  Catatan / Keterangan Foto
+                </label>
+                <textarea
+                  value={docNote}
+                  onChange={(e) => setDocNote(e.target.value)}
+                  rows={2}
+                  placeholder="Contoh: Pengecoran kolom lantai 1 selesai sesuai spek..."
+                  className="mt-1.5 w-full rounded-lg border border-[#dfe6ed] p-2.5 text-xs outline-none focus:border-[#477ba6]"
+                />
+              </div>
+
+              {docError && (
+                <p className="text-xs font-medium text-red-600">{docError}</p>
+              )}
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2 border-t border-[#e8edf1] pt-3">
+              <button
+                type="button"
+                onClick={() => setShowAddDoc(false)}
+                disabled={docUploading}
+                className="h-9 rounded-lg border border-[#dfe6ed] px-3.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleUploadDoc}
+                disabled={docUploading || !docPhoto}
+                className="h-9 rounded-lg bg-[#183b57] px-4 text-xs font-semibold text-white hover:bg-[#204a6e] disabled:opacity-50"
+              >
+                {docUploading ? "Mengunggah..." : "Simpan Dokumentasi"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {showContract && (
         <SupervisorContractModal
           project={project}
-          onClose={() => setShowContract(false)}
+          onClose={() => {
+            setShowContract(false);
+            void reload();
+          }}
         />
       )}
     </div>

@@ -1,0 +1,97 @@
+{
+  "model_name": "cost_prediction_model",
+  "model_version": "1.0.0",
+  "created_at": "2026-11-12T22:22:34.835240+07:00",
+  "task": "cost_prediction",
+  "problem_type": "regression",
+  "target": "cost_overrun",
+  "class_order": null,
+  "algorithm": "Linear Regression",
+  "hyperparameter_variant": "default",
+  "variant": "full",
+  "best_params": {},
+  "features": [
+    "flag_kendala_material",
+    "flag_kendala_cuaca",
+    "flag_kendala_keselamatan",
+    "dampak_waktu_hari",
+    "dampak_waktu_material_hari",
+    "dampak_waktu_cuaca_hari",
+    "estimasi_biaya",
+    "durasi_proyek_hari",
+    "progress_persen",
+    "jumlah_pekerja",
+    "utilisasi_peralatan_persen",
+    "jumlah_insiden_keselamatan"
+  ],
+  "feature_order": [
+    "flag_kendala_material",
+    "flag_kendala_cuaca",
+    "flag_kendala_keselamatan",
+    "dampak_waktu_hari",
+    "dampak_waktu_material_hari",
+    "dampak_waktu_cuaca_hari",
+    "estimasi_biaya",
+    "durasi_proyek_hari",
+    "progress_persen",
+    "jumlah_pekerja",
+    "utilisasi_peralatan_persen",
+    "jumlah_insiden_keselamatan"
+  ],
+  "feature_dtypes": {
+    "flag_kendala_material": "int64",
+    "flag_kendala_cuaca": "int64",
+    "flag_kendala_keselamatan": "int64",
+    "dampak_waktu_hari": "int64",
+    "dampak_waktu_material_hari": "int64",
+    "dampak_waktu_cuaca_hari": "int64",
+    "estimasi_biaya": "float64",
+    "durasi_proyek_hari": "int64",
+    "progress_persen": "float64",
+    "jumlah_pekerja": "int64",
+    "utilisasi_peralatan_persen": "float64",
+    "jumlah_insiden_keselamatan": "int64"
+  },
+  "primary_metric": "MAE",
+  "cv_score_primary": 0.05949043062684491,
+  "test_metrics": {
+    "MAE": 0.061096410832130035,
+    "RMSE": 0.07770768828013573,
+    "R2": 0.06636654094491512,
+    "MedianAE": 0.05220811461405052
+  },
+  "beats_dummy_significantly": false,
+  "deployable": false,
+  "postprocessing": null,
+  "training_data": {
+    "file": "data/final/way2home_cost_prediction.csv",
+    "n_train": 4000,
+    "n_test": 1000,
+    "by_source": {
+      "CONSTRUCTION_DELAY_RISK_GH": 4000
+    },
+    "synthetic": 4000,
+    "empirical": 0
+  },
+  "split": {
+    "method": "StratifiedGroupKFold fold-1 sebagai test (80/20), group=meta_project_group_id",
+    "cv": "GroupKFold(5, shuffle)",
+    "random_state": 42
+  },
+  "library_versions": {
+    "python": "3.13.18",
+    "numpy": "2.5.3",
+    "pandas": "3.0.5",
+    "scikit-learn": "1.9.1",
+    "joblib": "1.6.0",
+    "xgboost": "NOT INSTALLED",
+    "catboost": "NOT INSTALLED",
+    "shap": "NOT INSTALLED"
+  },
+  "requires_import": null,
+  "limitations": [
+    "Data training 100% sintetis (tanpa dokumentasi asal) — performa belum tervalidasi pada proyek nyata.",
+    "Unit training = agregat proyek; input Way2Home = satu kendala (granularitas berbeda).",
+    "Interpretasi fitur bersifat asosiatif, bukan sebab-akibat."
+  ]
+}
