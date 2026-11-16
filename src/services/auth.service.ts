@@ -59,6 +59,7 @@ export async function register(input: {
   name: string;
   email: string;
   phone: string;
+  nik: string;
   password: string;
 }) {
   const supabase = createClient();
@@ -66,7 +67,12 @@ export async function register(input: {
     email: input.email,
     password: input.password,
     options: {
-      data: { full_name: input.name, phone: input.phone, role: "customer" },
+      data: {
+        full_name: input.name,
+        phone: input.phone,
+        nik: input.nik,
+        role: "customer",
+      },
       emailRedirectTo: `${window.location.origin}/callback`,
     },
   });

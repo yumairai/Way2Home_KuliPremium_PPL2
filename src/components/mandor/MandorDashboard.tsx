@@ -1,47 +1,22 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import {
-  initialMandorRegistration,
-  type MandorProject,
-} from "@/data/mandor";
+import { useMemo, useState } from "react";
+import { initialMandorRegistration } from "@/data/mandor";
 import { useMandorStatus } from "@/components/mandor/MandorShell";
-import { createClient } from "@/utils/supabase/client";
-import {
-  getMandorProjects,
-  getMandorWaitingReportsCount,
-} from "@/services/mandor.service";
+import { useMandorProjects } from "@/hooks/useMandorProjects";
 
 export default function MandorDashboard() {
-  const { status } = useMandorStatus();
+  const { status, loading: statusLoading } = useMandorStatus();
+  const { projects: liveProjects, loading: projectsLoading } =
+    useMandorProjects();
   const [filter, setFilter] = useState("Semua proyek");
   const [query, setQuery] = useState("");
-  const [dbProjects, setDbProjects] = useState<MandorProject[]>([]);
-  const [waitingCount, setWaitingCount] = useState(0);
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    const supabase = createClient();
-    Promise.all([
-      getMandorProjects(supabase),
-      getMandorWaitingReportsCount(supabase),
-    ])
-      .then(([projects, waiting]) => {
-        setDbProjects(projects);
-        setWaitingCount(waiting);
-        setLoaded(true);
-      })
-      .catch((err) => {
-        console.error("[MandorDashboard] error loading projects:", err);
-        setLoaded(true);
-      });
-  }, []);
 
   const projects = useMemo(
     () =>
-      dbProjects.filter(
+      liveProjects.filter(
         (project) =>
           `${project.id} ${project.title} ${project.design} ${project.location}`
             .toLowerCase()
@@ -51,38 +26,31 @@ export default function MandorDashboard() {
               ? project.overallProgress < 100
               : project.overallProgress === 100)),
       ),
-    [dbProjects, query, filter],
+    [liveProjects, query, filter],
   );
-
-  const active = dbProjects.filter(
+  const active = liveProjects.filter(
     (project) => project.overallProgress < 100,
   ).length;
-
-  const todayLabel = useMemo(() => {
-    return new Intl.DateTimeFormat("id-ID", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    }).format(new Date());
-  }, []);
-
-  if (status !== "Disetujui") return <VerificationStatus />;
-
-  if (!loaded) {
+  const waiting = liveProjects.reduce(
+    (total, project) =>
+      total +
+      (project.progressReports?.filter((report) => report.review === "Menunggu")
+        .length ?? 0),
+    0,
+  );
+  if (statusLoading || projectsLoading)
     return (
-      <main className="mx-auto max-w-[1480px] px-5 py-12 text-center text-sm text-slate-500">
-        Memuat data pekerjaan...
+      <main className="grid min-h-[calc(100vh-68px)] place-items-center text-sm text-slate-600">
+        Memuat halaman...
       </main>
     );
-  }
-
+  if (status !== "Disetujui") return <VerificationStatus />;
   return (
     <div className="mx-auto max-w-[1480px] space-y-7 px-4 py-6 sm:px-6 md:py-8">
       <section className="flex flex-col justify-between gap-5 border-b border-[#dfe6ec] pb-6 md:flex-row md:items-end">
         <div>
           <p className="text-xs font-semibold text-[#64809a]">
-            {todayLabel}
+            Kamis, 15 Oktober 2026
           </p>
           <h1 className="mt-2 text-[28px] font-bold tracking-tight text-[#17344e] md:text-[34px]">
             Pekerjaan Anda
@@ -102,7 +70,7 @@ export default function MandorDashboard() {
           <div className="min-w-[112px] border-l-2 border-[#d7a348] pl-3">
             <p className="text-[10px] text-slate-500">Laporan menunggu</p>
             <strong className="mt-1 block text-2xl text-[#183b57]">
-              {waitingCount}
+              {waiting}
             </strong>
           </div>
         </div>
@@ -154,8 +122,8 @@ export default function MandorDashboard() {
               <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-start sm:p-5">
                 <div className="relative h-28 w-full shrink-0 overflow-hidden rounded-xl bg-[#e9eef2] sm:h-24 sm:w-32">
                   <Image
-                    src={project.image}
-                    alt="Tampilan desain rumah"
+                    src={project.image || "/images/katalog/house-dummy1.webp"}
+                    alt={`Tampilan desain ${project.title}`}
                     fill
                     sizes="(max-width: 640px) 100vw, 128px"
                     className="object-cover"
@@ -163,7 +131,7 @@ export default function MandorDashboard() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-[10px] font-semibold text-[#53738d]">
-                    #{project.id.length > 8 ? project.id.slice(0, 8) : project.id} · {project.design}
+                    #{project.id} · {project.design}
                   </p>
                   <h3 className="mt-1 text-base font-bold text-[#183b57]">
                     {project.title}
@@ -176,12 +144,20 @@ export default function MandorDashboard() {
                     <span>Target: {project.target}</span>
                   </div>
                 </div>
-                <Link
-                  href={`/mandor/proyek/${project.id}`}
-                  className="flex min-h-10 shrink-0 items-center justify-center rounded-lg border border-[#cfdce6] px-4 text-xs font-semibold text-[#355c78] hover:bg-[#f3f7fa] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#477ba6]"
-                >
-                  Buka pekerjaan
-                </Link>
+                {project.status === "berjalan" ||
+                project.status === "selesai" ||
+                !project.status ? (
+                  <Link
+                    href={`/mandor/proyek/${project.id}`}
+                    className="flex min-h-10 shrink-0 items-center justify-center rounded-lg border border-[#cfdce6] px-4 text-xs font-semibold text-[#355c78] hover:bg-[#f3f7fa] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#477ba6]"
+                  >
+                    Buka pekerjaan
+                  </Link>
+                ) : (
+                  <span className="flex min-h-10 shrink-0 items-center justify-center rounded-lg border border-[#e8d8ae] bg-[#fffaf0] px-4 text-center text-xs font-semibold text-[#946a27]">
+                    Menunggu pembayaran DP
+                  </span>
+                )}
               </div>
               <div className="border-t border-[#edf0f3] bg-[#fafbfc] px-4 py-3 sm:px-5">
                 <div className="flex items-center justify-between text-[10px] text-slate-500">
@@ -219,7 +195,7 @@ export default function MandorDashboard() {
 }
 
 function VerificationStatus() {
-  const { status, reason, setDemoStatus } = useMandorStatus();
+  const { status, reason, resubmit } = useMandorStatus();
   if (status === "Menunggu")
     return (
       <main className="mx-auto grid min-h-[calc(100vh-68px)] max-w-3xl place-items-center px-5 py-12">
@@ -261,10 +237,7 @@ function VerificationStatus() {
     );
   return (
     <main className="mx-auto grid min-h-[calc(100vh-68px)] max-w-3xl place-items-center px-5 py-12">
-      <RejectedApplication
-        reason={reason}
-        onResubmit={() => setDemoStatus("Menunggu", reason)}
-      />
+      <RejectedApplication reason={reason} onResubmit={() => void resubmit()} />
     </main>
   );
 }

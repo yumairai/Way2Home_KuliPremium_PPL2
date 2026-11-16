@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -11,25 +11,13 @@ import {
   type MandorProject,
 } from "@/data/mandor";
 import { useMandorStatus } from "@/components/mandor/MandorShell";
-import { createClient } from "@/utils/supabase/client";
-import {
-  getMandorProjectDetail,
-  submitForemanNote,
-  submitIssueReport,
-  submitProgressReport,
-} from "@/services/mandor.service";
-import {
-  addForemanNote,
-  addIssueReport,
-  addSyncedReport,
-  compressImage,
-  useProjectSync,
-  type ApprovedSubtask,
-  type ForemanNote,
-  type SyncedReport,
-} from "@/utils/project-events";
+import { useMandorProject } from "@/hooks/useMandorProjects";
+import { apiPost, errorMessage } from "@/lib/api";
+import { compressImage } from "@/utils/image";
 
 type Tab = "Ringkasan" | "Laporan progress" | "Kendala";
+type ApprovedSubtask = { milestoneId: string; subtaskTitle: string };
+type ForemanNote = { id: string; note: string; submitted: string };
 const reviewClass: Record<string, string> = {
   Menunggu: "bg-[#fff4e2] text-[#98651e]",
   Disetujui: "bg-[#edf6ef] text-[#4d7d56]",
@@ -78,38 +66,21 @@ const formatNow = () =>
   }).format(new Date());
 
 export default function MandorProjectDetail({ id }: { id: string }) {
-  const { status } = useMandorStatus();
-  const [project, setProject] = useState<MandorProject | null>(null);
-  const [loaded, setLoaded] = useState(false);
+  const { status, loading: statusLoading } = useMandorStatus();
+  const { project, loading: projectLoading, reload } = useMandorProject(id);
   const [tab, setTab] = useState<Tab>("Ringkasan");
   const [progressOpen, setProgressOpen] = useState(false);
   const [issueOpen, setIssueOpen] = useState(false);
   const [toast, setToast] = useState("");
-  const sync = useProjectSync();
-
-  useEffect(() => {
-    const supabase = createClient();
-    getMandorProjectDetail(supabase, id)
-      .then((res) => {
-        if (res) setProject(res);
-        setLoaded(true);
-      })
-      .catch((err) => {
-        console.error("[MandorProjectDetail] error fetching project:", err);
-        setLoaded(true);
-      });
-  }, [id]);
-
-  if (loaded && !project) notFound();
-
-  if (!project) {
+  if (statusLoading || projectLoading)
     return (
-      <main className="mx-auto max-w-[1480px] space-y-5 px-4 py-12 text-center text-sm text-slate-500">
-        Memuat detail pekerjaan...
+      <main className="mx-auto max-w-4xl px-5 py-10">
+        <p className="rounded-2xl border border-[#e3e9ef] bg-white p-10 text-center text-sm text-slate-500">
+          Memuat halaman...
+        </p>
       </main>
     );
-  }
-
+  if (!project) notFound();
   if (status !== "Disetujui")
     return (
       <main className="mx-auto max-w-4xl px-5 py-10">
@@ -130,157 +101,105 @@ export default function MandorProjectDetail({ id }: { id: string }) {
       </main>
     );
 
-  const seededReports: SyncedReport[] = sync.reports.filter(
-    (report) => report.projectId === id,
-  );
-  const approvedSubtasks = sync.approvedSubtasks.filter(
-    (item) => item.projectId === id,
-  );
-  const approvedWeight = project.milestones.reduce(
-    (sum, milestone) =>
-      sum +
-      milestone.subtasks
-        .filter((task) => isApproved(task, milestone, approvedSubtasks))
-        .reduce((subtotal, task) => subtotal + task.weight, 0),
-    0,
-  );
-  const officialProgress = Math.max(project.overallProgress, approvedWeight);
-  const reportDecision = (reportId: string): MandorProgressReport["review"] =>
-    sync.reports.find((report) => report.id === reportId)?.decision ??
-    "Menunggu";
-
-  const addProgress = async (report: MandorProgressReport) => {
-    addSyncedReport({
-      id: report.id,
-      projectId: id,
-      foreman: project.supervisor || "Mandor",
-      milestoneId: report.milestoneId,
-      milestoneTitle: report.milestoneTitle,
-      subtaskTitle: report.subtaskTitle,
-      note: report.note,
-      photo: report.photo,
-      submitted: report.submitted,
-      decision: "Menunggu",
-      weight: report.weight,
-    });
-
-    try {
-      const supabase = createClient();
-      await submitProgressReport(supabase, {
-        stageId: report.milestoneId,
-        subtaskId: report.subtaskId,
-        weight: report.weight,
-        note: report.note,
-        photo: report.photo,
-      });
-      setProject((current) =>
-        current
-          ? {
-              ...current,
-              progressReports: [report, ...current.progressReports],
-            }
-          : current,
-      );
-    } catch (err) {
-      console.error("[addProgress] error saving to DB:", err);
-    }
-
-    setProgressOpen(false);
-    setToast("Laporan progress terkirim dan menunggu verifikasi pengawas.");
-    window.setTimeout(() => setToast(""), 4000);
-  };
-
-  const addIssue = async (report: MandorIssueReport) => {
-    const scopedReport = { ...report, projectId: id };
-    addIssueReport(scopedReport);
-    setProject((current) =>
-      current
-        ? { ...current, issueReports: [scopedReport, ...current.issueReports] }
-        : current,
+  if (
+    project.status &&
+    project.status !== "berjalan" &&
+    project.status !== "selesai"
+  )
+    return (
+      <main className="mx-auto max-w-2xl px-5 py-12">
+        <section className="rounded-2xl border border-[#e2e8ed] bg-white p-8 text-center">
+          <h1 className="text-xl font-bold text-[#183b57]">
+            Tracking belum tersedia
+          </h1>
+          <p className="mt-2 text-sm text-slate-500">
+            {project.status === "pembayaran_dp"
+              ? "Tracking proyek tersedia setelah pembayaran DP terverifikasi."
+              : "Tracking proyek belum tersedia pada tahap proyek ini."}
+          </p>
+          <Link
+            href="/mandor/proyek"
+            className="mt-4 inline-block text-sm font-semibold text-[#35658a] underline"
+          >
+            Kembali ke proyek
+          </Link>
+        </section>
+      </main>
     );
 
-    try {
-      const supabase = createClient();
-      await submitIssueReport(supabase, {
-        projectId: id,
-        stageId: report.affectedMilestoneId,
-        subtaskId: report.affectedSubtaskId,
-        category: report.category,
-        workCondition: report.workCondition,
-        description: report.description,
-        estimatedDelayDays: report.estimatedDelayDays,
-        additionalInfo: report.additionalInfo,
-        attachment: report.attachment,
-        attachmentName: report.attachmentName,
-      });
-    } catch (err) {
-      console.error("[addIssue] error saving to DB:", err);
-    }
+  // Subtask sudah ditandai `done` oleh backend saat pengawas memverifikasi,
+  // sehingga daftar persetujuan tambahan tidak diperlukan lagi.
+  const approvedSubtasks: ApprovedSubtask[] = [];
+  const officialProgress = project.overallProgress;
+  const reportDecision = (reportId: string): MandorProgressReport["review"] =>
+    project.progressReports.find((report) => report.id === reportId)?.review ??
+    "Menunggu";
 
-    setIssueOpen(false);
-    setToast("Laporan kendala terkirim kepada pengawas.");
-    window.setTimeout(() => setToast(""), 4000);
+  const showError = (message: string) => {
+    setToast(message);
+    window.setTimeout(() => setToast(""), 5000);
+  };
+
+  const addProgress = async (
+    report: MandorProgressReport,
+    subtaskId: string,
+  ) => {
+    try {
+      await apiPost(`/api/mandor/projects/${id}/progress`, {
+        project_subtask_id: subtaskId,
+        keterangan: report.note,
+        foto_url: report.photo,
+      });
+      await reload();
+      setProgressOpen(false);
+      setToast("Laporan progress terkirim dan menunggu verifikasi pengawas.");
+      window.setTimeout(() => setToast(""), 4000);
+    } catch (error) {
+      showError(errorMessage(error, "Gagal mengirim laporan progress."));
+    }
+  };
+
+  const addIssue = async (
+    report: MandorIssueReport,
+    ids: { stageId: string; subtaskId: string },
+  ) => {
+    try {
+      await apiPost(`/api/mandor/projects/${id}/kendala`, {
+        project_stage_id: ids.stageId,
+        project_subtask_id: ids.subtaskId,
+        kategori: report.category,
+        deskripsi: report.description,
+        kondisi_pekerjaan: report.workCondition,
+        dampak_waktu_hari: report.estimatedDelayDays,
+        informasi_tambahan: report.additionalInfo,
+        lampiran: report.attachment,
+        lampiran_nama: report.attachmentName,
+      });
+      await reload();
+      setIssueOpen(false);
+      setToast("Laporan kendala terkirim kepada pengawas.");
+      window.setTimeout(() => setToast(""), 4000);
+    } catch (error) {
+      showError(errorMessage(error, "Gagal mengirim laporan kendala."));
+    }
   };
 
   const submitNote = async (note: string) => {
-    const next: ForemanNote = {
-      id: `CN-${Date.now()}`,
-      projectId: id,
-      foreman: project.supervisor || "Mandor",
-      note,
-      submitted: formatNow(),
-    };
-    addForemanNote(next);
-
     try {
-      const supabase = createClient();
-      await submitForemanNote(supabase, {
-        projectId: id,
-        note,
-      });
-      setProject((current) =>
-        current
-          ? {
-              ...current,
-              notes: [
-                {
-                  id: next.id,
-                  projectId: id,
-                  note,
-                  submitted: next.submitted,
-                },
-                ...current.notes,
-              ],
-            }
-          : current,
-      );
-    } catch (err) {
-      console.error("[submitNote] error saving to DB:", err);
+      await apiPost(`/api/mandor/projects/${id}/notes`, { catatan: note });
+      await reload();
+      setToast("Catatan untuk pengawas terkirim.");
+      window.setTimeout(() => setToast(""), 4000);
+    } catch (error) {
+      showError(errorMessage(error, "Gagal mengirim catatan."));
     }
-
-    setToast("Catatan untuk pengawas terkirim.");
-    window.setTimeout(() => setToast(""), 4000);
   };
 
-  const dbReports = project.progressReports || [];
-  const dbReportIds = new Set(dbReports.map((r) => r.id));
-  const extraReports = seededReports
-    .filter((r) => !dbReportIds.has(r.id))
-    .map((report) => ({
-      id: report.id,
-      milestoneId: report.milestoneId,
-      milestoneTitle: report.milestoneTitle,
-      subtaskTitle: report.subtaskTitle,
-      note: report.note,
-      photo: report.photo,
-      submitted: report.submitted,
-      review: report.decision,
-      feedback: "",
-      weight: report.weight,
-    }));
-
-  const weightedReports = [...extraReports, ...dbReports].sort((a, b) =>
-    b.submitted.localeCompare(a.submitted),
+  const weightedReports = project.progressReports;
+  const pendingMilestones = new Set(
+    project.progressReports
+      .filter((report) => report.review === "Menunggu")
+      .map((report) => report.milestoneTitle),
   );
 
   return (
@@ -301,7 +220,7 @@ export default function MandorProjectDetail({ id }: { id: string }) {
             className="object-cover"
           />
           <span className="absolute left-4 top-4 rounded-md bg-white/95 px-3 py-1.5 text-xs font-semibold text-[#365c78]">
-            #{project.id.length > 8 ? project.id.slice(0, 8) : project.id}
+            #{project.id}
           </span>
         </div>
         <div className="flex flex-col justify-between gap-4 p-5 sm:flex-row sm:items-end sm:p-6">
@@ -472,10 +391,7 @@ export default function MandorProjectDetail({ id }: { id: string }) {
                 {project.supervisor}
               </p>
             </section>
-            <NotesCard
-              notes={sync.notes.filter((note) => note.projectId === id)}
-              onSubmit={submitNote}
-            />
+            <NotesCard notes={project.notes} onSubmit={submitNote} />
             <section className="rounded-2xl border border-[#e3e9ef] bg-white p-5">
               <h2 className="text-base font-bold text-[#263d53]">
                 Informasi penugasan
@@ -508,9 +424,7 @@ export default function MandorProjectDetail({ id }: { id: string }) {
         <Reports
           reports={weightedReports}
           reviewFor={reportDecision}
-          pendingMilestones={
-            new Set(sync.reports.map((report) => report.milestoneTitle))
-          }
+          pendingMilestones={pendingMilestones}
         />
       )}
       {tab === "Kendala" && <Issues reports={project.issueReports} />}
@@ -800,18 +714,34 @@ function ProgressModal({
   project: MandorProject;
   approvedSubtasks: ApprovedSubtask[];
   onClose: () => void;
-  onSubmit: (report: MandorProgressReport) => void;
+  onSubmit: (
+    report: MandorProgressReport,
+    subtaskId: string,
+  ) => void | Promise<void>;
 }) {
-  const firstOpen = project.milestones.find(
-    (milestone) =>
-      !milestone.subtasks.every((task) =>
-        isApproved(task, milestone, approvedSubtasks),
+  const firstUnfinishedStage =
+    project.milestones.find((milestone) =>
+      milestone.subtasks.some(
+        (task) => !isApproved(task, milestone, approvedSubtasks),
       ),
+    ) ?? project.milestones[0];
+
+  const [selectedStageId, setSelectedStageId] = useState<string>(
+    firstUnfinishedStage?.id ?? "",
   );
-  const [subtaskId, setSubtaskId] = useState(
-    firstOpen?.subtasks.find(
-      (task) => !isApproved(task, firstOpen, approvedSubtasks),
-    )?.id ?? "",
+
+  const currentStage =
+    project.milestones.find((m) => m.id === selectedStageId) ??
+    firstUnfinishedStage ??
+    project.milestones[0];
+
+  const availableSubtasks = currentStage?.subtasks ?? [];
+  const firstPendingSubtask = availableSubtasks.find(
+    (task) => !isApproved(task, currentStage, approvedSubtasks),
+  );
+
+  const [subtaskId, setSubtaskId] = useState<string>(
+    firstPendingSubtask?.id ?? availableSubtasks[0]?.id ?? "",
   );
   const [note, setNote] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
@@ -819,11 +749,20 @@ function ProgressModal({
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
   const idCounter = useRef(0);
-  const milestone = firstOpen;
-  const availableSubtasks = milestone?.subtasks ?? [];
-  const pendingSubtasks = availableSubtasks.filter(
-    (task) => !isApproved(task, milestone!, approvedSubtasks),
-  );
+
+  const handleStageChange = (newStageId: string) => {
+    setSelectedStageId(newStageId);
+    const targetStage = project.milestones.find((m) => m.id === newStageId);
+    if (targetStage) {
+      const pendingInTarget = targetStage.subtasks.find(
+        (t) => !isApproved(t, targetStage, approvedSubtasks),
+      );
+      setSubtaskId(pendingInTarget?.id ?? targetStage.subtasks[0]?.id ?? "");
+    } else {
+      setSubtaskId("");
+    }
+    setError("");
+  };
 
   return (
     <Dialog title="Laporkan progress" onClose={onClose}>
@@ -834,26 +773,40 @@ function ProgressModal({
             setError("Tulis catatan pekerjaan minimal 10 karakter.");
             return;
           }
-          const subtask = pendingSubtasks.find((item) => item.id === subtaskId);
-          if (!subtask || !milestone) {
-            setError("Pilih subtask yang belum selesai.");
+          const subtask = availableSubtasks.find(
+            (item) => item.id === subtaskId,
+          );
+          if (!subtask || !currentStage) {
+            setError("Pilih subtask yang valid.");
+            return;
+          }
+          if (isApproved(subtask, currentStage, approvedSubtasks)) {
+            setError(
+              "Subtask ini sudah selesai dan tidak dapat dilaporkan lagi.",
+            );
             return;
           }
           setSending(true);
           idCounter.current += 1;
-          onSubmit({
-            id: `PR-${project.id}-${idCounter.current}`,
-            milestoneId: milestone.id,
-            milestoneTitle: milestone.title,
-            subtaskTitle: subtask.title,
-            note: note.trim(),
-            photo,
-            submitted: formatNow(),
-            review: "Menunggu",
-            feedback: "",
-            weight: subtask.weight,
-            subtaskId: subtask.id,
-          });
+          try {
+            await onSubmit(
+              {
+                id: `PR-${project.id}-${idCounter.current}`,
+                milestoneId: currentStage.id,
+                milestoneTitle: currentStage.title,
+                subtaskTitle: subtask.title,
+                note: note.trim(),
+                photo,
+                submitted: formatNow(),
+                review: "Menunggu",
+                feedback: "",
+                weight: subtask.weight,
+              },
+              subtask.id,
+            );
+          } finally {
+            setSending(false);
+          }
         }}
       >
         <p className="mb-4 rounded-xl bg-[#f5f8fb] p-4 text-xs leading-5 text-slate-600">
@@ -861,22 +814,46 @@ function ProgressModal({
           resmi sebelum diverifikasi pengawas.
         </p>
         <div className="block text-xs font-semibold text-[#29465e]">
-          Milestone saat ini
-          <div className="mt-1.5 flex min-h-10 items-center rounded-lg border border-[#dfe6ed] bg-[#f5f8fb] px-3 text-sm font-medium text-[#315b76]">
-            {milestone?.title ?? "Semua milestone telah selesai"}
-          </div>
+          Tahapan pekerjaan <span className="text-[#a75252]">*</span>
+          <select
+            value={selectedStageId}
+            onChange={(e) => handleStageChange(e.target.value)}
+            disabled={project.milestones.length === 0}
+            className="mt-1.5 h-10 w-full rounded-lg border border-[#dfe6ed] bg-white px-3 text-sm font-normal outline-none focus:border-[#5b7c99]"
+          >
+            {project.milestones.map((stage, idx) => {
+              const isStageDone =
+                stage.subtasks.length > 0 &&
+                stage.subtasks.every((t) =>
+                  isApproved(t, stage, approvedSubtasks),
+                );
+              return (
+                <option key={stage.id} value={stage.id}>
+                  Tahap {idx + 1}: {stage.title}{" "}
+                  {isStageDone ? "· (Selesai)" : ""}
+                </option>
+              );
+            })}
+          </select>
         </div>
         <label className="mt-4 block text-xs font-semibold text-[#29465e]">
-          Subtask yang dilaporkan
+          Subtask yang dilaporkan <span className="text-[#a75252]">*</span>
           <select
             value={subtaskId}
-            onChange={(event) => setSubtaskId(event.target.value)}
-            disabled={!pendingSubtasks.length}
+            onChange={(event) => {
+              setSubtaskId(event.target.value);
+              setError("");
+            }}
+            disabled={availableSubtasks.length === 0}
             className="mt-1.5 h-10 w-full rounded-lg border border-[#dfe6ed] bg-white px-3 text-sm font-normal outline-none focus:border-[#5b7c99] disabled:cursor-not-allowed disabled:bg-slate-100"
           >
             <option value="">Pilih subtask…</option>
             {availableSubtasks.map((task) => {
-              const completed = isApproved(task, milestone!, approvedSubtasks);
+              const completed = isApproved(
+                task,
+                currentStage,
+                approvedSubtasks,
+              );
               return (
                 <option key={task.id} value={task.id} disabled={completed}>
                   {task.title} ({task.weight}%) {completed ? "· Selesai" : ""}
@@ -994,24 +971,45 @@ function IssueModal({
   project: MandorProject;
   approvedSubtasks: ApprovedSubtask[];
   onClose: () => void;
-  onSubmit: (report: MandorIssueReport) => void;
+  onSubmit: (
+    report: MandorIssueReport,
+    ids: { stageId: string; subtaskId: string },
+  ) => void | Promise<void>;
 }) {
-  const milestone =
+  const defaultStage =
     project.milestones.find(
       (item) => item.title === project.currentMilestone,
     ) ??
     project.milestones.find((item) =>
       item.subtasks.some((task) => !isApproved(task, item, approvedSubtasks)),
-    );
-  const availableSubtasks =
-    milestone?.subtasks.filter(
-      (task) => !isApproved(task, milestone, approvedSubtasks),
-    ) ?? [];
+    ) ??
+    project.milestones[0];
+
+  const [selectedStageId, setSelectedStageId] = useState<string>(
+    defaultStage?.id ?? "",
+  );
+
+  const currentStage =
+    project.milestones.find((m) => m.id === selectedStageId) ??
+    defaultStage ??
+    project.milestones[0];
+
+  const availableSubtasks = currentStage?.subtasks ?? [];
+  const [subtaskId, setSubtaskId] = useState<string>(
+    availableSubtasks[0]?.id ?? "",
+  );
+
+  const handleStageChange = (newStageId: string) => {
+    setSelectedStageId(newStageId);
+    const targetStage = project.milestones.find((m) => m.id === newStageId);
+    setSubtaskId(targetStage?.subtasks[0]?.id ?? "");
+    setError("");
+  };
+
   const [category, setCategory] = useState<MandorIssueReport["category"] | "">(
     "",
   );
   const [description, setDescription] = useState("");
-  const [subtaskId, setSubtaskId] = useState(availableSubtasks[0]?.id ?? "");
   const [workCondition, setWorkCondition] = useState<
     MandorIssueReport["workCondition"] | ""
   >("");
@@ -1032,7 +1030,7 @@ function IssueModal({
   return (
     <Dialog title="Laporkan kendala" onClose={onClose}>
       <form
-        onSubmit={(event) => {
+        onSubmit={async (event) => {
           event.preventDefault();
           if (!category || !selectedCategory) {
             setError("Pilih kategori kendala.");
@@ -1042,10 +1040,8 @@ function IssueModal({
             setError("Jelaskan kendala minimal 10 karakter.");
             return;
           }
-          if (!milestone || !selectedSubtask) {
-            setError(
-              "Tidak ada subtask aktif yang dapat dipilih untuk laporan.",
-            );
+          if (!currentStage || !selectedSubtask) {
+            setError("Pilih subtask yang terdampak kendala.");
             return;
           }
           if (!workCondition) {
@@ -1054,25 +1050,32 @@ function IssueModal({
           }
           setSending(true);
           idCounter.current += 1;
-          onSubmit({
-            id: `KN-${project.id}-${idCounter.current}`,
-            projectId: project.id,
-            category,
-            categoryLabel: selectedCategory.label,
-            description: description.trim(),
-            affectedMilestoneId: milestone.id,
-            affectedMilestoneTitle: milestone.title,
-            affectedSubtaskId: selectedSubtask.id,
-            affectedSubtaskTitle: selectedSubtask.title,
-            workCondition,
-            estimatedDelayDays,
-            additionalInfo: additionalInfo.trim(),
-            attachment,
-            attachmentName,
-            submitted: formatNow(),
-            status: "Menunggu",
-            followUp: "",
-          });
+          try {
+            await onSubmit(
+              {
+                id: `KN-${project.id}-${idCounter.current}`,
+                projectId: project.id,
+                category,
+                categoryLabel: selectedCategory.label,
+                description: description.trim(),
+                affectedMilestoneId: currentStage.id,
+                affectedMilestoneTitle: currentStage.title,
+                affectedSubtaskId: selectedSubtask.id,
+                affectedSubtaskTitle: selectedSubtask.title,
+                workCondition,
+                estimatedDelayDays,
+                additionalInfo: additionalInfo.trim(),
+                attachment,
+                attachmentName,
+                submitted: formatNow(),
+                status: "Menunggu",
+                followUp: "",
+              },
+              { stageId: currentStage.id, subtaskId: selectedSubtask.id },
+            );
+          } finally {
+            setSending(false);
+          }
         }}
         className="space-y-4"
       >
@@ -1114,40 +1117,51 @@ function IssueModal({
             {description.length}/1000
           </span>
         </label>
-        <div className="rounded-xl border border-[#e4eaf0] p-3">
+        <div className="rounded-xl border border-[#e4eaf0] p-3 space-y-3">
           <p className="text-xs font-semibold text-[#29465e]">
-            Pekerjaan yang terdampak
+            Pekerjaan yang terdampak <span className="text-[#a75252]">*</span>
           </p>
-          {milestone ? (
-            <>
-              <p className="mt-2 rounded-lg bg-[#f5f8fb] px-3 py-2 text-xs font-medium text-[#315b76]">
-                {milestone.title}
-              </p>
-              <label className="mt-3 block text-xs font-medium text-slate-600">
-                Subtask aktif <span className="text-[#a75252]">*</span>
-                <select
-                  value={subtaskId}
-                  onChange={(event) => setSubtaskId(event.target.value)}
-                  disabled={!availableSubtasks.length}
-                  className="mt-1.5 h-10 w-full rounded-lg border border-[#dfe6ed] bg-white px-3 text-sm outline-none focus:border-[#5b7c99] disabled:bg-slate-100"
-                >
-                  {availableSubtasks.length ? (
-                    availableSubtasks.map((task) => (
-                      <option key={task.id} value={task.id}>
-                        {task.title}
-                      </option>
-                    ))
-                  ) : (
-                    <option value="">Tidak ada subtask aktif</option>
-                  )}
-                </select>
-              </label>
-            </>
-          ) : (
-            <p className="mt-2 text-xs text-slate-500">
-              Semua pekerjaan telah selesai; tidak ada subtask aktif.
-            </p>
-          )}
+          <div>
+            <label className="block text-[11px] font-medium text-slate-600">
+              Tahap pekerjaan
+            </label>
+            <select
+              value={selectedStageId}
+              onChange={(e) => handleStageChange(e.target.value)}
+              disabled={project.milestones.length === 0}
+              className="mt-1 h-10 w-full rounded-lg border border-[#dfe6ed] bg-white px-3 text-sm outline-none focus:border-[#5b7c99]"
+            >
+              {project.milestones.map((stage, idx) => (
+                <option key={stage.id} value={stage.id}>
+                  Tahap {idx + 1}: {stage.title}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-[11px] font-medium text-slate-600">
+              Subtask yang terdampak
+            </label>
+            <select
+              value={subtaskId}
+              onChange={(e) => {
+                setSubtaskId(e.target.value);
+                setError("");
+              }}
+              disabled={!availableSubtasks.length}
+              className="mt-1 h-10 w-full rounded-lg border border-[#dfe6ed] bg-white px-3 text-sm outline-none focus:border-[#5b7c99] disabled:bg-slate-100"
+            >
+              {availableSubtasks.length ? (
+                availableSubtasks.map((task) => (
+                  <option key={task.id} value={task.id}>
+                    {task.title} ({task.weight}%)
+                  </option>
+                ))
+              ) : (
+                <option value="">Tidak ada subtask</option>
+              )}
+            </select>
+          </div>
         </div>
         <fieldset>
           <legend className="text-xs font-semibold text-[#29465e]">

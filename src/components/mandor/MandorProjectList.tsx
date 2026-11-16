@@ -1,38 +1,23 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import type { MandorProject } from "@/data/mandor";
+import { useMemo, useState } from "react";
 import { useMandorStatus } from "@/components/mandor/MandorShell";
-import { createClient } from "@/utils/supabase/client";
-import { getMandorProjects } from "@/services/mandor.service";
+import { useMandorProjects } from "@/hooks/useMandorProjects";
 
 export default function MandorProjectList() {
-  const { status } = useMandorStatus();
+  const { status, loading: statusLoading } = useMandorStatus();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("Semua proyek");
-  const [dbProjects, setDbProjects] = useState<MandorProject[]>([]);
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    const supabase = createClient();
-    getMandorProjects(supabase)
-      .then((res) => {
-        setDbProjects(res);
-        setLoaded(true);
-      })
-      .catch((err) => {
-        console.error("[MandorProjectList] error loading projects:", err);
-        setLoaded(true);
-      });
-  }, []);
+  const { projects: liveProjects, loading: projectsLoading } =
+    useMandorProjects();
 
   const projects = useMemo(
     () =>
-      dbProjects.filter(
+      liveProjects.filter(
         (project) =>
-          `${project.id} ${project.title} ${project.location}`
+          `${project.id} ${project.title} ${project.design} ${project.location}`
             .toLowerCase()
             .includes(query.toLowerCase()) &&
           (filter === "Semua proyek" ||
@@ -40,8 +25,16 @@ export default function MandorProjectList() {
               ? project.overallProgress < 100
               : project.overallProgress === 100)),
       ),
-    [dbProjects, query, filter],
+    [liveProjects, query, filter],
   );
+  if (statusLoading || projectsLoading)
+    return (
+      <main className="mx-auto max-w-4xl px-5 py-10">
+        <p className="rounded-2xl border border-[#e3e9ef] bg-white p-10 text-center text-sm text-slate-500">
+          Memuat halaman...
+        </p>
+      </main>
+    );
   if (status !== "Disetujui")
     return (
       <main className="mx-auto max-w-4xl px-5 py-10">
@@ -61,15 +54,6 @@ export default function MandorProjectList() {
         </section>
       </main>
     );
-
-  if (!loaded) {
-    return (
-      <main className="mx-auto max-w-[1480px] px-5 py-12 text-center text-sm text-slate-500">
-        Memuat proyek...
-      </main>
-    );
-  }
-
   return (
     <main className="mx-auto max-w-[1480px] space-y-6 px-4 py-6 sm:px-6 md:py-8">
       <header>
@@ -112,14 +96,14 @@ export default function MandorProjectList() {
           >
             <div className="relative h-44 sm:h-52">
               <Image
-                src={project.image}
+                src={project.image || "/images/katalog/house-dummy1.webp"}
                 alt={`Desain ${project.title}`}
                 fill
                 sizes="(max-width: 1280px) 100vw, 50vw"
                 className="object-cover"
               />
               <span className="absolute left-4 top-4 rounded-md bg-white/95 px-2.5 py-1 text-xs font-semibold text-[#365c78]">
-                #{project.id.length > 8 ? project.id.slice(0, 8) : project.id}
+                #{project.id}
               </span>
             </div>
             <div className="p-5">
@@ -141,12 +125,20 @@ export default function MandorProjectList() {
               <div className="mt-1 text-right text-[10px] font-semibold text-[#315b76]">
                 {project.overallProgress}% resmi
               </div>
-              <Link
-                href={`/mandor/proyek/${project.id}`}
-                className="mt-4 inline-flex min-h-10 w-full items-center justify-center rounded-lg bg-[#2B3361] px-4 text-sm font-semibold text-white hover:bg-[#21274b]"
-              >
-                Lihat pekerjaan
-              </Link>
+              {project.status === "berjalan" ||
+              project.status === "selesai" ||
+              !project.status ? (
+                <Link
+                  href={`/mandor/proyek/${project.id}`}
+                  className="mt-4 inline-flex min-h-10 w-full items-center justify-center rounded-lg bg-[#2B3361] px-4 text-sm font-semibold text-white hover:bg-[#21274b]"
+                >
+                  Lihat pekerjaan
+                </Link>
+              ) : (
+                <span className="mt-4 inline-flex min-h-10 w-full items-center justify-center rounded-lg border border-[#e8d8ae] bg-[#fffaf0] px-4 text-center text-sm font-semibold text-[#946a27]">
+                  Menunggu pembayaran DP
+                </span>
+              )}
             </div>
           </article>
         ))}
