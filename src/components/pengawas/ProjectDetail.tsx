@@ -401,7 +401,6 @@ function IssueWorkflow({
   onNotify,
   resolution,
   onPersist,
-  onPatch,
 }: {
   issue: SupervisorIssue;
   report?: MandorIssueReport;
@@ -418,7 +417,7 @@ function IssueWorkflow({
       final?: boolean;
     },
   ) => void | Promise<void>;
-  onPatch: (next: IssueResolution) => void;
+  onPatch?: (next: IssueResolution) => void;
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [mode, setMode] = useState<"manual" | "ai" | null>(null);
@@ -531,47 +530,6 @@ function IssueWorkflow({
       );
     } catch (error) {
       onNotify(errorMessage(error, "Gagal menyimpan penanganan kendala."));
-    }
-  };
-  const customerDecision = async (approved: boolean) => {
-    if (!resolution) return;
-    const feedback = approved
-      ? "Usulan disetujui customer."
-      : resolution.customerFeedback.trim();
-    if (!approved && !feedback) return;
-    const entry = {
-      author: "Customer" as const,
-      message: feedback,
-      date: new Date().toLocaleString("id-ID", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      }),
-    };
-    const next: IssueResolution = {
-      ...resolution,
-      status: approved
-        ? ("Ditindaklanjuti" as const)
-        : ("Diskusi dengan pengawas" as const),
-      customerFeedback: approved
-        ? feedback
-        : resolution.customerFeedback.trim(),
-      discussion: [
-        ...resolution.discussion,
-        { ...entry, id: crypto.randomUUID() },
-      ],
-    };
-    try {
-      await onPersist(next, {
-        discussion: { author: entry.author, message: feedback },
-        ...(approved ? { followUp: resolution.solution } : {}),
-      });
-      onNotify(
-        approved
-          ? "Customer menyetujui usulan. Keputusan diteruskan ke mandor."
-          : "Alasan penolakan diteruskan ke pengawas untuk diskusi.",
-      );
-    } catch (error) {
-      onNotify(errorMessage(error, "Gagal menyimpan keputusan customer."));
     }
   };
   const sendDiscussion = async () => {
@@ -1238,13 +1196,12 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
     error,
     reload,
   } = useSupervisorProject(projectId);
-  const [addedForemanNames, setAddedForemanNames] = useState<string[]>([]);
+  const [addedForemanNames] = useState<string[]>([]);
   const [resolutionPatches, setResolutionPatches] = useState<
     Record<string, IssueResolution>
   >({});
   const [showForemen, setShowForemen] = useState(false);
   const [showContract, setShowContract] = useState(false);
-  const [signatureError, setSignatureError] = useState<string | null>(null);
   const [customerMessage, setCustomerMessage] = useState("");
   const [toast, setToast] = useState("");
   const [showAddDoc, setShowAddDoc] = useState(false);
@@ -2194,7 +2151,6 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
           project={project}
           onClose={() => {
             setShowContract(false);
-            setSignatureError(null);
             void reload();
           }}
         />

@@ -1,6 +1,7 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { requireRole, ServiceError } from "@/services/access.service";
 import { createClient } from "@/utils/supabase/server";
+import { notifyDpReady } from "@/services/notification.service";
 
 export async function POST(
   request: Request,
@@ -56,6 +57,24 @@ export async function POST(
       if (error.code === "42501") throw new ServiceError("Akses ditolak.", 403);
       throw new ServiceError("Gagal menyimpan persetujuan kontrak.", 500);
     }
+
+    // Fire-and-forget: notifikasi Event 5 — DP Siap Dibayar
+    supabase
+      .from("payment_stages")
+      .select("nominal")
+      .eq("project_id", projectId)
+      .eq("urutan", 0)
+      .maybeSingle()
+      .then(({ data: dpStage }) => {
+        const dpAmount = dpStage?.nominal ? Number(dpStage.nominal) : undefined;
+        notifyDpReady(projectId, dpAmount).catch((err) =>
+          console.error("[contract-signature] notifyDpReady:", err),
+        );
+      })
+      .catch((err) =>
+        console.error("[contract-signature] fetch dp stage:", err),
+      );
+
     return NextResponse.json({ success: true });
   } catch (error) {
     if (error instanceof ServiceError)

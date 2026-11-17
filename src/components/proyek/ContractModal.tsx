@@ -319,6 +319,7 @@ export default function ContractModal({
                 }
               >
                 {supervisorSignature ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
                   <img
                     src={supervisorSignature}
                     alt="Tanda tangan pengawas"
@@ -337,6 +338,7 @@ export default function ContractModal({
                 name={project.customerName || "Customer"}
               >
                 {signature || customerSignature ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
                   <img
                     src={signature || customerSignature || ""}
                     alt="Tanda tangan customer"
