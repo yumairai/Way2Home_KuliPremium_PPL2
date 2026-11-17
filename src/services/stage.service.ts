@@ -117,11 +117,27 @@ function toStage(row: Row): StageDTO {
   const progress =
     totalWeight > 0 ? Math.round((doneWeight / totalWeight) * 100) : 0;
 
+  const urutan = Number(row.urutan ?? 0);
+  const templateStage = STAGE_TEMPLATE[urutan - 1];
+  const rawName = String(row.nama_tahap ?? "").trim();
+  const legacyNames = new Set([
+    "Persiapan",
+    "Pondasi",
+    "Struktur",
+    "Dinding & Atap",
+    "Finishing",
+    "Serah Terima",
+  ]);
+  const namaTahap =
+    templateStage && (!rawName || legacyNames.has(rawName))
+      ? templateStage.name
+      : rawName || templateStage?.name || "";
+
   return {
     id: String(row.id),
     project_id: String(row.project_id),
-    nama_tahap: String(row.nama_tahap ?? ""),
-    urutan: Number(row.urutan ?? 0),
+    nama_tahap: namaTahap,
+    urutan,
     progress_percentage: progress,
     status:
       progress >= 100 ? "selesai" : progress > 0 ? "berjalan" : "belum_mulai",
@@ -216,8 +232,9 @@ export async function persistStageProgress(
     .eq("id", stageId);
 
   if (updateError) {
-    console.error("[persistStageProgress] update:", updateError.message);
-    throw new ServiceError("Gagal menyimpan progres tahap.", 500);
+    // Pada beberapa skema RLS (migration 016), direct UPDATE pada project_stages
+    // dicabut dari authenticated karena progres dihitung dinamis dari subtask.
+    console.warn("[persistStageProgress] stage update skipped:", updateError.message);
   }
 }
 

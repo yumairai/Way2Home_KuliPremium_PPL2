@@ -1,4 +1,4 @@
-﻿/**
+/**
  * mandor.service.ts
  *
  * Backend sisi Mandor untuk alur lapangan Mandor -> Pengawas.
@@ -542,13 +542,17 @@ export async function submitProgressReport(
     );
   }
 
-  // Satu laporan aktif per subtask: laporan sebelumnya yang masih menunggu diganti.
-  await supabase
-    .from("progress_reports")
-    .delete()
-    .eq("project_subtask_id", input.project_subtask_id)
-    .eq("mandor_id", user.id)
-    .eq("keputusan", "menunggu");
+  // Upayakan membersihkan laporan 'menunggu' sebelumnya jika ada
+  try {
+    await supabase
+      .from("progress_reports")
+      .delete()
+      .eq("project_subtask_id", input.project_subtask_id)
+      .eq("mandor_id", user.id)
+      .eq("keputusan", "menunggu");
+  } catch {
+    // Diabaikan bila RLS melarang operasi DELETE; laporan baru tetap tersimpan
+  }
 
   const { data, error } = await supabase
     .from("progress_reports")

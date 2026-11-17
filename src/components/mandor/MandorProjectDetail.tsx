@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useRef, useState } from "react";
 import { notFound } from "next/navigation";
@@ -719,20 +719,24 @@ function ProgressModal({
     subtaskId: string,
   ) => void | Promise<void>;
 }) {
-  const firstUnfinishedStage =
+  const defaultStage =
+    project.milestones.find(
+      (item) => item.title === project.currentMilestone,
+    ) ??
     project.milestones.find((milestone) =>
       milestone.subtasks.some(
         (task) => !isApproved(task, milestone, approvedSubtasks),
       ),
-    ) ?? project.milestones[0];
+    ) ??
+    project.milestones[0];
 
   const [selectedStageId, setSelectedStageId] = useState<string>(
-    firstUnfinishedStage?.id ?? "",
+    defaultStage?.id ?? "",
   );
 
   const currentStage =
     project.milestones.find((m) => m.id === selectedStageId) ??
-    firstUnfinishedStage ??
+    defaultStage ??
     project.milestones[0];
 
   const availableSubtasks = currentStage?.subtasks ?? [];
@@ -753,7 +757,7 @@ function ProgressModal({
   const handleStageChange = (newStageId: string) => {
     setSelectedStageId(newStageId);
     const targetStage = project.milestones.find((m) => m.id === newStageId);
-    if (targetStage) {
+    if (targetStage && targetStage.subtasks.length > 0) {
       const pendingInTarget = targetStage.subtasks.find(
         (t) => !isApproved(t, targetStage, approvedSubtasks),
       );
@@ -763,6 +767,13 @@ function ProgressModal({
     }
     setError("");
   };
+
+  const selectedSubtask = availableSubtasks.find(
+    (item) => item.id === subtaskId,
+  );
+  const isSelectedSubtaskDone = selectedSubtask
+    ? isApproved(selectedSubtask, currentStage, approvedSubtasks)
+    : false;
 
   return (
     <Dialog title="Laporkan progress" onClose={onClose}>
@@ -782,7 +793,7 @@ function ProgressModal({
           }
           if (isApproved(subtask, currentStage, approvedSubtasks)) {
             setError(
-              "Subtask ini sudah selesai dan tidak dapat dilaporkan lagi.",
+              "Subtask ini sudah selesai dan tidak dapat dilaporkan lagi. Silakan pilih subtask yang masih berjalan.",
             );
             return;
           }
@@ -847,23 +858,32 @@ function ProgressModal({
             disabled={availableSubtasks.length === 0}
             className="mt-1.5 h-10 w-full rounded-lg border border-[#dfe6ed] bg-white px-3 text-sm font-normal outline-none focus:border-[#5b7c99] disabled:cursor-not-allowed disabled:bg-slate-100"
           >
-            <option value="">Pilih subtask…</option>
-            {availableSubtasks.map((task) => {
-              const completed = isApproved(
-                task,
-                currentStage,
-                approvedSubtasks,
-              );
-              return (
-                <option key={task.id} value={task.id} disabled={completed}>
-                  {task.title} ({task.weight}%) {completed ? "· Selesai" : ""}
-                </option>
-              );
-            })}
+            {availableSubtasks.length > 0 ? (
+              availableSubtasks.map((task) => {
+                const completed = isApproved(
+                  task,
+                  currentStage,
+                  approvedSubtasks,
+                );
+                return (
+                  <option key={task.id} value={task.id}>
+                    {task.title} ({task.weight}%){completed ? " · (Selesai)" : ""}
+                  </option>
+                );
+              })
+            ) : (
+              <option value="">Tidak ada subtask pada tahap ini</option>
+            )}
           </select>
-          <span className="mt-1.5 block text-[10px] text-slate-400">
-            Subtask yang sudah selesai ditandai dan tidak dapat dipilih lagi.
-          </span>
+          {isSelectedSubtaskDone ? (
+            <span className="mt-1.5 block text-[11px] font-medium text-amber-600">
+              ⚠️ Subtask ini sudah diverifikasi selesai oleh pengawas. Silakan pilih subtask lain yang masih berlangsung.
+            </span>
+          ) : (
+            <span className="mt-1.5 block text-[10px] text-slate-400">
+              Pilih subtask yang ingin Anda laporkan kemajuan pekerjaannya.
+            </span>
+          )}
         </label>
         <label className="mt-4 block text-xs font-semibold text-[#29465e]">
           Catatan pekerjaan
@@ -945,7 +965,7 @@ function ProgressModal({
         <DialogFooter
           onClose={onClose}
           submitLabel={sending ? "Mengirim…" : "Kirim laporan"}
-          disabled={sending}
+          disabled={sending || isSelectedSubtaskDone || !subtaskId}
         />
       </form>
     </Dialog>

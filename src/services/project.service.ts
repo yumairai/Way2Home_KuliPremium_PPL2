@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, DocumentJenis } from "@/types/database.types";
 import { requireRole, ServiceError } from "./access.service";
+import { seedProjectSubtasks } from "./subtask-seeding.service";
 import type {
   Project,
   ProjectStatus,
@@ -261,7 +262,16 @@ export async function createProjectWithDocuments(
       throw new Error(`Gagal memproses pengajuan proyek: ${rpcErr.message}`);
     }
 
-    // 9. Return 201 response
+    // 9. Seed otomatis 6 tahap + 24 subtask (no progress) via admin client
+    // Fire-and-forget: gagal seed tidak membatalkan pembuatan proyek
+    seedProjectSubtasks(projectId).catch((seedErr) => {
+      console.warn(
+        "[createProjectWithDocuments] Gagal seed subtask otomatis:",
+        seedErr,
+      );
+    });
+
+    // 10. Return 201 response
     return {
       projectId,
       status: "menunggu_pengawas",
