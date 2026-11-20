@@ -3,12 +3,10 @@
  *
  * Template baku 6 tahap / 24 subtask pembangunan rumah.
  *
- * Dipakai oleh:
- *   - POST /api/pengawas/projects/[id]/stages  (payload `template: true`)
- *   - stage.service.createStagesFromTemplate()
+ * Dipakai untuk seed otomatis setelah persetujuan kontrak dan sebagai template
+ * saat Pengawas membuat tahapan dari template.
  *
- * Kepemilikan: tahapan dibuat MANUAL oleh Pengawas (bukan otomatis saat
- * status proyek berubah). Template ini hanya mempercepat pengisian.
+ * Semua proyek baru memakai breakdown standar ini dengan progress awal 0%.
  *
  * Total bobot subtask = 100%.
  */

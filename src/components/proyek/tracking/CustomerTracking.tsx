@@ -273,25 +273,28 @@ function CustomerResolutionCard({
 
 export default function CustomerTracking({ project }: { project: Project }) {
   const router = useRouter();
-  const milestones = useMemo(() => {
+  const milestones = useMemo((): ConstructionMilestone[] => {
     const data = project.tracking?.milestones ?? [];
-    return TRACKING_MILESTONE_TEMPLATE.map((template) => {
-      const found = data.find((item) => item.id === template.id);
-      return (
-        found ?? {
-          ...template,
-          status: "pending" as const,
-          progress: 0,
-          tasks: [],
-        }
-      );
-    });
+    if (data.length > 0) {
+      return data;
+    }
+    return TRACKING_MILESTONE_TEMPLATE.map((template) => ({
+      ...template,
+      status: "pending" as const,
+      progress: 0,
+      tasks: [],
+      startedAt: undefined,
+      completedAt: undefined,
+      updatedAt: undefined,
+    }));
   }, [project.tracking?.milestones]);
   const initialActive =
     milestones.find((item) => item.status === "in-progress") ??
     milestones.find((item) => item.status === "completed") ??
     milestones[0];
-  const [selectedId, setSelectedId] = useState(initialActive.id);
+  const [selectedId, setSelectedId] = useState(
+    initialActive?.id ?? milestones[0]?.id,
+  );
   const [lightboxItem, setLightboxItem] = useState<ProjectGalleryItem | null>(
     null,
   );
@@ -303,19 +306,41 @@ export default function CustomerTracking({ project }: { project: Project }) {
   const completedCount = milestones.filter(
     (item) => item.status === "completed",
   ).length;
-  const progress =
-    project.status === "Selesai"
-      ? 100
-      : hasTrackingMilestones && project.tracking?.milestones.length === 6
-        ? Number(
-            (
-              milestones.reduce((total, item) => total + item.progress, 0) / 6
-            ).toFixed(1),
-          )
-        : null;
-  const currentMilestone = milestones.find(
-    (item) => item.status === "in-progress",
-  );
+  const progress = useMemo(() => {
+    if (project.status === "Selesai") return 100;
+
+    if (
+      project.tracking?.overallProgress !== undefined &&
+      project.tracking?.overallProgress !== null
+    ) {
+      return project.tracking.overallProgress;
+    }
+
+    // Hitung akumulasi bobot subtask yang berstatus completed
+    const allTasks = milestones.flatMap((m) => m.tasks);
+    if (allTasks.length > 0) {
+      const doneWeight = allTasks
+        .filter((t) => t.status === "completed")
+        .reduce((sum, t) => sum + (t.weight ?? 0), 0);
+      if (doneWeight > 0) {
+        return Number(doneWeight.toFixed(1));
+      }
+    }
+
+    if (hasTrackingMilestones && milestones.length === 6) {
+      const avg =
+        milestones.reduce((total, item) => total + item.progress, 0) / 6;
+      return Number(avg.toFixed(1));
+    }
+
+    return null;
+  }, [project.status, project.tracking, milestones, hasTrackingMilestones]);
+
+  const currentMilestone =
+    milestones.find((item) => item.status === "in-progress") ??
+    (milestones.some((item) => item.status === "completed")
+      ? milestones.find((item) => item.status === "pending")
+      : undefined);
   const targetDate = project.tracking?.targetDate;
 
   return (

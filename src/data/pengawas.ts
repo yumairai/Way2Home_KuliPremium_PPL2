@@ -102,6 +102,7 @@ export type SupervisorProject = {
   deadline: string;
   started: string;
   value: number;
+  customerBudget: number;
   estimatedCost?: number;
   supervisor: string;
   foreman: string | null;

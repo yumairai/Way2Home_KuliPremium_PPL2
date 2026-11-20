@@ -69,21 +69,46 @@ export function stagesToMilestones(
         TRACKING_MILESTONE_TEMPLATE.find(
           (item) => item.title.toLowerCase() === stage.nama_tahap.toLowerCase(),
         );
-      const tasks: ConstructionTask[] = (subtasksByStage.get(stage.id) ?? [])
+      const subtasks = subtasksByStage.get(stage.id) ?? [];
+      const tasks: ConstructionTask[] = subtasks
         .sort((a, b) => a.urutan - b.urutan)
         .map((task) => ({
           id: task.id,
           title: task.judul,
           status: task.selesai ? "completed" : "pending",
+          weight: Number(task.bobot ?? 0),
           completedAt: task.completed_at ?? undefined,
         }));
+
+      // Hitung progres tahap secara dinamis dari bobot subtask
+      const totalWeight = subtasks.reduce(
+        (sum, item) => sum + Number(item.bobot ?? 0),
+        0,
+      );
+      const doneWeight = subtasks
+        .filter((item) => item.selesai)
+        .reduce((sum, item) => sum + Number(item.bobot ?? 0), 0);
+
+      const progress =
+        totalWeight > 0
+          ? Math.min(100, Math.round((doneWeight / totalWeight) * 100))
+          : stage.progress_percentage;
+
+      let status: ConstructionMilestone["status"] = "pending";
+      if (progress >= 100 || stage.status === "selesai") {
+        status = "completed";
+      } else if (progress > 0 || stage.status === "berjalan") {
+        status = "in-progress";
+      } else {
+        status = stageStatus(stage.status);
+      }
 
       return {
         id: template?.id ?? stage.id,
         title: stage.nama_tahap,
         description: stage.keterangan ?? template?.description ?? "",
-        status: stageStatus(stage.status),
-        progress: stage.progress_percentage,
+        status,
+        progress,
         startedAt: stage.tanggal_mulai ?? undefined,
         completedAt: stage.tanggal_selesai ?? undefined,
         updatedAt: stage.updated_at,
@@ -113,13 +138,76 @@ export async function getProjectProgress(
     return { stages, reports: [], overallProgress: null };
   }
 
+  const stageIds = stages.map((stage) => stage.id);
+  const { data: subtasksData } = await supabase
+    .from("project_subtasks")
+    .select("project_stage_id, bobot, selesai")
+    .in("project_stage_id", stageIds);
+
+  const subtasks = (subtasksData ?? []) as {
+    project_stage_id: string;
+    bobot: number;
+    selesai: boolean;
+  }[];
+
+  const subtasksByStage = new Map<
+    string,
+    { bobot: number; selesai: boolean }[]
+  >();
+  for (const st of subtasks) {
+    const list = subtasksByStage.get(st.project_stage_id) ?? [];
+    list.push(st);
+    subtasksByStage.set(st.project_stage_id, list);
+  }
+
+  const updatedStages = stages.map((stage) => {
+    const stageSubtasks = subtasksByStage.get(stage.id) ?? [];
+    const totalWeight = stageSubtasks.reduce(
+      (sum, item) => sum + Number(item.bobot ?? 0),
+      0,
+    );
+    const doneWeight = stageSubtasks
+      .filter((item) => item.selesai)
+      .reduce((sum, item) => sum + Number(item.bobot ?? 0), 0);
+
+    const progress =
+      totalWeight > 0
+        ? Math.min(100, Math.round((doneWeight / totalWeight) * 100))
+        : stage.progress_percentage;
+
+    const status =
+      progress >= 100
+        ? "selesai"
+        : progress > 0
+          ? "berjalan"
+          : stage.status === "berjalan"
+            ? "berjalan"
+            : stage.status;
+
+    return {
+      ...stage,
+      progress_percentage: progress,
+      status,
+    };
+  });
+
+  const totalAllWeight = subtasks.reduce(
+    (sum, item) => sum + Number(item.bobot ?? 0),
+    0,
+  );
+  const doneAllWeight = subtasks
+    .filter((item) => item.selesai)
+    .reduce((sum, item) => sum + Number(item.bobot ?? 0), 0);
+
+  const overallProgress =
+    totalAllWeight > 0
+      ? Number(doneAllWeight.toFixed(1))
+      : calculateOverallProgress(updatedStages);
+
   let reportsQuery = supabase
     .from("progress_reports")
     .select("*")
-    .in(
-      "project_stage_id",
-      stages.map((stage) => stage.id),
-    )
+    .in("project_stage_id", stageIds)
     .order("created_at", { ascending: false });
 
   if (options.customerOnly)
@@ -128,9 +216,9 @@ export async function getProjectProgress(
   if (reportsResult.error) throw reportsResult.error;
 
   return {
-    stages,
+    stages: updatedStages,
     reports: reportsResult.data ?? [],
-    overallProgress: calculateOverallProgress(stages),
+    overallProgress,
   };
 }
 
@@ -138,9 +226,10 @@ export async function getCustomerProjectTracking(
   supabase: Client,
   projectId: string,
 ): Promise<ProjectTracking> {
-  const { stages, reports } = await getProjectProgress(supabase, projectId, {
-    customerOnly: true,
-  });
+  const { stages, reports, overallProgress: baseOverallProgress } =
+    await getProjectProgress(supabase, projectId, {
+      customerOnly: true,
+    });
   const stageIds = stages.map((stage) => stage.id);
   const [
     subtasksResult,
@@ -199,8 +288,22 @@ export async function getCustomerProjectTracking(
   if (documentationResult.error) throw documentationResult.error;
   if (contractResult.error) throw contractResult.error;
 
+  const allSubtasks = (subtasksResult.data ?? []) as Subtask[];
+  const totalSubtasksWeight = allSubtasks.reduce(
+    (sum, s) => sum + Number(s.bobot ?? 0),
+    0,
+  );
+  const doneSubtasksWeight = allSubtasks
+    .filter((s) => s.selesai)
+    .reduce((sum, s) => sum + Number(s.bobot ?? 0), 0);
+
+  const overallProgress =
+    totalSubtasksWeight > 0
+      ? Number(doneSubtasksWeight.toFixed(1))
+      : baseOverallProgress;
+
   const subtasksByStage = new Map<string, Subtask[]>();
-  for (const subtask of (subtasksResult.data ?? []) as Subtask[]) {
+  for (const subtask of allSubtasks) {
     const current = subtasksByStage.get(subtask.project_stage_id) ?? [];
     current.push(subtask);
     subtasksByStage.set(subtask.project_stage_id, current);
@@ -279,6 +382,7 @@ export async function getCustomerProjectTracking(
       stages.find((stage) => stage.tanggal_mulai)?.tanggal_mulai ??
       undefined,
     targetDate: contractResult.data?.tanggal_selesai_estimasi ?? undefined,
+    overallProgress,
     milestones,
     activities: [...reportActivities, ...updateActivities],
     gallery: [

@@ -2,6 +2,7 @@ export type ConstructionTask = {
   id: string;
   title: string;
   status: "pending" | "in-progress" | "completed";
+  weight?: number;
   completedAt?: string;
 };
 
@@ -50,6 +51,7 @@ export type CustomerIssueResolution = {
 export type ProjectTracking = {
   startedAt?: string;
   targetDate?: string;
+  overallProgress?: number | null;
   milestones: ConstructionMilestone[];
   activities: ProjectActivity[];
   gallery: ProjectGalleryItem[];

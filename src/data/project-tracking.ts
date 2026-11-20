@@ -1,37 +1,43 @@
-﻿import type { ConstructionMilestone } from "@/types/project-tracking";
+import type { ConstructionMilestone } from "@/types/project-tracking";
 
 export const TRACKING_MILESTONE_TEMPLATE: Pick<
   ConstructionMilestone,
   "id" | "title" | "description"
 >[] = [
   {
-    id: "persiapan",
-    title: "Persiapan",
-    description: "Penyiapan area kerja dan kebutuhan awal pembangunan.",
+    id: "persiapan-fondasi",
+    title: "Pekerjaan Persiapan & Fondasi",
+    description:
+      "Penyiapan area kerja, pembersihan lahan, pengukuran, galian, dan pengecoran fondasi.",
   },
   {
-    id: "pondasi",
-    title: "Pondasi",
-    description: "Pekerjaan struktur bawah sebagai dasar bangunan.",
+    id: "struktur-utama",
+    title: "Pekerjaan Struktur Utama",
+    description:
+      "Pengerjaan struktur utama seperti kolom tiang, balok, pelat lantai, dan rangka atap.",
   },
   {
-    id: "struktur",
-    title: "Struktur",
-    description: "Pengerjaan struktur utama bangunan.",
+    id: "dinding-penutup-atap",
+    title: "Pekerjaan Dinding & Penutup Atap",
+    description:
+      "Pemasangan dinding bata, plesteran awal, pengerjaan kusen, dan pemasangan atap.",
   },
   {
-    id: "dinding-atap",
-    title: "Dinding & Atap",
-    description: "Pengerjaan dinding, rangka, dan penutup atap.",
+    id: "jalur-mep",
+    title: "Instalasi Jalur MEP",
+    description:
+      "Instalasi jalur mekanikal, elektrikal, perpipaan air bersih/kotor, dan septic tank.",
   },
   {
     id: "finishing",
-    title: "Finishing",
-    description: "Penyelesaian permukaan dan komponen interior.",
+    title: "Pekerjaan Finishing",
+    description:
+      "Acian dinding, pemasangan keramik/granit, plafon, pengecatan, dan sanitari.",
   },
   {
-    id: "serah-terima",
-    title: "Serah Terima",
-    description: "Pemeriksaan akhir dan penyerahan hasil pekerjaan.",
+    id: "lingkungan-serah-terima",
+    title: "Lingkungan Luar & Serah Terima",
+    description:
+      "Pengerjaan pagar, carport, taman, pembersihan total, dan serah terima kunci.",
   },
 ];

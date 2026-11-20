@@ -18,7 +18,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/types/database.types";
+import type { Database, Json } from "@/types/database.types";
 import { createAdminClient } from "@/utils/supabase/admin";
 import {
   buildWay2HomeEmailHtml,
@@ -93,14 +93,16 @@ async function getProjectRecipientInfo(
 
   // Ambil nama desain
   let projectTitle = "Pembangunan Rumah";
+  let designEstimatedCost = 0;
   if (pRow.design_id) {
     try {
       const { data: des } = await adminClient
         .from("designs")
-        .select("nama")
+        .select("nama, estimasi_biaya")
         .eq("id", String(pRow.design_id))
         .maybeSingle();
       if (des?.nama) projectTitle = des.nama;
+      designEstimatedCost = Number(des?.estimasi_biaya ?? 0);
     } catch (err) {
       console.warn(`[notification.service] Gagal mengambil nama desain ${pRow.design_id}:`, err);
     }
@@ -130,8 +132,7 @@ async function getProjectRecipientInfo(
     }
   }
 
-  const contractValue =
-    Number(pRow.nilai_proyek) || Number(pRow.budget_proyek) || 0;
+  const contractValue = designEstimatedCost;
 
   return {
     projectId,
@@ -172,7 +173,7 @@ async function dispatchCustomerNotification(params: {
       judul,
       isi,
       tipe,
-      metadata: (metadata || {}) as Record<string, unknown>,
+      metadata: (metadata || {}) as Json,
     });
 
     if (notifErr) {

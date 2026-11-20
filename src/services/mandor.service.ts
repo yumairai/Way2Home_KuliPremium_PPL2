@@ -91,6 +91,7 @@ function toProgressReport(row: Row): MandorProgressReport {
   const stage = (row.project_stages ?? {}) as Row;
   const subtask = (row.project_subtasks ?? {}) as Row;
   const keputusan = String(row.keputusan ?? "menunggu");
+  const rawWeight = Number(row.persentase ?? subtask.bobot ?? 0);
   return {
     id: String(row.id),
     milestoneId: String(row.project_stage_id ?? stage.id ?? ""),
@@ -101,7 +102,7 @@ function toProgressReport(row: Row): MandorProgressReport {
     submitted: formatDateTimeDot(String(row.created_at)),
     review: KEPUTUSAN_UI[keputusan] ?? "Menunggu",
     feedback: String(row.feedback ?? ""),
-    weight: Number(row.persentase ?? subtask.bobot ?? 0),
+    weight: Number.isFinite(rawWeight) && rawWeight >= 0 ? rawWeight : 0,
   };
 }
 

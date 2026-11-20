@@ -1436,7 +1436,7 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
               </p>
               <p className="mt-3 text-xs text-slate-600">{project.address}</p>
             </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:min-w-[460px]">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:min-w-[620px]">
               <div className="rounded-xl bg-[#f5f7f9] p-3">
                 <p className="text-[9px] text-slate-500">Progres resmi</p>
                 <strong className="mt-1 block text-xl text-[#294d69]">
@@ -1449,11 +1449,20 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
                   {project.deadline}
                 </strong>
               </div>
-              <div className="col-span-2 rounded-xl bg-[#f5f7f9] p-3 sm:col-span-1">
-                <p className="text-[9px] text-slate-500">Nilai proyek</p>
+              <div className="rounded-xl bg-[#f5f7f9] p-3">
+                <p className="text-[9px] text-slate-500">Harga estimasi proyek</p>
                 <strong className="mt-1 block text-xs text-[#294d69]">
                   {money(project.value)}
                 </strong>
+              </div>
+              <div className="rounded-xl bg-[#f5f7f9] p-3">
+                <p className="text-[9px] text-slate-500">Budget customer</p>
+                <strong className="mt-1 block text-xs text-[#294d69]">
+                  {money(project.customerBudget)}
+                </strong>
+                <p className="mt-1 text-[9px] text-slate-500">
+                  Ruang tambahan {money(project.customerBudget - project.value)}
+                </p>
               </div>
             </div>
           </div>

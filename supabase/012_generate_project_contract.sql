@@ -55,11 +55,9 @@ BEGIN
     RAISE EXCEPTION 'Data desain, customer, atau pengawas untuk kontrak tidak lengkap';
   END IF;
 
-  project_value := COALESCE(
-    NULLIF(NEW.nilai_proyek, 0),
-    NULLIF(NEW.budget_proyek, 0),
-    project_design.estimasi_biaya
-  );
+  -- Nilai kontrak dan termin pembayaran selalu mengikuti estimasi biaya desain.
+  -- budget_proyek milik customer dipertahankan terpisah untuk analisis risiko.
+  project_value := project_design.estimasi_biaya;
 
   IF project_value IS NULL OR project_value <= 0 THEN
     RAISE EXCEPTION 'Nilai proyek harus lebih dari nol sebelum kontrak diterbitkan';

@@ -158,32 +158,33 @@ export default function ContractModal({
     setToast("Penolakan Anda telah diteruskan ke tim Way2Home.");
   };
 
+  const contractAmount = project.contractValue ?? project.estimatedCost ?? 0;
   const paymentPlan =
     project.payments.length > 0
       ? project.payments
       : [
           {
             label: "Uang Muka (DP)",
-            amount: Math.round((project.estimatedCost ?? project.budget) * 0.3),
+            amount: Math.round(contractAmount * 0.3),
           },
           {
             label: "Termin 1",
             amount: Math.round(
-              (project.estimatedCost ?? project.budget) * 0.25,
+              contractAmount * 0.25,
             ),
           },
           {
             label: "Termin 2",
             amount: Math.round(
-              (project.estimatedCost ?? project.budget) * 0.25,
+              contractAmount * 0.25,
             ),
           },
           {
             label: "Termin 3 (Pelunasan)",
             amount:
-              (project.estimatedCost ?? project.budget) -
-              Math.round((project.estimatedCost ?? project.budget) * 0.3) -
-              Math.round((project.estimatedCost ?? project.budget) * 0.25) * 2,
+              contractAmount -
+              Math.round(contractAmount * 0.3) -
+              Math.round(contractAmount * 0.25) * 2,
           },
         ];
 
@@ -263,7 +264,7 @@ export default function ContractModal({
             floors={project.floors}
             bedrooms={project.bedrooms}
             bathrooms={project.bathrooms}
-            value={project.estimatedCost ?? project.budget}
+            value={contractAmount}
             duration={project.duration}
             startDate={
               project.contract.startAt

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireRole, ServiceError } from "@/services/access.service";
 import { createClient } from "@/utils/supabase/server";
 import { notifyDpReady } from "@/services/notification.service";
+import { seedProjectSubtasks } from "@/services/subtask-seeding.service";
 
 export async function POST(
   request: Request,
@@ -45,6 +46,13 @@ export async function POST(
       .upload(path, bytes, { contentType: "image/png", upsert: false });
     if (uploadError)
       throw new ServiceError("Tanda tangan gagal diunggah. Coba lagi.", 500);
+    // Siapkan milestone dan subtask sebelum RPC mengaktifkan kontrak.
+    try {
+      await seedProjectSubtasks(projectId, supabase);
+    } catch (seedError) {
+      console.warn("[contract-signature] seed stages warning:", seedError);
+    }
+
     const { error } = await supabase.rpc("sign_project_contract", {
       pid: projectId,
       signature_path: path,
@@ -59,21 +67,21 @@ export async function POST(
     }
 
     // Fire-and-forget: notifikasi Event 5 — DP Siap Dibayar
-    supabase
-      .from("payment_stages")
-      .select("nominal")
-      .eq("project_id", projectId)
-      .eq("urutan", 0)
-      .maybeSingle()
-      .then(({ data: dpStage }) => {
+    void (async () => {
+      try {
+        const { data: dpStage } = await supabase
+          .from("payment_stages")
+          .select("nominal")
+          .eq("project_id", projectId)
+          .eq("urutan", 0)
+          .maybeSingle();
+
         const dpAmount = dpStage?.nominal ? Number(dpStage.nominal) : undefined;
-        notifyDpReady(projectId, dpAmount).catch((err) =>
-          console.error("[contract-signature] notifyDpReady:", err),
-        );
-      })
-      .catch((err) =>
-        console.error("[contract-signature] fetch dp stage:", err),
-      );
+        await notifyDpReady(projectId, dpAmount);
+      } catch (err: unknown) {
+        console.error("[contract-signature] notifyDpReady:", err);
+      }
+    })();
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -3,6 +3,7 @@ import { createClient } from "@/utils/supabase/server";
 import { verifyProgressReport } from "@/services/supervisor.service";
 import { ServiceError } from "@/services/access.service";
 import { jsonError, readJson } from "@/services/http";
+import { getProjectProgress } from "@/services/progress.service";
 import {
   notifyProgressApproved,
   notifyProjectCompleted,
@@ -44,45 +45,57 @@ export async function PATCH(
 
     // Fire-and-forget: kirim notifikasi persetujuan progres / proyek selesai
     if (decision === "Disetujui") {
-      // Ambil project_id dari report
-      supabase
-        .from("progress_reports")
-        .select("project_stage_id, project_stages(project_id)")
-        .eq("id", id)
-        .maybeSingle()
-        .then(({ data }) => {
-          const stageRow = data?.project_stages as
+      void (async () => {
+        try {
+          const { data: reportData } = await supabase
+            .from("progress_reports")
+            .select(
+              "keterangan, foto_url, project_stages(project_id), project_subtasks(judul)",
+            )
+            .eq("id", id)
+            .maybeSingle();
+
+          const stageRow = reportData?.project_stages as
+            | Record<string, unknown>
+            | null
+            | undefined;
+          const subtaskRow = reportData?.project_subtasks as
             | Record<string, unknown>
             | null
             | undefined;
           const projectId = String(stageRow?.project_id ?? "");
           if (!projectId) return;
 
-          // Ambil progress terbaru
-          supabase
+          const subtaskTitle = String(
+            subtaskRow?.judul ?? reportData?.keterangan ?? "Pekerjaan Proyek",
+          );
+          const photoUrl = (reportData?.foto_url as string | null) ?? null;
+
+          const { data: proj } = await supabase
             .from("projects")
             .select("status")
             .eq("id", projectId)
-            .maybeSingle()
-            .then(({ data: proj }) => {
-              const isCompleted = String(proj?.status ?? "") === "selesai";
-              if (isCompleted) {
-                notifyProjectCompleted(projectId).catch((err) =>
-                  console.error("[reports/PATCH] notifyProjectCompleted:", err),
-                );
-              } else {
-                notifyProgressApproved(projectId, decision).catch((err) =>
-                  console.error("[reports/PATCH] notifyProgressApproved:", err),
-                );
-              }
-            })
-            .catch((err) =>
-              console.error("[reports/PATCH] fetch project status:", err),
+            .maybeSingle();
+
+          const isCompleted = String(proj?.status ?? "") === "selesai";
+          if (isCompleted) {
+            await notifyProjectCompleted(projectId);
+          } else {
+            const { overallProgress } = await getProjectProgress(
+              supabase,
+              projectId,
             );
-        })
-        .catch((err) =>
-          console.error("[reports/PATCH] fetch report project_id:", err),
-        );
+            await notifyProgressApproved(
+              projectId,
+              subtaskTitle,
+              overallProgress ?? 0,
+              photoUrl,
+            );
+          }
+        } catch (err: unknown) {
+          console.error("[reports/PATCH] notification error:", err);
+        }
+      })();
     }
 
     return NextResponse.json({ success: true, decision });

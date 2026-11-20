@@ -1,7 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, DocumentJenis } from "@/types/database.types";
 import { requireRole, ServiceError } from "./access.service";
-import { seedProjectSubtasks } from "./subtask-seeding.service";
 import type {
   Project,
   ProjectStatus,
@@ -262,16 +261,7 @@ export async function createProjectWithDocuments(
       throw new Error(`Gagal memproses pengajuan proyek: ${rpcErr.message}`);
     }
 
-    // 9. Seed otomatis 6 tahap + 24 subtask (no progress) via admin client
-    // Fire-and-forget: gagal seed tidak membatalkan pembuatan proyek
-    seedProjectSubtasks(projectId).catch((seedErr) => {
-      console.warn(
-        "[createProjectWithDocuments] Gagal seed subtask otomatis:",
-        seedErr,
-      );
-    });
-
-    // 10. Return 201 response
+    // 9. Return 201 response
     return {
       projectId,
       status: "menunggu_pengawas",
@@ -620,13 +610,11 @@ export function transformDBProjectToProject(
     floors: Number(design.jumlah_lantai || 0),
     bedrooms: Number(design.jumlah_kamar_tidur || 0),
     bathrooms: Number(design.jumlah_kamar_mandi || 0),
-    budget: Number(
-      dbContracts?.nilai_kontrak ||
-        row.budget_proyek ||
-        design.estimasi_biaya ||
-        0,
-    ),
+    budget: Number(row.budget_proyek ?? 0),
     estimatedCost: Number(design.estimasi_biaya || 0),
+    contractValue: Number(
+      dbContracts?.nilai_kontrak ?? design.estimasi_biaya ?? 0,
+    ),
     customerName:
       (typeof contractCustomer?.nama === "string"
         ? contractCustomer.nama

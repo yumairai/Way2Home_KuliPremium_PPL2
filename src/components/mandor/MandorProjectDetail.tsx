@@ -56,7 +56,11 @@ const milestoneProgress = (
   const doneWeight = milestone.subtasks
     .filter((task) => isApproved(task, milestone, approved))
     .reduce((sum, task) => sum + task.weight, 0);
-  return Math.round((doneWeight / milestone.weight) * 100);
+  if (!Number.isFinite(milestone.weight) || milestone.weight <= 0) return 0;
+  return Math.min(
+    100,
+    Math.max(0, Math.round((doneWeight / milestone.weight) * 100)),
+  );
 };
 
 const formatNow = () =>

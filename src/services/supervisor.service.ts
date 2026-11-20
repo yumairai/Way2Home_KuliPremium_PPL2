@@ -81,6 +81,7 @@ const PROJECT_SELECT = `
   status,
   alamat_proyek,
   nilai_proyek,
+  budget_proyek,
   created_at,
   designs (
     nama,
@@ -358,7 +359,8 @@ function buildSupervisorProject(
     started: contract?.tanggal_mulai
       ? formatDate(String(contract.tanggal_mulai))
       : formatDate(String(row.created_at)),
-    value: Number(row.nilai_proyek ?? contract?.nilai_kontrak ?? 0),
+    value: Number(contract?.nilai_kontrak ?? design.estimasi_biaya ?? 0),
+    customerBudget: Number(row.budget_proyek ?? 0),
     estimatedCost: Number(design.estimasi_biaya ?? 0),
     supervisor: String(pengawasProfile.full_name ?? "Belum ditugaskan"),
     foreman: foremen[0] ?? null,
