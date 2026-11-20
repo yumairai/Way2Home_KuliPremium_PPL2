@@ -15,10 +15,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
 import { requireRole, ServiceError } from "./access.service";
-import {
-  notifyTeamAssigned,
-  notifyContractReady,
-} from "./notification.service";
 
 // ============================================================
 // TYPES
@@ -164,13 +160,6 @@ export async function finalizeProjectStaffing(
     );
   }
 
-  // Kirim notifikasi alokasi tim & kontrak siap ttd ke customer
-  notifyTeamAssigned(projectId).catch((err) => {
-    console.error("[finalizeProjectStaffing] notifyTeamAssigned error:", err);
-  });
-  notifyContractReady(projectId).catch((err) => {
-    console.error("[finalizeProjectStaffing] notifyContractReady error:", err);
-  });
 }
 
 // ============================================================
@@ -371,10 +360,6 @@ export async function assignPengawasToProject(
     );
   }
 
-  // Kirim notifikasi pengawas dialokasikan ke customer (fire-and-forget)
-  notifyTeamAssigned(projectId).catch((err) => {
-    console.error("[assignPengawasToProject] notifyTeamAssigned error:", err);
-  });
 }
 
 // ============================================================

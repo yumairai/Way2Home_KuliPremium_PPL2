@@ -10,6 +10,7 @@ import {
   type ProjectForAdmin,
 } from "@/services/allocation.service";
 import { ServiceError } from "@/services/access.service";
+import { refreshAdminBadgeCounts } from "@/utils/admin-badge-counts";
 
 // ─── Status helpers ────────────────────────────────────────────────────────────
 
@@ -54,6 +55,7 @@ function AssignPengawasModal({
     projectId: string,
     pengawasId: string,
     pengawasName: string,
+    notificationWarning?: string,
   ) => void;
 }) {
   const [selected, setSelected] = useState<string>("");
@@ -67,8 +69,37 @@ function AssignPengawasModal({
     try {
       const supabase = createClient();
       await assignPengawasToProject(supabase, project.id, selected);
+      refreshAdminBadgeCounts();
       const chosenPengawas = pengawasList.find((p) => p.id === selected);
-      onAssigned(project.id, selected, chosenPengawas?.full_name ?? selected);
+      let notificationWarning: string | undefined;
+      try {
+        const response = await fetch(
+          `/api/projects/${project.id}/team-notifications`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ event: "admin-assignment" }),
+          },
+        );
+        if (!response.ok) {
+          const result = (await response.json()) as { message?: string };
+          notificationWarning =
+            result.message || "Notifikasi customer gagal dikirim.";
+        }
+      } catch (notificationError) {
+        console.error(
+          "[SupervisorManagement] team notification failed:",
+          notificationError,
+        );
+        notificationWarning = "Notifikasi customer gagal dikirim.";
+      }
+
+      onAssigned(
+        project.id,
+        selected,
+        chosenPengawas?.full_name ?? selected,
+        notificationWarning,
+      );
       onClose();
     } catch (err) {
       if (err instanceof ServiceError) {
@@ -139,13 +170,12 @@ function AssignPengawasModal({
                 key={pengawas.id}
                 disabled={!pengawas.available}
                 onClick={() => setSelected(pengawas.id)}
-                className={`flex w-full items-center gap-4 rounded-xl border p-4 text-left transition-colors ${
-                  !pengawas.available
+                className={`flex w-full items-center gap-4 rounded-xl border p-4 text-left transition-colors ${!pengawas.available
                     ? "cursor-not-allowed border-[#e7ebef] bg-slate-50 opacity-60"
                     : selected === pengawas.id
                       ? "border-[#7395b1] bg-[#f0f5f8] ring-2 ring-[#7395b1]/15"
                       : "border-[#e7ebef] hover:bg-slate-50"
-                }`}
+                  }`}
               >
                 <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-[#d8e3eb] bg-[#eaf1f6] text-sm font-bold text-[#355973]">
                   {pengawas.full_name.slice(0, 2).toUpperCase()}
@@ -171,11 +201,10 @@ function AssignPengawasModal({
                   )}
                 </span>
                 <span
-                  className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border ${
-                    selected === pengawas.id
+                  className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border ${selected === pengawas.id
                       ? "border-[#477ba6] bg-[#477ba6] text-white"
                       : "border-slate-300"
-                  }`}
+                    }`}
                 >
                   {selected === pengawas.id ? "✓" : ""}
                 </span>
@@ -216,7 +245,10 @@ export default function SupervisorManagement() {
   const [allocationFilter, setAllocationFilter] = useState("Semua");
   const [selectedProject, setSelectedProject] =
     useState<ProjectForAdmin | null>(null);
-  const [notice, setNotice] = useState("");
+  const [notice, setNotice] = useState<{
+    message: string;
+    warning: boolean;
+  } | null>(null);
 
   const fetchData = useCallback(async () => {
     const supabase = createClient();
@@ -305,6 +337,7 @@ export default function SupervisorManagement() {
     projectId: string,
     _pengawasId: string,
     pengawasName: string,
+    notificationWarning?: string,
   ) => {
     setProjects((curr) =>
       curr.map((p) =>
@@ -313,8 +346,13 @@ export default function SupervisorManagement() {
           : p,
       ),
     );
-    setNotice(`Pengawas "${pengawasName}" berhasil dialokasikan ke proyek.`);
-    window.setTimeout(() => setNotice(""), 5000);
+    setNotice({
+      message: notificationWarning
+        ? `Pengawas "${pengawasName}" berhasil dialokasikan. ${notificationWarning}`
+        : `Pengawas "${pengawasName}" berhasil dialokasikan ke proyek.`,
+      warning: Boolean(notificationWarning),
+    });
+    window.setTimeout(() => setNotice(null), 8000);
   };
 
   if (loading) {
@@ -365,10 +403,14 @@ export default function SupervisorManagement() {
       {/* Notice */}
       {notice && (
         <div
-          role="status"
-          className="rounded-xl border border-[#cfe3d2] bg-[#edf7ee] px-4 py-3 text-xs font-medium text-[#477c50]"
+          role={notice.warning ? "alert" : "status"}
+          className={`rounded-xl border px-4 py-3 text-xs font-medium ${
+            notice.warning
+              ? "border-amber-200 bg-amber-50 text-amber-800"
+              : "border-[#cfe3d2] bg-[#edf7ee] text-[#477c50]"
+          }`}
         >
-          ✓ {notice}
+          {notice.warning ? "!" : "✓"} {notice.message}
         </div>
       )}
 
@@ -403,11 +445,6 @@ export default function SupervisorManagement() {
                 {metric.value}
               </strong>
             </div>
-            <span
-              className={`grid h-10 w-10 place-items-center rounded-xl text-lg font-bold ${metric.tone}`}
-            >
-              {metric.value}
-            </span>
           </article>
         ))}
       </section>

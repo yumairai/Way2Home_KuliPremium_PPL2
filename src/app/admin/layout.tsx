@@ -6,10 +6,13 @@ import Link from "next/link";
 import { logout } from "@/services/auth.service";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { clearDemoRole, useDemoRole } from "@/utils/demo-auth";
+import { createClient } from "@/utils/supabase/client";
+import { ADMIN_BADGE_COUNTS_REFRESH_EVENT } from "@/utils/admin-badge-counts";
 
 type BadgeCounts = {
   documentVerifications: number;
   mandorVerifications: number;
+  supervisorAllocations: number;
 };
 
 export default function AdminLayout({
@@ -26,29 +29,61 @@ export default function AdminLayout({
   const [badgeCounts, setBadgeCounts] = useState<BadgeCounts>({
     documentVerifications: 0,
     mandorVerifications: 0,
+    supervisorAllocations: 0,
   });
 
-  // Fetch badge counts
   useEffect(() => {
+    if (loading || user?.role !== "admin") return;
+
+    let active = true;
     async function fetchBadgeCounts() {
       try {
         const response = await fetch("/api/admin/badge-counts");
-        if (response.ok) {
-          const data = await response.json();
-          setBadgeCounts(data);
+        if (!response.ok) {
+          console.error(
+            "Failed to fetch admin badge counts:",
+            response.status,
+          );
+          return;
         }
+        const data = (await response.json()) as BadgeCounts;
+        if (active) setBadgeCounts(data);
       } catch (error) {
         console.error("Failed to fetch badge counts:", error);
       }
     }
 
-    if (!loading && (user?.role === "admin" || demoRole === "admin")) {
-      fetchBadgeCounts();
-      // Refresh counts every 30 seconds
-      const interval = setInterval(fetchBadgeCounts, 30000);
-      return () => clearInterval(interval);
-    }
-  }, [loading, user, demoRole]);
+    const refresh = () => void fetchBadgeCounts();
+    const supabase = createClient();
+    const channel = supabase
+      .channel("admin-badge-counts")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "projects" },
+        refresh,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "mandor_profiles" },
+        refresh,
+      )
+      .subscribe((status) => {
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.error("Admin badge realtime subscription failed:", status);
+        }
+      });
+
+    window.addEventListener(ADMIN_BADGE_COUNTS_REFRESH_EVENT, refresh);
+    refresh();
+    const interval = window.setInterval(refresh, 30000);
+
+    return () => {
+      active = false;
+      window.removeEventListener(ADMIN_BADGE_COUNTS_REFRESH_EVENT, refresh);
+      window.clearInterval(interval);
+      void supabase.removeChannel(channel);
+    };
+  }, [loading, user?.role]);
 
   const navigation = [
     { label: "Dashboard", href: "/admin" },
@@ -68,7 +103,14 @@ export default function AdminLayout({
           ? String(badgeCounts.mandorVerifications)
           : undefined,
     },
-    { label: "Manajemen Pengawas", href: "/admin/manajemen-pengawas" },
+    {
+      label: "Manajemen Pengawas",
+      href: "/admin/manajemen-pengawas",
+      badge:
+        badgeCounts.supervisorAllocations > 0
+          ? String(badgeCounts.supervisorAllocations)
+          : undefined,
+    },
   ];
   useEffect(() => {
     if (demoRole) {
@@ -162,7 +204,7 @@ export default function AdminLayout({
   );
   return (
     <div className="admin-interactions min-h-screen bg-[#f3f6fa] text-[#183047]">
-      <div className="fixed inset-y-0 left-0 z-30 hidden w-[252px] lg:block">
+      <div className="fixed inset-y-0 left-0 z-30 hidden w-[280px] lg:block">
         {sidebar}
       </div>
       {drawerOpen && (
@@ -177,7 +219,7 @@ export default function AdminLayout({
           </div>
         </div>
       )}
-      <div className="lg:pl-[252px]">
+      <div className="lg:pl-[280px]">
         <header className="sticky top-0 z-20 flex h-[74px] items-center justify-between border-b border-[#e6ebf1] bg-white/95 px-5 backdrop-blur md:px-8">
           <div className="flex items-center gap-3">
             <button

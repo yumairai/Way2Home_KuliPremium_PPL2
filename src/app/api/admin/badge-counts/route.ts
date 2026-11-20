@@ -23,21 +23,42 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Count pending document verifications
-    const { count: documentCount } = await supabase
-      .from("projects")
-      .select("*", { count: "exact", head: true })
-      .in("status", ["verifikasi_dokumen", "revisi_dokumen"]);
+    const [
+      { count: documentCount, error: documentError },
+      { count: mandorCount, error: mandorError },
+      { count: supervisorAllocationCount, error: allocationError },
+    ] = await Promise.all([
+      supabase
+        .from("projects")
+        .select("*", { count: "exact", head: true })
+        .in("status", ["verifikasi_dokumen", "revisi_dokumen"]),
+      supabase
+        .from("mandor_profiles")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "pending"),
+      supabase
+        .from("projects")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "alokasi_mandor_pengawas")
+        .is("pengawas_id", null),
+    ]);
 
-    // Count pending mandor verifications
-    const { count: mandorCount } = await supabase
-      .from("mandor_profiles")
-      .select("*", { count: "exact", head: true })
-      .eq("status", "pending");
+    if (documentError || mandorError || allocationError) {
+      console.error("[GET /api/admin/badge-counts] count query failed:", {
+        documentError,
+        mandorError,
+        allocationError,
+      });
+      return NextResponse.json(
+        { error: "Failed to fetch badge counts" },
+        { status: 500 },
+      );
+    }
 
     return NextResponse.json({
       documentVerifications: documentCount ?? 0,
       mandorVerifications: mandorCount ?? 0,
+      supervisorAllocations: supervisorAllocationCount ?? 0,
     });
   } catch (error) {
     console.error("[GET /api/admin/badge-counts]", error);

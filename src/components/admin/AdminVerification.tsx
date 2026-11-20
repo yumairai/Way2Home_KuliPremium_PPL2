@@ -5,6 +5,7 @@ import {
   type VerificationRequest,
 } from "@/data/admin-verification";
 import { useDemoRole } from "@/utils/demo-auth";
+import { refreshAdminBadgeCounts } from "@/utils/admin-badge-counts";
 
 const statusStyle: Record<VerificationDocumentStatus, string> = {
   Menunggu: "border-[#f0d8a8] bg-[#fff6e7] text-[#9a671f]",
@@ -420,6 +421,7 @@ export default function AdminVerification() {
     const result = await response.json();
     if (!response.ok)
       throw new Error(result.message || "Gagal menyimpan hasil review.");
+    refreshAdminBadgeCounts();
     setRequests((current) =>
       current.filter((request) => request.id !== updated.id),
     );

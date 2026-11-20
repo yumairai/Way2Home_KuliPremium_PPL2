@@ -58,7 +58,7 @@ function MandorAllocationModal({
   allMandors: VerifiedMandor[];
   onClose: () => void;
   onSaved: (projectId: string, newMandors: AllocatedMandor[]) => void;
-  onFinalized: (projectId: string) => void;
+  onFinalized: (projectId: string, notificationWarning?: string) => void;
 }) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [submitting, setSubmitting] = useState(false);
@@ -147,7 +147,29 @@ function MandorAllocationModal({
     setSuccess(null);
     try {
       await finalizeProjectStaffing(createClient(), project.id);
-      onFinalized(project.id);
+      let notificationWarning: string | undefined;
+      try {
+        const response = await fetch(
+          `/api/projects/${project.id}/team-notifications`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ event: "staffing-finalized" }),
+          },
+        );
+        if (!response.ok) {
+          const result = (await response.json()) as { message?: string };
+          notificationWarning =
+            result.message || "Notifikasi customer gagal dikirim.";
+        }
+      } catch (notificationError) {
+        console.error(
+          "[PengawasDashboard] team notification failed:",
+          notificationError,
+        );
+        notificationWarning = "Notifikasi customer gagal dikirim.";
+      }
+      onFinalized(project.id, notificationWarning);
       onClose();
     } catch (err) {
       setError(
@@ -540,7 +562,10 @@ export default function PengawasDashboard() {
     }
   };
 
-  const handleStaffingFinalized = (projectId: string) => {
+  const handleStaffingFinalized = (
+    projectId: string,
+    notificationWarning?: string,
+  ) => {
     setProjects((current) =>
       current.map((project) =>
         project.id === projectId
@@ -554,6 +579,7 @@ export default function PengawasDashboard() {
         ...finalized,
         status: "finalisasi_kontrak",
       });
+    if (notificationWarning) setContractError(notificationWarning);
   };
 
   const openSupervisorContract = async (project: ProjectForPengawas) => {
@@ -762,9 +788,7 @@ export default function PengawasDashboard() {
                   <div>
                     <p className="text-[9px] text-slate-500">Progres resmi</p>
                     <p className="mt-1 text-xs font-semibold text-slate-700">
-                      {officialProgress[project.id] !== undefined
-                        ? `${officialProgress[project.id]}%`
-                        : "0%"}
+                      {`${officialProgress[project.id] ?? 0}%`}
                     </p>
                   </div>
                   <div>
@@ -800,9 +824,7 @@ export default function PengawasDashboard() {
                   <div className="flex items-center justify-between text-[10px] text-slate-500">
                     <span>Progres keseluruhan</span>
                     <span>
-                      {officialProgress[project.id] !== undefined
-                        ? `${officialProgress[project.id]}%`
-                        : "0%"}
+                      {`${officialProgress[project.id] ?? 0}%`}
                     </span>
                   </div>
                   <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#e9edf2]">
