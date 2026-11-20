@@ -179,6 +179,7 @@ export default function DefaultNavbar() {
                         <div className="flex flex-col gap-1 p-3">
                           <Link
                             href="/proyek"
+                            onClick={() => setIsProfileOpen(false)}
                             className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-[#475569] transition hover:bg-[#f0f4ff] hover:text-[#0053da]"
                           >
                             <span>Proyek Rumah Saya</span>
@@ -186,6 +187,7 @@ export default function DefaultNavbar() {
 
                           <Link
                             href="/profile"
+                            onClick={() => setIsProfileOpen(false)}
                             className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-[#475569] transition hover:bg-[#f0f4ff] hover:text-[#0053da]"
                           >
                             <span>Edit Profile</span>
