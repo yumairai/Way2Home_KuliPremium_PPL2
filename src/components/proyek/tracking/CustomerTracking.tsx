@@ -69,7 +69,7 @@ function CustomerResolutionCard({
       await apiPost(
         `/api/projects/${projectId}/resolutions/${resolution.id}/decision`,
         {
-          approved,
+          decision: approved ? "approve" : "reject",
           feedback: approved
             ? "Disetujui oleh pemilik rumah."
             : feedback.trim(),
