@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
@@ -155,10 +155,22 @@ export default function MandorShell({
       <div className="mt-auto border-t border-white/10 p-4">
         <div className="flex items-center gap-3 rounded-xl bg-white/[.06] p-3">
           <span className="grid h-9 w-9 place-items-center rounded-full bg-[#d6e5f2] text-xs font-bold text-[#17344e]">
-            BS
+            {demoRole
+              ? "BS"
+              : user?.fullName
+                ? user.fullName
+                    .trim()
+                    .split(/\s+/)
+                    .map((part) => part[0])
+                    .slice(0, 2)
+                    .join("")
+                    .toUpperCase()
+                : "MD"}
           </span>
           <span className="min-w-0 flex-1">
-            <b className="block truncate text-xs">Bima Saputra</b>
+            <b className="block truncate text-xs">
+              {demoRole ? "Bima Saputra" : user?.fullName || "Mandor"}
+            </b>
             <small className="text-[10px] text-slate-400">Mandor</small>
           </span>
         </div>
