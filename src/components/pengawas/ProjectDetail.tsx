@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   verifiedForemen,
   type IssueResolution,
+  type ResolutionImpactType,
   type SupervisorIssue,
   type SupervisorProject,
   type SupervisorReport,
@@ -23,6 +24,16 @@ const money = (value: number) =>
     currency: "IDR",
     maximumFractionDigits: 0,
   }).format(value);
+const formatIntegerInput = (value: string) => {
+  const digits = value.replace(/\D/g, "").slice(0, 15);
+  return digits ? Number(digits).toLocaleString("id-ID") : "";
+};
+const parseIntegerInput = (value: string) => {
+  const digits = value.replace(/\D/g, "");
+  if (!digits) return null;
+  const parsed = Number(digits);
+  return Number.isSafeInteger(parsed) ? parsed : null;
+};
 const sectionLinks = [
   { id: "ringkasan", label: "Ringkasan" },
   { id: "mandor", label: "Mandor" },
@@ -42,21 +53,52 @@ function Surface({
   description,
   children,
   id,
+  collapsible = false,
+  open = true,
+  onToggle,
 }: {
   title: string;
   description?: string;
   children: React.ReactNode;
   id?: string;
+  collapsible?: boolean;
+  open?: boolean;
+  onToggle?: () => void;
 }) {
   return (
     <section id={id} className={`${sectionClass} p-5 md:p-6`}>
-      <div className="mb-5">
-        <h2 className="text-[15px] font-bold text-[#263d53]">{title}</h2>
-        {description && (
-          <p className="mt-1 text-xs leading-5 text-slate-500">{description}</p>
-        )}
-      </div>
-      {children}
+      {collapsible ? (
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={open}
+          className="mb-5 flex w-full items-center justify-between gap-4 text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#477ba6]"
+        >
+          <span>
+            <span className="block text-[15px] font-bold text-[#263d53]">
+              {title}
+            </span>
+            {description && (
+              <span className="mt-1 block text-xs leading-5 text-slate-500">
+                {description}
+              </span>
+            )}
+          </span>
+          <span className="shrink-0 text-xs font-semibold text-[#355873]">
+            {open ? "Sembunyikan ▲" : "Tampilkan ▼"}
+          </span>
+        </button>
+      ) : (
+        <div className="mb-5">
+          <h2 className="text-[15px] font-bold text-[#263d53]">{title}</h2>
+          {description && (
+            <p className="mt-1 text-xs leading-5 text-slate-500">
+              {description}
+            </p>
+          )}
+        </div>
+      )}
+      {(!collapsible || open) && children}
     </section>
   );
 }
@@ -419,7 +461,10 @@ function IssueWorkflow({
   ) => void | Promise<void>;
   onPatch?: (next: IssueResolution) => void;
 }) {
-  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(
+    resolution?.status === "Menunggu approval customer" ||
+      resolution?.status === "Diskusi dengan pengawas",
+  );
   const [mode, setMode] = useState<"manual" | "ai" | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiData, setAiData] = useState<IssueAiAnalysisResult | null>(null);
@@ -427,9 +472,88 @@ function IssueWorkflow({
   const [solution, setSolution] = useState("");
   const [requiresApproval, setRequiresApproval] = useState(false);
   const [approvalReason, setApprovalReason] = useState("");
+  const [impactType, setImpactType] = useState<ResolutionImpactType>(
+    resolution?.impactType ?? "biaya",
+  );
+  const [additionalCost, setAdditionalCost] = useState(
+    resolution?.status === "Diskusi dengan pengawas" ||
+      resolution?.additionalCost == null
+      ? ""
+      : formatIntegerInput(String(resolution.additionalCost)),
+  );
+  const [additionalDays, setAdditionalDays] = useState(
+    resolution?.status === "Diskusi dengan pengawas" ||
+      resolution?.additionalDays == null
+      ? ""
+      : String(resolution.additionalDays),
+  );
   const [evidence, setEvidence] = useState<string | null>(null);
   const [evidenceName, setEvidenceName] = useState("");
   const [discussionReply, setDiscussionReply] = useState("");
+  const parsedAdditionalCost = parseIntegerInput(additionalCost);
+  const parsedAdditionalDays = additionalDays.trim()
+    ? Number(additionalDays)
+    : null;
+  const impactIsComplete =
+    (impactType === "biaya" &&
+      parsedAdditionalCost !== null &&
+      parsedAdditionalCost > 0) ||
+    (impactType === "waktu" &&
+      parsedAdditionalDays !== null &&
+      parsedAdditionalDays > 0) ||
+    (impactType === "biaya_dan_waktu" &&
+      parsedAdditionalCost !== null &&
+      parsedAdditionalCost > 0 &&
+      parsedAdditionalDays !== null &&
+      parsedAdditionalDays > 0);
+  const impactFields = (
+    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+      <label className="block text-[10px] font-semibold text-[#795e31] sm:col-span-2">
+        Dampak yang perlu disetujui customer
+        <select
+          value={impactType}
+          onChange={(event) =>
+            setImpactType(event.target.value as ResolutionImpactType)
+          }
+          className="mt-2 w-full rounded-lg border border-[#e7ddcb] bg-white p-3 text-xs outline-none focus:border-[#b48a4c]"
+        >
+          <option value="biaya">Tambahan biaya</option>
+          <option value="waktu">Tambahan waktu</option>
+          <option value="biaya_dan_waktu">Tambahan biaya dan waktu</option>
+        </select>
+      </label>
+      {impactType !== "waktu" && (
+        <label className="block text-[10px] font-semibold text-[#795e31]">
+          Nominal tambahan biaya (Rp)
+          <input
+            type="text"
+            inputMode="numeric"
+            value={additionalCost}
+            onChange={(event) =>
+              setAdditionalCost(formatIntegerInput(event.target.value))
+            }
+            placeholder="Contoh: 1.500.000"
+            className="mt-2 w-full rounded-lg border border-[#e7ddcb] bg-white p-3 text-xs outline-none focus:border-[#b48a4c]"
+          />
+        </label>
+      )}
+      {impactType !== "biaya" && (
+        <label className="block text-[10px] font-semibold text-[#795e31]">
+          Tambahan waktu (hari)
+          <input
+            type="number"
+            min="1"
+            max="2147483647"
+            step="1"
+            value={additionalDays}
+            onChange={(event) => setAdditionalDays(event.target.value)}
+            placeholder="Contoh: 3"
+            className="mt-2 w-full rounded-lg border border-[#e7ddcb] bg-white p-3 text-xs outline-none focus:border-[#b48a4c]"
+          />
+        </label>
+      )}
+    </div>
+  );
   const aiOptions = [
     "Koordinasikan pengiriman material pengganti dari pemasok lain, sambil melanjutkan pekerjaan pada area yang tidak terdampak.",
     "Atur ulang urutan pekerjaan untuk sementara dan minta mandor memperbarui jadwal harian setelah material tersedia.",
@@ -483,6 +607,10 @@ function IssueWorkflow({
   const submitResolution = async () => {
     if (!solution.trim() || (requiresApproval && !approvalReason.trim()))
       return;
+    if (requiresApproval && !impactIsComplete) {
+      onNotify("Lengkapi nominal biaya dan/atau tambahan hari yang diajukan.");
+      return;
+    }
     const now = new Date().toLocaleString("id-ID", {
       dateStyle: "medium",
       timeStyle: "short",
@@ -514,6 +642,15 @@ function IssueWorkflow({
       requiresCustomerApproval: requiresApproval,
       approvalReason: requiresApproval ? approvalReason.trim() : "",
       approvalEvidence: requiresApproval ? evidence : null,
+      impactType: requiresApproval ? impactType : null,
+      additionalCost:
+        requiresApproval && impactType !== "waktu"
+          ? parsedAdditionalCost
+          : null,
+      additionalDays:
+        requiresApproval && impactType !== "biaya"
+          ? parsedAdditionalDays
+          : null,
       customerFeedback: "",
       discussion: [],
       submitted: now,
@@ -534,6 +671,12 @@ function IssueWorkflow({
   };
   const sendDiscussion = async () => {
     if (!resolution || !discussionReply.trim()) return;
+    if (!impactIsComplete) {
+      onNotify(
+        "Setiap tanggapan pengawas harus mencantumkan dampak dan nominal.",
+      );
+      return;
+    }
     const entry = {
       author: "Pengawas" as const,
       message: discussionReply.trim(),
@@ -549,6 +692,9 @@ function IssueWorkflow({
           solution: discussionReply.trim(),
           status: "Menunggu approval customer",
           customerFeedback: "",
+          impactType,
+          additionalCost: impactType === "waktu" ? null : parsedAdditionalCost,
+          additionalDays: impactType === "biaya" ? null : parsedAdditionalDays,
           discussion: [
             ...resolution.discussion,
             { ...entry, id: crypto.randomUUID() },
@@ -564,10 +710,17 @@ function IssueWorkflow({
   };
   const finalizeDiscussion = async () => {
     if (!resolution || !discussionReply.trim()) return;
+    if (!impactIsComplete) {
+      onNotify("Tetapkan dampak dan nominal sebelum meneruskan keputusan.");
+      return;
+    }
     const message = `Keputusan final: ${discussionReply.trim()}`;
     const finalResolution: IssueResolution = {
       ...resolution,
       solution: discussionReply.trim(),
+      impactType,
+      additionalCost: impactType === "waktu" ? null : parsedAdditionalCost,
+      additionalDays: impactType === "biaya" ? null : parsedAdditionalDays,
       discussion: [
         ...resolution.discussion,
         {
@@ -757,7 +910,7 @@ function IssueWorkflow({
           </div>
         )}
 
-        {resolution && (
+        {detailsOpen && resolution && (
           <section className="mt-4 rounded-xl border border-[#dce5ec] bg-[#f8fafb] p-4">
             {resolution.aiAnalysis && (
               <div className="mb-4 rounded-xl border border-[#d8e4ec] bg-[#f5f9fb] p-4">
@@ -806,6 +959,18 @@ function IssueWorkflow({
                 <p className="mt-1 text-xs leading-5 text-slate-600">
                   {resolution.approvalReason}
                 </p>
+                {resolution.impactType && (
+                  <p className="mt-2 text-xs font-semibold text-[#795e31]">
+                    Dampak:{" "}
+                    {resolution.impactType !== "waktu" &&
+                      resolution.additionalCost !== null &&
+                      money(resolution.additionalCost)}
+                    {resolution.impactType === "biaya_dan_waktu" && " · "}
+                    {resolution.impactType !== "biaya" &&
+                      resolution.additionalDays !== null &&
+                      `${resolution.additionalDays} hari`}
+                  </p>
+                )}
                 {resolution.approvalEvidence && (
                   <Image
                     src={resolution.approvalEvidence}
@@ -831,6 +996,18 @@ function IssueWorkflow({
                     <p className="mt-1 text-xs leading-5 text-slate-600">
                       {entry.message}
                     </p>
+                    {entry.impactType && (
+                      <p className="mt-2 text-[10px] font-semibold text-[#355873]">
+                        Dampak usulan:{" "}
+                        {entry.impactType !== "waktu" &&
+                          entry.additionalCost != null &&
+                          money(entry.additionalCost)}
+                        {entry.impactType === "biaya_dan_waktu" && " · "}
+                        {entry.impactType !== "biaya" &&
+                          entry.additionalDays != null &&
+                          `${entry.additionalDays} hari`}
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>
@@ -852,8 +1029,10 @@ function IssueWorkflow({
               <div className="mt-3 space-y-2">
                 <p className="text-[10px] font-semibold text-[#75539a]">
                   Customer meminta diskusi. Tinjau alasan di atas, lalu balas
-                  atau tetapkan keputusan final.
+                  atau tetapkan keputusan final. Setiap balasan perlu memuat
+                  dampak biaya dan/atau waktu terbaru.
                 </p>
+                {impactFields}
                 <textarea
                   value={discussionReply}
                   onChange={(e) => setDiscussionReply(e.target.value)}
@@ -865,7 +1044,7 @@ function IssueWorkflow({
                   <button
                     type="button"
                     onClick={sendDiscussion}
-                    disabled={!discussionReply.trim()}
+                    disabled={!discussionReply.trim() || !impactIsComplete}
                     className="h-9 rounded-lg border border-[#d8e2ea] px-3 text-[10px] font-semibold text-[#355873] disabled:opacity-50"
                   >
                     Kirim tanggapan, minta persetujuan ulang
@@ -873,7 +1052,7 @@ function IssueWorkflow({
                   <button
                     type="button"
                     onClick={finalizeDiscussion}
-                    disabled={!discussionReply.trim()}
+                    disabled={!discussionReply.trim() || !impactIsComplete}
                     className="h-9 rounded-lg bg-[#183b57] px-3 text-[10px] font-semibold text-white disabled:opacity-50"
                   >
                     Tetapkan keputusan final ke mandor
@@ -890,7 +1069,7 @@ function IssueWorkflow({
           </section>
         )}
 
-        {!resolution && !isFollowedUp && (
+        {detailsOpen && !resolution && !isFollowedUp && (
           <section className="mt-4 border-t border-[#e8edf1] pt-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -1111,6 +1290,7 @@ function IssueWorkflow({
                 </label>
                 {requiresApproval && (
                   <div className="mt-3 space-y-3 rounded-lg border border-[#eadfca] bg-[#fffaf1] p-3">
+                    {impactFields}
                     <label className="block text-[10px] font-semibold text-[#795e31]">
                       Alasan dan detail yang perlu disetujui
                       <textarea
@@ -1167,7 +1347,8 @@ function IssueWorkflow({
                   onClick={submitResolution}
                   disabled={
                     !solution.trim() ||
-                    (requiresApproval && !approvalReason.trim())
+                    (requiresApproval &&
+                      (!approvalReason.trim() || !impactIsComplete))
                   }
                   className="mt-3 h-10 rounded-lg bg-[#183b57] px-4 text-[10px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45"
                 >
@@ -1202,6 +1383,7 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
   >({});
   const [showForemen, setShowForemen] = useState(false);
   const [showContract, setShowContract] = useState(false);
+  const [issuesExpanded, setIssuesExpanded] = useState(true);
   const [customerMessage, setCustomerMessage] = useState("");
   const [toast, setToast] = useState("");
   const [showAddDoc, setShowAddDoc] = useState(false);
@@ -1269,6 +1451,9 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
       ),
     ];
   }, [loaded, resolutionPatches]);
+  const waitingApprovalCount = resolutions.filter(
+    (item) => item.status === "Menunggu approval customer",
+  ).length;
 
   const patchResolution = (next: IssueResolution) => {
     setResolutionPatches((current) => ({ ...current, [next.issueId]: next }));
@@ -1302,6 +1487,9 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
       keputusan_final: opts?.final === true,
       discussion: opts?.discussion,
       tindak_lanjut: opts?.followUp,
+      dampak_type: next.impactType,
+      tambahan_biaya: next.additionalCost,
+      tambahan_hari: next.additionalDays,
     });
 
     setResolutionPatches((current) => {
@@ -1450,7 +1638,9 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
                 </strong>
               </div>
               <div className="rounded-xl bg-[#f5f7f9] p-3">
-                <p className="text-[9px] text-slate-500">Harga estimasi proyek</p>
+                <p className="text-[9px] text-slate-500">
+                  Harga estimasi proyek
+                </p>
                 <strong className="mt-1 block text-xs text-[#294d69]">
                   {money(project.value)}
                 </strong>
@@ -1721,7 +1911,10 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
           <Surface
             id="kendala"
             title="Kendala lapangan"
-            description="Tinjau laporan kendala Mandor dan catat tindak lanjut untuk tim."
+            description={`Tinjau laporan kendala Mandor dan catat tindak lanjut untuk tim.${waitingApprovalCount ? ` ${waitingApprovalCount} usulan menunggu customer.` : ""}`}
+            collapsible
+            open={issuesExpanded}
+            onToggle={() => setIssuesExpanded((value) => !value)}
           >
             <div className="space-y-4">
               {(() => {
@@ -1758,21 +1951,24 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
                     .map((issue) => ({ issue })),
                 ];
                 return issueCards.length ? (
-                  issueCards.map(({ issue, report }) => (
-                    <IssueWorkflow
-                      key={issue.id}
-                      issue={issue}
-                      report={report}
-                      projectId={project.id}
-                      customerName={project.customer}
-                      onNotify={notify}
-                      resolution={resolutions.find(
-                        (item) => item.issueId === issue.id,
-                      )}
-                      onPersist={persistResolution}
-                      onPatch={patchResolution}
-                    />
-                  ))
+                  issueCards.map(({ issue, report }) => {
+                    const resolution = resolutions.find(
+                      (item) => item.issueId === issue.id,
+                    );
+                    return (
+                      <IssueWorkflow
+                        key={`${issue.id}-${resolution?.status ?? ""}-${resolution?.impactType ?? ""}-${resolution?.additionalCost ?? ""}-${resolution?.additionalDays ?? ""}`}
+                        issue={issue}
+                        report={report}
+                        projectId={project.id}
+                        customerName={project.customer}
+                        onNotify={notify}
+                        resolution={resolution}
+                        onPersist={persistResolution}
+                        onPatch={patchResolution}
+                      />
+                    );
+                  })
                 ) : (
                   <p className="rounded-xl border border-dashed border-[#d6e0e8] bg-[#f8fafb] px-4 py-8 text-center text-xs text-slate-500">
                     Belum ada laporan kendala dari mandor.

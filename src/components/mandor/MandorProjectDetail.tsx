@@ -616,90 +616,162 @@ function Reports({
   );
 }
 function Issues({ reports }: { reports: MandorIssueReport[] }) {
+  const [expanded, setExpanded] = useState(true);
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      maximumFractionDigits: 0,
+    }).format(value);
+
   return (
     <section className="rounded-2xl border border-[#e3e9ef] bg-white p-5">
-      <h2 className="text-base font-bold text-[#263d53]">
-        Laporan kendala lapangan
-      </h2>
-      <p className="mt-1 text-xs text-slate-500">
-        Kendala yang dikirim akan diterima pengawas untuk ditinjau.
-      </p>
-      <div className="mt-4 space-y-3">
-        {reports.map((report) => (
-          <article
-            key={report.id}
-            className="rounded-xl border border-[#e5eaf0] p-4"
-          >
-            <div className="flex flex-wrap justify-between gap-2">
-              <span className="text-[10px] text-slate-500">
-                {report.id} · {report.submitted}
-              </span>
-              <span
-                className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${reviewClass[report.status]}`}
-              >
-                {report.status}
-              </span>
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <span className="rounded-full bg-[#eaf2f8] px-2.5 py-1 text-[10px] font-semibold text-[#416f91]">
-                {report.categoryLabel}
-              </span>
-              <span className="rounded-full bg-[#f0f3f6] px-2.5 py-1 text-[10px] font-medium text-slate-600">
-                {report.workCondition === "BERJALAN"
-                  ? "Pekerjaan berjalan"
-                  : report.workCondition === "TERHAMBAT_SEBAGIAN"
-                    ? "Terhambat sebagian"
-                    : "Pekerjaan berhenti"}
-              </span>
-            </div>
-            <p className="mt-3 text-sm leading-6 text-slate-700">
-              {report.description}
-            </p>
-            <div className="mt-3 rounded-lg bg-[#f7f9fb] p-3 text-xs text-slate-600">
-              <p>
-                <span className="font-semibold text-[#40596f]">
-                  Pekerjaan terdampak:
-                </span>{" "}
-                {report.affectedMilestoneTitle} / {report.affectedSubtaskTitle}
-              </p>
-              <p className="mt-1">
-                <span className="font-semibold text-[#40596f]">
-                  Perkiraan tambahan waktu:
-                </span>{" "}
-                {report.estimatedDelayDays} hari
-              </p>
-              {report.additionalInfo && (
-                <p className="mt-1">
-                  <span className="font-semibold text-[#40596f]">
-                    Informasi tambahan:
-                  </span>{" "}
-                  {report.additionalInfo}
+      <button
+        type="button"
+        onClick={() => setExpanded((value) => !value)}
+        aria-expanded={expanded}
+        className="flex w-full items-center justify-between gap-4 text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#477ba6]"
+      >
+        <span>
+          <span className="block text-base font-bold text-[#263d53]">
+            Laporan kendala lapangan
+          </span>
+          <span className="mt-1 block text-xs text-slate-500">
+            {reports.length
+              ? `${reports.length} laporan kendala`
+              : "Kendala yang dikirim akan diterima pengawas untuk ditinjau."}
+          </span>
+        </span>
+        <span className="shrink-0 text-xs font-semibold text-[#416f91]">
+          {expanded ? "Sembunyikan ▲" : "Tampilkan ▼"}
+        </span>
+      </button>
+      {expanded && (
+        <div className="mt-4 space-y-3">
+          {reports.map((report) => (
+            <details
+              key={report.id}
+              className="rounded-xl border border-[#e5eaf0] bg-white p-4"
+            >
+              <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#477ba6]">
+                <span className="text-xs font-bold text-[#263d53]">
+                  {report.categoryLabel} · {report.submitted}
+                </span>
+                <span className="flex items-center gap-2">
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${reviewClass[report.status]}`}
+                  >
+                    {report.status}
+                  </span>
+                  <span className="text-xs font-semibold text-[#416f91]">
+                    Buka / tutup detail
+                  </span>
+                </span>
+              </summary>
+              <div className="mt-3 border-t border-[#e5eaf0] pt-3">
+                <div className="flex flex-wrap justify-between gap-2">
+                  <span className="text-[10px] text-slate-500">
+                    ID laporan: {report.id}
+                  </span>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <span className="rounded-full bg-[#eaf2f8] px-2.5 py-1 text-[10px] font-semibold text-[#416f91]">
+                    {report.categoryLabel}
+                  </span>
+                  <span className="rounded-full bg-[#f0f3f6] px-2.5 py-1 text-[10px] font-medium text-slate-600">
+                    {report.workCondition === "BERJALAN"
+                      ? "Pekerjaan berjalan"
+                      : report.workCondition === "TERHAMBAT_SEBAGIAN"
+                        ? "Terhambat sebagian"
+                        : "Pekerjaan berhenti"}
+                  </span>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-slate-700">
+                  {report.description}
                 </p>
-              )}
-            </div>
-            {report.attachment && (
-              <div className="mt-3 overflow-hidden rounded-lg border border-[#e6ebef]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={report.attachment}
-                  alt={`Bukti kendala: ${report.attachmentName}`}
-                  className="h-40 w-full object-cover"
-                />
+                <div className="mt-3 rounded-lg bg-[#f7f9fb] p-3 text-xs text-slate-600">
+                  <p>
+                    <span className="font-semibold text-[#40596f]">
+                      Pekerjaan terdampak:
+                    </span>{" "}
+                    {report.affectedMilestoneTitle} /{" "}
+                    {report.affectedSubtaskTitle}
+                  </p>
+                  <p className="mt-1">
+                    <span className="font-semibold text-[#40596f]">
+                      Perkiraan tambahan waktu:
+                    </span>{" "}
+                    {report.estimatedDelayDays} hari
+                  </p>
+                  {report.additionalInfo && (
+                    <p className="mt-1">
+                      <span className="font-semibold text-[#40596f]">
+                        Informasi tambahan:
+                      </span>{" "}
+                      {report.additionalInfo}
+                    </p>
+                  )}
+                </div>
+                {report.attachment && (
+                  <div className="mt-3 overflow-hidden rounded-lg border border-[#e6ebef]">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={report.attachment}
+                      alt={`Bukti kendala: ${report.attachmentName}`}
+                      className="h-40 w-full object-cover"
+                    />
+                  </div>
+                )}
+                {report.followUp && (
+                  <div className="mt-3 rounded-lg bg-[#f4f7fa] p-3">
+                    <p className="text-[10px] font-semibold text-[#416f91]">
+                      Tindak lanjut pengawas
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-slate-600">
+                      {report.followUp}
+                    </p>
+                  </div>
+                )}
+                {report.approvedResolution && (
+                  <div className="mt-3 rounded-lg border border-[#b8d9bf] bg-[#edf6ef] p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-xs font-bold text-[#27643a]">
+                        Solusi yang disetujui
+                      </p>
+                      <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-semibold text-[#477c50]">
+                        {report.approvedResolution.decisionLabel}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-xs leading-5 text-[#40596f]">
+                      {report.approvedResolution.solution}
+                    </p>
+                    {report.approvedResolution.impactType && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {report.approvedResolution.impactType !== "waktu" &&
+                          report.approvedResolution.additionalCost !== null && (
+                            <span className="rounded-md bg-white px-2.5 py-1.5 text-[10px] font-semibold text-[#27643a]">
+                              Tambahan biaya:{" "}
+                              {formatCurrency(
+                                report.approvedResolution.additionalCost,
+                              )}
+                            </span>
+                          )}
+                        {report.approvedResolution.impactType !== "biaya" &&
+                          report.approvedResolution.additionalDays !== null && (
+                            <span className="rounded-md bg-white px-2.5 py-1.5 text-[10px] font-semibold text-[#27643a]">
+                              Tambahan waktu:{" "}
+                              {report.approvedResolution.additionalDays} hari
+                            </span>
+                          )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-            )}
-            {report.followUp && (
-              <div className="mt-3 rounded-lg bg-[#f4f7fa] p-3">
-                <p className="text-[10px] font-semibold text-[#416f91]">
-                  Tindak lanjut pengawas
-                </p>
-                <p className="mt-1 text-xs leading-5 text-slate-600">
-                  {report.followUp}
-                </p>
-              </div>
-            )}
-          </article>
-        ))}
-      </div>
+            </details>
+          ))}
+        </div>
+      )}
       {reports.length === 0 && (
         <p className="py-8 text-center text-sm text-slate-500">
           Belum ada kendala dilaporkan.
@@ -871,7 +943,8 @@ function ProgressModal({
                 );
                 return (
                   <option key={task.id} value={task.id}>
-                    {task.title} ({task.weight}%){completed ? " · (Selesai)" : ""}
+                    {task.title} ({task.weight}%)
+                    {completed ? " · (Selesai)" : ""}
                   </option>
                 );
               })
@@ -881,7 +954,8 @@ function ProgressModal({
           </select>
           {isSelectedSubtaskDone ? (
             <span className="mt-1.5 block text-[11px] font-medium text-amber-600">
-              ⚠️ Subtask ini sudah diverifikasi selesai oleh pengawas. Silakan pilih subtask lain yang masih berlangsung.
+              ⚠️ Subtask ini sudah diverifikasi selesai oleh pengawas. Silakan
+              pilih subtask lain yang masih berlangsung.
             </span>
           ) : (
             <span className="mt-1.5 block text-[10px] text-slate-400">

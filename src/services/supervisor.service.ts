@@ -47,6 +47,14 @@ import type {
 
 type Row = Record<string, unknown>;
 
+function isPositiveSafeInteger(value: number | null): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value > 0;
+}
+
+function isPositiveDatabaseInteger(value: number | null): value is number {
+  return isPositiveSafeInteger(value) && value <= 2_147_483_647;
+}
+
 const FALLBACK_IMAGE = "/images/katalog/house-dummy1.webp";
 
 const CATEGORY_LABEL = new Map(
@@ -168,7 +176,7 @@ const KENDALA_SELECT = `
 
 const RESOLUTION_SELECT = `id, project_id, kendala_id, solusi, sumber, analisis_ai,
   status, butuh_persetujuan, alasan_persetujuan, bukti, umpan_balik_customer,
-  created_at`;
+  dampak_type, tambahan_biaya, tambahan_hari, created_at`;
 
 // ============================================================
 // PEMETAAN
@@ -439,6 +447,16 @@ function toIssueResolution(row: Row): IssueResolution {
     requiresCustomerApproval: row.butuh_persetujuan === true,
     approvalReason: String(row.alasan_persetujuan ?? ""),
     approvalEvidence: (row.bukti as string | null) ?? null,
+    impactType:
+      row.dampak_type === "biaya" ||
+      row.dampak_type === "waktu" ||
+      row.dampak_type === "biaya_dan_waktu"
+        ? row.dampak_type
+        : null,
+    additionalCost:
+      row.tambahan_biaya == null ? null : Number(row.tambahan_biaya),
+    additionalDays:
+      row.tambahan_hari == null ? null : Number(row.tambahan_hari),
     customerFeedback: String(row.umpan_balik_customer ?? ""),
     discussion: [],
     submitted: formatDate(String(row.created_at)),
@@ -677,7 +695,8 @@ async function getDiscussions(
   const { data, error } = await supabase
     .from("resolution_discussions")
     .select(
-      `id, resolution_id, penulis, pesan, created_at,
+      `id, resolution_id, penulis, pesan, dampak_type, tambahan_biaya,
+       tambahan_hari, created_at,
        issue_resolutions!inner ( id )`,
     )
     .eq("issue_resolutions.project_id", projectId)
@@ -697,6 +716,16 @@ async function getDiscussions(
         : "Pengawas",
     message: String(item.pesan ?? ""),
     date: formatDate(String(item.created_at)),
+    impactType:
+      item.dampak_type === "biaya" ||
+      item.dampak_type === "waktu" ||
+      item.dampak_type === "biaya_dan_waktu"
+        ? item.dampak_type
+        : null,
+    additionalCost:
+      item.tambahan_biaya == null ? null : Number(item.tambahan_biaya),
+    additionalDays:
+      item.tambahan_hari == null ? null : Number(item.tambahan_hari),
   }));
 }
 
@@ -849,6 +878,9 @@ export type ResolutionPayload = {
   butuhPersetujuan?: boolean;
   alasanPersetujuan?: string;
   bukti?: string | null;
+  dampakType?: IssueResolution["impactType"];
+  tambahanBiaya?: number | null;
+  tambahanHari?: number | null;
   umpanBalikCustomer?: string | null;
   /** Default: "Menunggu approval customer" bila perlu persetujuan, selain itu "Ditindaklanjuti". */
   status?: IssueResolution["status"];
@@ -906,6 +938,26 @@ export async function saveIssueResolution(
   }
 
   const needsApproval = payload.butuhPersetujuan === true;
+  const impactType = payload.dampakType ?? null;
+  const additionalCost = payload.tambahanBiaya ?? null;
+  const additionalDays = payload.tambahanHari ?? null;
+  if (
+    needsApproval &&
+    ((impactType === "biaya" &&
+      (!isPositiveSafeInteger(additionalCost) || additionalDays !== null)) ||
+      (impactType === "waktu" &&
+        (!isPositiveDatabaseInteger(additionalDays) ||
+          additionalCost !== null)) ||
+      (impactType === "biaya_dan_waktu" &&
+        (!isPositiveSafeInteger(additionalCost) ||
+          !isPositiveDatabaseInteger(additionalDays))) ||
+      !["biaya", "waktu", "biaya_dan_waktu"].includes(String(impactType)))
+  ) {
+    throw new ServiceError(
+      "Lengkapi dampak biaya dan/atau tambahan hari dengan nominal yang valid.",
+      422,
+    );
+  }
 
   type ResolutionUpdate =
     Database["public"]["Tables"]["issue_resolutions"]["Update"];
@@ -916,6 +968,9 @@ export async function saveIssueResolution(
     butuh_persetujuan: needsApproval,
     alasan_persetujuan: payload.alasanPersetujuan?.trim() || null,
     bukti: payload.bukti?.trim() || null,
+    dampak_type: needsApproval ? impactType : null,
+    tambahan_biaya: needsApproval ? additionalCost : null,
+    tambahan_hari: needsApproval ? additionalDays : null,
     status:
       payload.status ??
       (needsApproval ? "Menunggu approval customer" : "Ditindaklanjuti"),
@@ -980,12 +1035,31 @@ export async function addResolutionDiscussion(
   resolutionId: string,
   penulis: "Pengawas" | "Customer",
   pesan: string,
+  impact?: {
+    dampakType: NonNullable<IssueResolution["impactType"]>;
+    tambahanBiaya: number | null;
+    tambahanHari: number | null;
+  },
 ): Promise<DiscussionEntry> {
   const { user } = await requireRole(supabase, "pengawas");
 
   const trimmed = pesan.trim();
   if (trimmed.length < 3) {
     throw new ServiceError("Tuliskan pesan minimal 3 karakter.", 422);
+  }
+  if (
+    penulis === "Pengawas" &&
+    (!impact ||
+      !["biaya", "waktu", "biaya_dan_waktu"].includes(impact.dampakType) ||
+      (impact.dampakType !== "waktu" &&
+        !isPositiveSafeInteger(impact.tambahanBiaya)) ||
+      (impact.dampakType !== "biaya" &&
+        !isPositiveDatabaseInteger(impact.tambahanHari)))
+  ) {
+    throw new ServiceError(
+      "Setiap tanggapan pengawas harus mencantumkan dampak dan nominal yang valid.",
+      422,
+    );
   }
 
   const { data: resolution, error: resolutionError } = await supabase
@@ -1005,6 +1079,9 @@ export async function addResolutionDiscussion(
       penulis,
       pesan: trimmed,
       created_by: user.id,
+      dampak_type: penulis === "Pengawas" ? impact?.dampakType : null,
+      tambahan_biaya: penulis === "Pengawas" ? impact?.tambahanBiaya : null,
+      tambahan_hari: penulis === "Pengawas" ? impact?.tambahanHari : null,
     })
     .select("id, created_at")
     .single();
@@ -1020,6 +1097,11 @@ export async function addResolutionDiscussion(
     author: penulis,
     message: trimmed,
     date: formatDate(String((data as Row).created_at)),
+    impactType: penulis === "Pengawas" ? (impact?.dampakType ?? null) : null,
+    additionalCost:
+      penulis === "Pengawas" ? (impact?.tambahanBiaya ?? null) : null,
+    additionalDays:
+      penulis === "Pengawas" ? (impact?.tambahanHari ?? null) : null,
   };
 }
 

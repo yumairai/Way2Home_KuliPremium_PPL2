@@ -14,6 +14,9 @@ export type ConstructionMilestone = {
   progress: number;
   startedAt?: string;
   completedAt?: string;
+  targetStart?: string;
+  targetEnd?: string;
+  delayDays?: number;
   updatedAt?: string;
   tasks: ConstructionTask[];
 };
@@ -43,14 +46,26 @@ export type CustomerIssueResolution = {
   solution: string;
   approvalReason: string;
   approvalEvidence: string | null;
+  impactType: "biaya" | "waktu" | "biaya_dan_waktu" | null;
+  additionalCost: number | null;
+  additionalDays: number | null;
   status: string;
   submittedAt: string;
-  discussion: { id: string; author: string; message: string; date: string }[];
+  discussion: {
+    id: string;
+    author: string;
+    message: string;
+    date: string;
+    impactType: "biaya" | "waktu" | "biaya_dan_waktu" | null;
+    additionalCost: number | null;
+    additionalDays: number | null;
+  }[];
 };
 
 export type ProjectTracking = {
   startedAt?: string;
   targetDate?: string;
+  totalDelayDays?: number;
   overallProgress?: number | null;
   milestones: ConstructionMilestone[];
   activities: ProjectActivity[];

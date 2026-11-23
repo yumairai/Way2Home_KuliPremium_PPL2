@@ -62,6 +62,13 @@ export type MandorIssueReport = {
   submitted: string;
   status: "Menunggu" | "Ditindaklanjuti" | "Selesai";
   followUp: string;
+  approvedResolution?: {
+    solution: string;
+    impactType: "biaya" | "waktu" | "biaya_dan_waktu" | null;
+    additionalCost: number | null;
+    additionalDays: number | null;
+    decisionLabel: "Disetujui customer" | "Keputusan final pengawas";
+  } | null;
 };
 export type MandorForemanNote = {
   id: string;

@@ -44,6 +44,30 @@ function percentLabel(value: number) {
   );
 }
 
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function impactLabel(
+  impactType: CustomerIssueResolution["impactType"],
+  additionalCost: number | null,
+  additionalDays: number | null,
+) {
+  if (!impactType) return null;
+  const details: string[] = [];
+  if (impactType !== "waktu" && additionalCost !== null) {
+    details.push(`Tambahan biaya ${formatCurrency(additionalCost)}`);
+  }
+  if (impactType !== "biaya" && additionalDays !== null) {
+    details.push(`Tambahan waktu ${additionalDays} hari`);
+  }
+  return details.join(" · ");
+}
+
 function CustomerResolutionCard({
   projectId,
   resolution,
@@ -57,6 +81,10 @@ function CustomerResolutionCard({
   const [showDiscuss, setShowDiscuss] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [expanded, setExpanded] = useState(
+    resolution.status === "Menunggu approval customer" ||
+      resolution.status === "Diskusi dengan pengawas",
+  );
 
   const handleDecision = async (approved: boolean) => {
     if (!approved && !feedback.trim()) {
@@ -96,7 +124,12 @@ function CustomerResolutionCard({
             : "border-[#d8ecd8] bg-[#f6fbf7]"
       }`}
     >
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <button
+        type="button"
+        onClick={() => setExpanded((value) => !value)}
+        aria-expanded={expanded}
+        className="flex w-full flex-wrap items-center justify-between gap-3 text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#045ec2]"
+      >
         <div className="flex items-center gap-2.5">
           <span
             className={`grid h-9 w-9 shrink-0 place-items-center rounded-full text-base ${
@@ -134,138 +167,175 @@ function CustomerResolutionCard({
         >
           {resolution.status}
         </span>
-      </div>
+        <span className="text-xs font-semibold text-[#66768c]">
+          {expanded ? "Sembunyikan detail ▲" : "Lihat detail ▼"}
+        </span>
+      </button>
 
-      <div className="mt-4 rounded-xl border border-[#d6e3f0] bg-white p-4">
-        <p className="text-[11px] font-bold text-[#004796]">
-          Rencana Solusi yang Diajukan Pengawas:
-        </p>
-        <p className="mt-1 text-sm font-semibold leading-6 text-[#1c324f]">
-          {resolution.solution}
-        </p>
-        {resolution.approvalReason && (
-          <div className="mt-2.5 rounded-lg border border-[#e5ecf3] bg-[#f8fafc] p-3 text-xs leading-5 text-[#47586e]">
-            <span className="font-bold text-[#2a3c50]">
-              Alasan & Dampak untuk Pemilik Rumah:{" "}
-            </span>
-            {resolution.approvalReason}
-          </div>
-        )}
-        {resolution.approvalEvidence && (
-          <div className="mt-3 overflow-hidden rounded-lg border border-slate-200">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={resolution.approvalEvidence}
-              alt="Bukti pendukung solusi"
-              className="max-h-48 w-full object-cover"
-            />
-          </div>
-        )}
-      </div>
-
-      {resolution.discussion && resolution.discussion.length > 0 && (
-        <div className="mt-4 space-y-2 border-t border-[#e2eaf2] pt-4">
-          <p className="text-xs font-bold text-[#344861]">Riwayat Diskusi:</p>
-          {resolution.discussion.map((d) => (
-            <div
-              key={d.id}
-              className={`rounded-xl p-3 text-xs leading-5 ${
-                d.author === "Customer"
-                  ? "ml-4 border border-[#cbe0f8] bg-[#f2f7fd] text-[#1b4372]"
-                  : "mr-4 border border-[#e2e8f0] bg-white text-[#344861]"
-              }`}
-            >
-              <div className="mb-1 flex justify-between text-[10px] text-[#78889c]">
-                <span className="font-bold">
-                  {d.author === "Customer"
-                    ? "Anda (Pemilik Rumah)"
-                    : "Pengawas Proyek"}
-                </span>
-                <span>{d.date}</span>
-              </div>
-              <p>{d.message}</p>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {error && (
-        <p className="mt-3 text-xs font-semibold text-red-600">{error}</p>
-      )}
-
-      {isPending && (
-        <div className="mt-5 border-t border-[#ede3d1] pt-4">
-          {!showDiscuss ? (
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs text-[#637388]">
-                Konfirmasikan apakah Anda menyetujui solusi dari pengawas atau
-                memerlukan penyesuaian.
+      {expanded && (
+        <>
+          <div className="mt-4 rounded-xl border border-[#d6e3f0] bg-white p-4">
+            <p className="text-[11px] font-bold text-[#004796]">
+              Rencana Solusi yang Diajukan Pengawas:
+            </p>
+            <p className="mt-1 text-sm font-semibold leading-6 text-[#1c324f]">
+              {resolution.solution}
+            </p>
+            {impactLabel(
+              resolution.impactType,
+              resolution.additionalCost,
+              resolution.additionalDays,
+            ) && (
+              <p className="mt-2 rounded-lg bg-[#edf6ef] px-3 py-2 text-xs font-bold text-[#176b3e]">
+                Dampak usulan:{" "}
+                {impactLabel(
+                  resolution.impactType,
+                  resolution.additionalCost,
+                  resolution.additionalDays,
+                )}
               </p>
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowDiscuss(true)}
-                  disabled={submitting}
-                  className="rounded-xl border border-[#cbd5e1] bg-white px-4 py-2.5 text-xs font-bold text-[#33465e] hover:bg-[#f8fafc] disabled:opacity-50"
-                >
-                  Minta Diskusi / Revisi
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDecision(true)}
-                  disabled={submitting}
-                  className="rounded-xl bg-[#0b8068] px-5 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-[#096d58] disabled:opacity-50"
-                >
-                  {submitting ? "Memproses..." : "Setujui Solusi"}
-                </button>
+            )}
+            {resolution.approvalReason && (
+              <div className="mt-2.5 rounded-lg border border-[#e5ecf3] bg-[#f8fafc] p-3 text-xs leading-5 text-[#47586e]">
+                <span className="font-bold text-[#2a3c50]">
+                  Alasan & Dampak untuk Pemilik Rumah:{" "}
+                </span>
+                {resolution.approvalReason}
               </div>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <label className="block text-xs font-bold text-[#2a3c50]">
-                Catatan atau Masukan Anda untuk Pengawas:
-              </label>
-              <textarea
-                value={feedback}
-                onChange={(e) => setFeedback(e.target.value)}
-                placeholder="Contoh: Mohon cari alternatif merek lain yang selisih harganya lebih terjangkau..."
-                rows={3}
-                className="w-full rounded-xl border border-[#cbd5e1] p-3 text-xs leading-5 outline-none focus:border-[#045ec2]"
-              />
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowDiscuss(false);
-                    setError("");
-                  }}
-                  disabled={submitting}
-                  className="rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-100"
-                >
-                  Batal
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDecision(false)}
-                  disabled={submitting || !feedback.trim()}
-                  className="rounded-lg bg-[#b43333] px-4 py-2 text-xs font-bold text-white hover:bg-[#972929] disabled:opacity-50"
-                >
-                  {submitting ? "Mengirim..." : "Kirim Catatan"}
-                </button>
+            )}
+            {resolution.approvalEvidence && (
+              <div className="mt-3 overflow-hidden rounded-lg border border-slate-200">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={resolution.approvalEvidence}
+                  alt="Bukti pendukung solusi"
+                  className="max-h-48 w-full object-cover"
+                />
               </div>
+            )}
+          </div>
+
+          {resolution.discussion && resolution.discussion.length > 0 && (
+            <div className="mt-4 space-y-2 border-t border-[#e2eaf2] pt-4">
+              <p className="text-xs font-bold text-[#344861]">
+                Riwayat Diskusi:
+              </p>
+              {resolution.discussion.map((d) => (
+                <div
+                  key={d.id}
+                  className={`rounded-xl p-3 text-xs leading-5 ${
+                    d.author === "Customer"
+                      ? "ml-4 border border-[#cbe0f8] bg-[#f2f7fd] text-[#1b4372]"
+                      : "mr-4 border border-[#e2e8f0] bg-white text-[#344861]"
+                  }`}
+                >
+                  <div className="mb-1 flex justify-between text-[10px] text-[#78889c]">
+                    <span className="font-bold">
+                      {d.author === "Customer"
+                        ? "Anda (Pemilik Rumah)"
+                        : "Pengawas Proyek"}
+                    </span>
+                    <span>{d.date}</span>
+                  </div>
+                  <p>{d.message}</p>
+                  {impactLabel(
+                    d.impactType,
+                    d.additionalCost,
+                    d.additionalDays,
+                  ) && (
+                    <p className="mt-2 rounded-md bg-white/80 px-2.5 py-2 font-semibold">
+                      Dampak usulan pengawas:{" "}
+                      {impactLabel(
+                        d.impactType,
+                        d.additionalCost,
+                        d.additionalDays,
+                      )}
+                    </p>
+                  )}
+                </div>
+              ))}
             </div>
           )}
-        </div>
-      )}
 
-      {isDiscussing && (
-        <div className="mt-4 flex items-center gap-2.5 rounded-xl border border-[#cde0f5] bg-white p-3 text-xs text-[#224b75]">
-          <span className="text-sm">⏳</span>
-          <span>
-            Masukan Anda telah terkirim. Pengawas sedang meninjau dan akan
-            memperbarui usulan solusi di sini.
-          </span>
-        </div>
+          {error && (
+            <p className="mt-3 text-xs font-semibold text-red-600">{error}</p>
+          )}
+
+          {isPending && (
+            <div className="mt-5 border-t border-[#ede3d1] pt-4">
+              {!showDiscuss ? (
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-xs text-[#637388]">
+                    Konfirmasikan apakah Anda menyetujui solusi dari pengawas
+                    atau memerlukan penyesuaian.
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowDiscuss(true)}
+                      disabled={submitting}
+                      className="rounded-xl border border-[#cbd5e1] bg-white px-4 py-2.5 text-xs font-bold text-[#33465e] hover:bg-[#f8fafc] disabled:opacity-50"
+                    >
+                      Minta Diskusi / Revisi
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDecision(true)}
+                      disabled={submitting}
+                      className="rounded-xl bg-[#0b8068] px-5 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-[#096d58] disabled:opacity-50"
+                    >
+                      {submitting ? "Memproses..." : "Setujui Solusi"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <label className="block text-xs font-bold text-[#2a3c50]">
+                    Catatan atau Masukan Anda untuk Pengawas:
+                  </label>
+                  <textarea
+                    value={feedback}
+                    onChange={(e) => setFeedback(e.target.value)}
+                    placeholder="Contoh: Mohon cari alternatif merek lain yang selisih harganya lebih terjangkau..."
+                    rows={3}
+                    className="w-full rounded-xl border border-[#cbd5e1] p-3 text-xs leading-5 outline-none focus:border-[#045ec2]"
+                  />
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowDiscuss(false);
+                        setError("");
+                      }}
+                      disabled={submitting}
+                      className="rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-100"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDecision(false)}
+                      disabled={submitting || !feedback.trim()}
+                      className="rounded-lg bg-[#b43333] px-4 py-2 text-xs font-bold text-white hover:bg-[#972929] disabled:opacity-50"
+                    >
+                      {submitting ? "Mengirim..." : "Kirim Catatan"}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {isDiscussing && (
+            <div className="mt-4 flex items-center gap-2.5 rounded-xl border border-[#cde0f5] bg-white p-3 text-xs text-[#224b75]">
+              <span className="text-sm">⏳</span>
+              <span>
+                Masukan Anda telah terkirim. Pengawas sedang meninjau dan akan
+                memperbarui usulan solusi di sini.
+              </span>
+            </div>
+          )}
+        </>
       )}
     </article>
   );
@@ -342,6 +412,13 @@ export default function CustomerTracking({ project }: { project: Project }) {
       ? milestones.find((item) => item.status === "pending")
       : undefined);
   const targetDate = project.tracking?.targetDate;
+  const resolutions = project.tracking?.resolutions ?? [];
+  const waitingApprovals = resolutions.filter(
+    (resolution) => resolution.status === "Menunggu approval customer",
+  ).length;
+  const [resolutionSectionOpen, setResolutionSectionOpen] = useState(
+    waitingApprovals > 0,
+  );
 
   return (
     <main className="min-h-screen bg-[#f7f9fc] pb-24 pt-28 text-[#15243d]">
@@ -442,27 +519,55 @@ export default function CustomerTracking({ project }: { project: Project }) {
                 <p className="mt-1 text-sm font-bold text-[#20334f]">
                   {dateLabel(targetDate)}
                 </p>
+                {Boolean(project.tracking?.totalDelayDays) && (
+                  <p className="mt-1 text-xs font-medium text-amber-700">
+                    Bergeser {project.tracking?.totalDelayDays} hari karena kendala
+                  </p>
+                )}
               </div>
             </div>
           </div>
         </header>
 
-        {project.tracking?.resolutions &&
-          project.tracking.resolutions.length > 0 && (
-            <section
-              className="mt-7 space-y-4"
-              aria-label="Persetujuan dan diskusi kendala"
+        {resolutions.length > 0 && (
+          <section
+            className="mt-7 rounded-[1.75rem] border border-[#dce5ef] bg-white p-5 shadow-[0_14px_36px_rgba(21,36,61,0.04)] md:p-7"
+            aria-label="Persetujuan dan diskusi kendala"
+          >
+            <button
+              type="button"
+              onClick={() => setResolutionSectionOpen((value) => !value)}
+              aria-expanded={resolutionSectionOpen}
+              className="flex w-full items-center justify-between gap-4 text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#045ec2]"
             >
-              {project.tracking.resolutions.map((resolution) => (
-                <CustomerResolutionCard
-                  key={resolution.id}
-                  projectId={String(project.id)}
-                  resolution={resolution}
-                  onResolved={() => router.refresh()}
-                />
-              ))}
-            </section>
-          )}
+              <span>
+                <span className="block text-lg font-extrabold text-[#1a2f4c]">
+                  Persetujuan dan diskusi kendala
+                </span>
+                <span className="mt-1 block text-xs text-[#728198]">
+                  {waitingApprovals > 0
+                    ? `${waitingApprovals} usulan menunggu persetujuan Anda`
+                    : `${resolutions.length} penanganan kendala`}
+                </span>
+              </span>
+              <span className="shrink-0 text-sm font-bold text-[#045ec2]">
+                {resolutionSectionOpen ? "Sembunyikan ▲" : "Tampilkan ▼"}
+              </span>
+            </button>
+            {resolutionSectionOpen && (
+              <div className="mt-5 space-y-4">
+                {resolutions.map((resolution) => (
+                  <CustomerResolutionCard
+                    key={resolution.id}
+                    projectId={String(project.id)}
+                    resolution={resolution}
+                    onResolved={() => router.refresh()}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+        )}
 
         <section
           className="mt-7 grid gap-7 xl:grid-cols-[minmax(0,1fr)_360px]"
@@ -536,12 +641,19 @@ export default function CustomerTracking({ project }: { project: Project }) {
                             {style.label}
                           </span>
                           <span className="mt-1 block text-xs text-[#8996a6]">
-                            {milestone.completedAt
-                              ? formatDate(milestone.completedAt)
-                              : milestone.startedAt
-                                ? `Mulai ${formatDate(milestone.startedAt)}`
-                                : "Tanggal belum tersedia"}
+                            {milestone.targetStart && milestone.targetEnd
+                              ? `Target ${formatDate(milestone.targetStart)} – ${formatDate(milestone.targetEnd)}`
+                              : milestone.completedAt
+                                ? formatDate(milestone.completedAt)
+                                : milestone.startedAt
+                                  ? `Mulai ${formatDate(milestone.startedAt)}`
+                                  : "Tanggal belum tersedia"}
                           </span>
+                          {Boolean(milestone.delayDays) && (
+                            <span className="mt-1 block text-[11px] font-semibold text-amber-700">
+                              Tambahan waktu kendala: {milestone.delayDays} hari
+                            </span>
+                          )}
                         </span>
                         <span
                           className={`pt-2 text-sm transition-transform ${active ? "translate-x-0.5 text-[#045ec2]" : "text-[#9ba7b5]"}`}
@@ -825,21 +937,38 @@ function MilestoneDetail({ milestone }: { milestone: ConstructionMilestone }) {
         </span>
       </div>
       <dl className="mt-6 grid grid-cols-2 gap-3">
+        <div className="rounded-xl bg-[#eef5fb] p-3 ring-1 ring-[#dce8f3]">
+          <dt className="text-xs font-medium text-[#71849a]">Target mulai</dt>
+          <dd className="mt-1 text-sm font-bold text-[#334762]">
+            {dateLabel(milestone.targetStart)}
+          </dd>
+        </div>
+        <div className="rounded-xl bg-[#eef5fb] p-3 ring-1 ring-[#dce8f3]">
+          <dt className="text-xs font-medium text-[#71849a]">Target selesai</dt>
+          <dd className="mt-1 text-sm font-bold text-[#334762]">
+            {dateLabel(milestone.targetEnd)}
+          </dd>
+        </div>
         <div className="rounded-xl bg-white p-3 ring-1 ring-[#e8edf2]">
-          <dt className="text-xs font-medium text-[#8794a4]">Tanggal mulai</dt>
+          <dt className="text-xs font-medium text-[#8794a4]">Mulai aktual</dt>
           <dd className="mt-1 text-sm font-bold text-[#334762]">
             {dateLabel(milestone.startedAt)}
           </dd>
         </div>
         <div className="rounded-xl bg-white p-3 ring-1 ring-[#e8edf2]">
           <dt className="text-xs font-medium text-[#8794a4]">
-            Tanggal selesai
+            Selesai aktual
           </dt>
           <dd className="mt-1 text-sm font-bold text-[#334762]">
             {dateLabel(milestone.completedAt)}
           </dd>
         </div>
       </dl>
+      {Boolean(milestone.delayDays) && (
+        <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+          Estimasi tahap ini bertambah {milestone.delayDays} hari karena kendala.
+        </p>
+      )}
       <div className="mt-6 border-t border-[#e5ebf1] pt-5">
         <div className="flex items-center justify-between gap-3">
           <h4 className="text-sm font-bold text-[#334762]">

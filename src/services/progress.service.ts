@@ -16,6 +16,69 @@ type Report = Database["public"]["Tables"]["progress_reports"]["Row"];
 type Subtask = Database["public"]["Tables"]["project_subtasks"]["Row"];
 export type Issue = Database["public"]["Tables"]["kendala"]["Row"];
 
+const MILESTONE_DURATION_WEIGHTS = [15, 25, 25, 10, 20, 5] as const;
+
+function addCalendarDays(date: string, days: number): string {
+  const [year, month, day] = date.slice(0, 10).split("-").map(Number);
+  const result = new Date(Date.UTC(year, month - 1, day + days));
+  return result.toISOString().slice(0, 10);
+}
+
+function jakartaDate(timestamp: string): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(timestamp));
+  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${value.year}-${value.month}-${value.day}`;
+}
+
+function milestoneSchedule(
+  milestones: ConstructionMilestone[],
+  startDate: string,
+  durationDays: number,
+  delayByStage: Map<string, number>,
+  stages: Stage[],
+) {
+  let elapsedDays = 0;
+  let totalDelayDays = 0;
+  const orderedStages = [...stages].sort((a, b) => a.urutan - b.urutan);
+
+  const scheduled = milestones.map((milestone, index) => {
+    const stage = orderedStages[index];
+    const previousBoundary = Math.round(
+      (durationDays * MILESTONE_DURATION_WEIGHTS
+        .slice(0, index)
+        .reduce((sum, weight) => sum + weight, 0)) / 100,
+    );
+    const nextBoundary = Math.round(
+      (durationDays * MILESTONE_DURATION_WEIGHTS
+        .slice(0, index + 1)
+        .reduce((sum, weight) => sum + weight, 0)) / 100,
+    );
+    const baseDuration = Math.max(0, nextBoundary - previousBoundary);
+    const localDelay = stage ? delayByStage.get(stage.id) ?? 0 : 0;
+    const targetStart = addCalendarDays(startDate, elapsedDays);
+    elapsedDays += baseDuration + localDelay;
+    totalDelayDays += localDelay;
+
+    return {
+      ...milestone,
+      targetStart,
+      targetEnd: addCalendarDays(startDate, elapsedDays),
+      delayDays: localDelay,
+    };
+  });
+
+  return {
+    milestones: scheduled,
+    targetDate: addCalendarDays(startDate, elapsedDays),
+    totalDelayDays,
+  };
+}
+
 export type LiveProgressProject = {
   id: string;
   customerId: string;
@@ -226,10 +289,13 @@ export async function getCustomerProjectTracking(
   supabase: Client,
   projectId: string,
 ): Promise<ProjectTracking> {
-  const { stages, reports, overallProgress: baseOverallProgress } =
-    await getProjectProgress(supabase, projectId, {
-      customerOnly: true,
-    });
+  const {
+    stages,
+    reports,
+    overallProgress: baseOverallProgress,
+  } = await getProjectProgress(supabase, projectId, {
+    customerOnly: true,
+  });
   const stageIds = stages.map((stage) => stage.id);
   const [
     subtasksResult,
@@ -237,6 +303,8 @@ export async function getCustomerProjectTracking(
     documentationResult,
     contractResult,
     resolutionsResult,
+    paymentResult,
+    projectResult,
   ] = await Promise.all([
     stageIds.length
       ? supabase
@@ -273,20 +341,49 @@ export async function getCustomerProjectTracking(
           solusi,
           alasan_persetujuan,
           bukti,
+          dampak_type,
+          tambahan_biaya,
+          tambahan_hari,
           status,
           created_at,
-          kendala ( kategori, deskripsi ),
-          resolution_discussions ( id, penulis, pesan, created_at )
+          kendala ( kategori, deskripsi, project_stage_id ),
+          resolution_discussions (
+            id, penulis, pesan, dampak_type, tambahan_biaya, tambahan_hari, created_at
+          )
         `,
       )
       .eq("project_id", projectId)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("payment_stages")
+      .select("tanggal_bayar")
+      .eq("project_id", projectId)
+      .eq("urutan", 0)
+      .eq("status", "lunas")
+      .maybeSingle(),
+    supabase
+      .from("projects")
+      .select("design_id")
+      .eq("id", projectId)
+      .maybeSingle(),
   ]);
 
   if (subtasksResult.error) throw subtasksResult.error;
   if (updatesResult.error) throw updatesResult.error;
   if (documentationResult.error) throw documentationResult.error;
   if (contractResult.error) throw contractResult.error;
+  if (resolutionsResult.error) throw resolutionsResult.error;
+  if (paymentResult.error) throw paymentResult.error;
+  if (projectResult.error) throw projectResult.error;
+
+  const designResult = projectResult.data?.design_id
+    ? await supabase
+        .from("designs")
+        .select("estimasi_durasi_hari")
+        .eq("id", projectResult.data.design_id)
+        .maybeSingle()
+    : null;
+  if (designResult?.error) throw designResult.error;
 
   const allSubtasks = (subtasksResult.data ?? []) as Subtask[];
   const totalSubtasksWeight = allSubtasks.reduce(
@@ -309,7 +406,30 @@ export async function getCustomerProjectTracking(
     subtasksByStage.set(subtask.project_stage_id, current);
   }
 
-  const milestones = stagesToMilestones(stages, subtasksByStage);
+  let milestones = stagesToMilestones(stages, subtasksByStage);
+  milestones = milestones.map((milestone, index) => {
+    if (milestone.startedAt || milestone.status !== "in-progress")
+      return milestone;
+
+    const stage = [...stages].sort((a, b) => a.urutan - b.urutan)[index];
+    if (!stage) return milestone;
+    const observedStartDates = [
+      ...reports
+        .filter((report) => report.project_stage_id === stage.id)
+        .map((report) => report.verified_at ?? report.created_at),
+      ...(subtasksByStage.get(stage.id) ?? [])
+        .map((subtask) => subtask.completed_at)
+        .filter((date): date is string => Boolean(date)),
+    ].sort((a, b) => a.localeCompare(b));
+
+    return {
+      ...milestone,
+      startedAt:
+        observedStartDates[0]?.slice(0, 10) ??
+        stage.updated_at?.slice(0, 10) ??
+        undefined,
+    };
+  });
   const milestoneIdByStageId = new Map(
     stages.map((stage, index) => [stage.id, milestones[index]?.id]),
   );
@@ -351,6 +471,26 @@ export async function getCustomerProjectTracking(
     string,
     unknown
   >[];
+  const delayByStage = new Map<string, number>();
+  const countedIssues = new Set<string>();
+  for (const resolution of rawResolutions) {
+    const issueId = String(resolution.kendala_id ?? "");
+    if (!issueId || countedIssues.has(issueId)) continue;
+    countedIssues.add(issueId);
+    const status = String(resolution.status ?? "");
+    const days = Number(resolution.tambahan_hari ?? 0);
+    const issue = (resolution.kendala ?? {}) as Record<string, unknown>;
+    const stageId = String(issue.project_stage_id ?? "");
+    if (
+      !stageId ||
+      !["Ditindaklanjuti", "resolved"].includes(status) ||
+      !["waktu", "biaya_dan_waktu"].includes(String(resolution.dampak_type)) ||
+      !Number.isFinite(days) ||
+      days <= 0
+    ) continue;
+    delayByStage.set(stageId, (delayByStage.get(stageId) ?? 0) + days);
+  }
+
   const resolutions = rawResolutions.map((res) => {
     const k = (res.kendala ?? {}) as Record<string, unknown>;
     const rawDisc = Array.isArray(res.resolution_discussions)
@@ -361,6 +501,15 @@ export async function getCustomerProjectTracking(
       author: String(d.penulis ?? "Pengawas"),
       message: String(d.pesan ?? ""),
       date: formatDate(String(d.created_at)),
+      impactType:
+        d.dampak_type === "biaya" ||
+        d.dampak_type === "waktu" ||
+        d.dampak_type === "biaya_dan_waktu"
+          ? (d.dampak_type as "biaya" | "waktu" | "biaya_dan_waktu")
+          : null,
+      additionalCost:
+        d.tambahan_biaya == null ? null : Number(d.tambahan_biaya),
+      additionalDays: d.tambahan_hari == null ? null : Number(d.tambahan_hari),
     }));
 
     return {
@@ -370,18 +519,49 @@ export async function getCustomerProjectTracking(
       solution: String(res.solusi ?? ""),
       approvalReason: String(res.alasan_persetujuan ?? ""),
       approvalEvidence: (res.bukti as string | null) ?? null,
+      impactType:
+        res.dampak_type === "biaya" ||
+        res.dampak_type === "waktu" ||
+        res.dampak_type === "biaya_dan_waktu"
+          ? (res.dampak_type as "biaya" | "waktu" | "biaya_dan_waktu")
+          : null,
+      additionalCost:
+        res.tambahan_biaya == null ? null : Number(res.tambahan_biaya),
+      additionalDays:
+        res.tambahan_hari == null ? null : Number(res.tambahan_hari),
       status: String(res.status ?? ""),
       submittedAt: formatDate(String(res.created_at)),
       discussion,
     };
   });
 
+  const dpPaidAt = paymentResult.data?.tanggal_bayar
+    ? jakartaDate(paymentResult.data.tanggal_bayar)
+    : undefined;
+  const designDuration = Number(designResult?.data?.estimasi_durasi_hari ?? 0);
+  const schedule =
+    dpPaidAt && designDuration > 0
+      ? milestoneSchedule(
+          milestones,
+          dpPaidAt,
+          designDuration,
+          delayByStage,
+          stages,
+        )
+      : null;
+  if (schedule) milestones = schedule.milestones;
+
   return {
     startedAt:
+      dpPaidAt ??
       contractResult.data?.tanggal_mulai ??
       stages.find((stage) => stage.tanggal_mulai)?.tanggal_mulai ??
       undefined,
-    targetDate: contractResult.data?.tanggal_selesai_estimasi ?? undefined,
+    targetDate:
+      schedule?.targetDate ??
+      contractResult.data?.tanggal_selesai_estimasi ??
+      undefined,
+    totalDelayDays: schedule?.totalDelayDays ?? 0,
     overallProgress,
     milestones,
     activities: [...reportActivities, ...updateActivities],

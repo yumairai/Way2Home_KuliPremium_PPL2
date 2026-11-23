@@ -20,6 +20,9 @@ type Body = {
   butuh_persetujuan?: boolean;
   alasan_persetujuan?: string;
   bukti?: string | null;
+  dampak_type?: IssueResolution["impactType"];
+  tambahan_biaya?: number | null;
+  tambahan_hari?: number | null;
   umpan_balik_customer?: string | null;
   status?: IssueResolution["status"];
   keputusan_final?: boolean;
@@ -63,6 +66,9 @@ export async function PUT(
         butuhPersetujuan: body.butuh_persetujuan,
         alasanPersetujuan: body.alasan_persetujuan,
         bukti: body.bukti ?? null,
+        dampakType: body.dampak_type,
+        tambahanBiaya: body.tambahan_biaya ?? null,
+        tambahanHari: body.tambahan_hari ?? null,
         umpanBalikCustomer: body.umpan_balik_customer ?? null,
         status: body.status,
         keputusanFinal: body.keputusan_final,
@@ -76,6 +82,13 @@ export async function PUT(
         resolutionId,
         body.discussion.author === "Customer" ? "Customer" : "Pengawas",
         body.discussion.message,
+        body.discussion.author === "Customer"
+          ? undefined
+          : {
+              dampakType: body.dampak_type ?? "biaya",
+              tambahanBiaya: body.tambahan_biaya ?? null,
+              tambahanHari: body.tambahan_hari ?? null,
+            },
       );
     }
 

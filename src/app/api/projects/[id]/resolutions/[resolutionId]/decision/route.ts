@@ -44,6 +44,12 @@ export async function POST(
     if (resError || !resolution) {
       throw new ServiceError("Penanganan kendala tidak ditemukan.", 404);
     }
+    if (resolution.status !== "Menunggu approval customer") {
+      throw new ServiceError(
+        "Usulan ini tidak sedang menunggu persetujuan customer.",
+        409,
+      );
+    }
 
     if (decision === "approve") {
       const feedback = "Usulan disetujui customer.";
@@ -61,12 +67,18 @@ export async function POST(
         throw new ServiceError("Gagal menyimpan persetujuan kendala.", 500);
       }
 
-      await supabase.from("resolution_discussions").insert({
-        resolution_id: resolutionId,
-        penulis: "Customer",
-        pesan: feedback,
-        created_by: user.id,
-      });
+      const { error: discussionError } = await supabase
+        .from("resolution_discussions")
+        .insert({
+          resolution_id: resolutionId,
+          penulis: "Customer",
+          pesan: feedback,
+          created_by: user.id,
+        });
+      if (discussionError) {
+        console.error("[customer-decision] discussion error:", discussionError);
+        throw new ServiceError("Gagal menyimpan riwayat persetujuan.", 500);
+      }
 
       return NextResponse.json({
         success: true,
@@ -95,12 +107,18 @@ export async function POST(
         throw new ServiceError("Gagal mengirim tanggapan.", 500);
       }
 
-      await supabase.from("resolution_discussions").insert({
-        resolution_id: resolutionId,
-        penulis: "Customer",
-        pesan: feedback,
-        created_by: user.id,
-      });
+      const { error: discussionError } = await supabase
+        .from("resolution_discussions")
+        .insert({
+          resolution_id: resolutionId,
+          penulis: "Customer",
+          pesan: feedback,
+          created_by: user.id,
+        });
+      if (discussionError) {
+        console.error("[customer-decision] discussion error:", discussionError);
+        throw new ServiceError("Gagal menyimpan riwayat tanggapan.", 500);
+      }
 
       return NextResponse.json({
         success: true,

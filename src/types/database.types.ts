@@ -388,6 +388,9 @@ export type Database = {
           created_by: string;
           disetujui_oleh: string | null;
           disetujui_pada: string | null;
+          dampak_type: string | null;
+          tambahan_biaya: number | null;
+          tambahan_hari: number | null;
           id: string;
           kendala_id: string;
           keputusan_final: boolean;
@@ -408,6 +411,9 @@ export type Database = {
           created_by: string;
           disetujui_oleh?: string | null;
           disetujui_pada?: string | null;
+          dampak_type?: string | null;
+          tambahan_biaya?: number | null;
+          tambahan_hari?: number | null;
           id?: string;
           kendala_id: string;
           keputusan_final?: boolean;
@@ -428,6 +434,9 @@ export type Database = {
           created_by?: string;
           disetujui_oleh?: string | null;
           disetujui_pada?: string | null;
+          dampak_type?: string | null;
+          tambahan_biaya?: number | null;
+          tambahan_hari?: number | null;
           id?: string;
           kendala_id?: string;
           keputusan_final?: boolean;
@@ -1169,6 +1178,9 @@ export type Database = {
         Row: {
           created_at: string;
           created_by: string;
+          dampak_type: string | null;
+          tambahan_biaya: number | null;
+          tambahan_hari: number | null;
           id: string;
           penulis: string;
           pesan: string;
@@ -1177,6 +1189,9 @@ export type Database = {
         Insert: {
           created_at?: string;
           created_by?: string;
+          dampak_type?: string | null;
+          tambahan_biaya?: number | null;
+          tambahan_hari?: number | null;
           id?: string;
           penulis: string;
           pesan: string;
@@ -1185,6 +1200,9 @@ export type Database = {
         Update: {
           created_at?: string;
           created_by?: string;
+          dampak_type?: string | null;
+          tambahan_biaya?: number | null;
+          tambahan_hari?: number | null;
           id?: string;
           penulis?: string;
           pesan?: string;

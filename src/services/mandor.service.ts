@@ -456,20 +456,72 @@ async function getIssuesForProject(
   supabase: SupabaseClient<Database>,
   projectId: string,
 ): Promise<MandorIssueReport[]> {
-  const { data, error } = await supabase
-    .from("kendala")
-    .select(KENDALA_SELECT)
-    .eq("project_id", projectId)
-    .order("created_at", { ascending: false });
+  const [{ data, error }, { data: resolutions, error: resolutionsError }] =
+    await Promise.all([
+      supabase
+        .from("kendala")
+        .select(KENDALA_SELECT)
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("issue_resolutions")
+        .select(
+          "kendala_id, solusi, dampak_type, tambahan_biaya, tambahan_hari, persetujuan_customer, keputusan_final, created_at",
+        )
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: false }),
+    ]);
 
-  if (error) {
-    console.error("[getIssuesForProject]", error.message);
+  if (error || resolutionsError) {
+    console.error(
+      "[getIssuesForProject]",
+      error?.message ?? resolutionsError?.message,
+    );
     throw new ServiceError("Gagal memuat laporan kendala.", 500);
   }
 
-  return (data ?? []).map((row: Record<string, unknown>) =>
-    mapKendalaToIssueReport(row),
-  );
+  const approvedByIssue = new Map<string, Record<string, unknown>>();
+  for (const resolution of (resolutions ?? []) as Record<string, unknown>[]) {
+    if (
+      resolution.persetujuan_customer === "disetujui" ||
+      resolution.keputusan_final === true
+    ) {
+      const issueId = String(resolution.kendala_id);
+      if (!approvedByIssue.has(issueId))
+        approvedByIssue.set(issueId, resolution);
+    }
+  }
+
+  return (data ?? []).map((row: Record<string, unknown>) => {
+    const report = mapKendalaToIssueReport(row);
+    const resolution = approvedByIssue.get(report.id);
+    return {
+      ...report,
+      approvedResolution: resolution
+        ? {
+            solution: String(resolution.solusi ?? ""),
+            impactType:
+              resolution.dampak_type === "biaya" ||
+              resolution.dampak_type === "waktu" ||
+              resolution.dampak_type === "biaya_dan_waktu"
+                ? resolution.dampak_type
+                : null,
+            additionalCost:
+              resolution.tambahan_biaya == null
+                ? null
+                : Number(resolution.tambahan_biaya),
+            additionalDays:
+              resolution.tambahan_hari == null
+                ? null
+                : Number(resolution.tambahan_hari),
+            decisionLabel:
+              resolution.persetujuan_customer === "disetujui"
+                ? "Disetujui customer"
+                : "Keputusan final pengawas",
+          }
+        : null,
+    };
+  });
 }
 
 async function getNotesForProject(

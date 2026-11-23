@@ -43,12 +43,17 @@ export type IssueDiscussionEntry = {
   author: "Pengawas" | "Customer";
   message: string;
   date: string;
+  impactType?: ResolutionImpactType | null;
+  additionalCost?: number | null;
+  additionalDays?: number | null;
 };
+
+export type ResolutionImpactType = "biaya" | "waktu" | "biaya_dan_waktu";
 
 /**
  * Penanganan kendala (tabel `issue_resolutions`).
- * Jembatan alur: Pengawas menetapkan solusi -> customer memberi keputusan
- * (saat ini masih simulasi di halaman pengawas) -> instruksi diteruskan ke mandor.
+ * Alur: Pengawas mengajukan solusi -> customer memberi keputusan ->
+ * instruksi yang disetujui diteruskan ke mandor.
  */
 export type IssueResolution = {
   id: string;
@@ -68,6 +73,9 @@ export type IssueResolution = {
   requiresCustomerApproval: boolean;
   approvalReason: string;
   approvalEvidence: string | null;
+  impactType: ResolutionImpactType | null;
+  additionalCost: number | null;
+  additionalDays: number | null;
   customerFeedback: string;
   discussion: IssueDiscussionEntry[];
   submitted: string;
