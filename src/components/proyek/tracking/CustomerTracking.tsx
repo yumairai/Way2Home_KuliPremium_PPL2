@@ -759,7 +759,7 @@ export default function CustomerTracking({ project }: { project: Project }) {
                   Catatan tim
                 </h2>
                 <p className="mt-1 text-sm text-[#728198]">
-                  Pembaruan terbaru dari mandor dan pengawas.
+                  Pembaruan yang disampaikan pengawas untuk Anda.
                 </p>
               </div>
               {activities.length > 0 && (
@@ -819,7 +819,7 @@ export default function CustomerTracking({ project }: { project: Project }) {
             ) : (
               <EmptyState
                 title="Belum ada catatan"
-                description="Pembaruan dari mandor dan pengawas akan muncul di sini setelah pekerjaan dimulai."
+                description="Pembaruan dari pengawas akan muncul di sini."
               />
             )}
           </section>

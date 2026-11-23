@@ -433,17 +433,6 @@ export async function getCustomerProjectTracking(
   const milestoneIdByStageId = new Map(
     stages.map((stage, index) => [stage.id, milestones[index]?.id]),
   );
-  const reportActivities: ProjectActivity[] = reports.map((report) => {
-    const stage = stages.find((item) => item.id === report.project_stage_id);
-    return {
-      id: report.id,
-      title: `${stage?.nama_tahap ?? "Tahap"} diperbarui`,
-      description: report.keterangan ?? "Progress telah diverifikasi Pengawas.",
-      createdAt: report.verified_at ?? report.created_at,
-      authorName: "Pengawas",
-      authorRole: "Pengawas",
-    };
-  });
   const updateActivities: ProjectActivity[] = (updatesResult.data ?? []).map(
     (update) => ({
       id: update.id,
@@ -564,7 +553,7 @@ export async function getCustomerProjectTracking(
     totalDelayDays: schedule?.totalDelayDays ?? 0,
     overallProgress,
     milestones,
-    activities: [...reportActivities, ...updateActivities],
+    activities: updateActivities,
     gallery: [
       ...reports
         .filter((report) => Boolean(report.foto_url))
