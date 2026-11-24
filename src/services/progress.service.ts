@@ -18,6 +18,24 @@ export type Issue = Database["public"]["Tables"]["kendala"]["Row"];
 
 const MILESTONE_DURATION_WEIGHTS = [15, 25, 25, 10, 20, 5] as const;
 
+async function resolveProjectStorageUrl(
+  supabase: Client,
+  value: string | null | undefined,
+): Promise<string | null> {
+  if (!value) return null;
+  if (/^https?:\/\//i.test(value)) return value;
+
+  const { data, error } = await supabase.storage
+    .from("project-documents")
+    .createSignedUrl(value, 3600);
+
+  if (error) {
+    console.error("[progress] Failed to create signed documentation URL:", error);
+    return null;
+  }
+  return data?.signedUrl ?? null;
+}
+
 function addCalendarDays(date: string, days: number): string {
   const [year, month, day] = date.slice(0, 10).split("-").map(Number);
   const result = new Date(Date.UTC(year, month - 1, day + days));
@@ -443,18 +461,24 @@ export async function getCustomerProjectTracking(
       authorRole: "Pengawas",
     }),
   );
-  const documentationGallery: ProjectGalleryItem[] = (
-    documentationResult.data ?? []
-  ).map((item) => ({
-    id: item.id,
-    src: item.url,
-    alt: "Dokumentasi pembangunan proyek",
-    caption: item.catatan ?? undefined,
-    createdAt: item.created_at,
-    milestoneId: item.project_stage_id
-      ? milestoneIdByStageId.get(item.project_stage_id)
-      : undefined,
-  }));
+  const documentationGallery = (
+    await Promise.all(
+      (documentationResult.data ?? []).map(async (item): Promise<ProjectGalleryItem | null> => {
+        const src = await resolveProjectStorageUrl(supabase, item.url);
+        if (!src) return null;
+        return {
+          id: item.id,
+          src,
+          alt: "Dokumentasi pembangunan proyek",
+          caption: item.catatan ?? undefined,
+          createdAt: item.created_at,
+          milestoneId: item.project_stage_id
+            ? milestoneIdByStageId.get(item.project_stage_id)
+            : undefined,
+        };
+      }),
+    )
+  ).filter((item): item is ProjectGalleryItem => item !== null);
 
   const rawResolutions = (resolutionsResult.data ?? []) as Record<
     string,
@@ -555,16 +579,27 @@ export async function getCustomerProjectTracking(
     milestones,
     activities: updateActivities,
     gallery: [
-      ...reports
-        .filter((report) => Boolean(report.foto_url))
-        .map((report) => ({
-          id: report.id,
-          src: report.foto_url as string,
-          alt: "Dokumentasi progress proyek",
-          caption: report.keterangan ?? undefined,
-          createdAt: report.verified_at ?? report.created_at,
-          milestoneId: milestoneIdByStageId.get(report.project_stage_id),
-        })),
+      ...(
+        await Promise.all(
+          reports
+            .filter((report) => Boolean(report.foto_url))
+            .map(async (report): Promise<ProjectGalleryItem | null> => {
+              const src = await resolveProjectStorageUrl(
+                supabase,
+                report.foto_url,
+              );
+              if (!src) return null;
+              return {
+                id: report.id,
+                src,
+                alt: "Dokumentasi progress proyek",
+                caption: report.keterangan ?? undefined,
+                createdAt: report.verified_at ?? report.created_at,
+                milestoneId: milestoneIdByStageId.get(report.project_stage_id),
+              };
+            }),
+        )
+      ).filter((item): item is ProjectGalleryItem => item !== null),
       ...documentationGallery,
     ],
     resolutions,

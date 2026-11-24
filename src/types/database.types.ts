@@ -702,6 +702,7 @@ export type Database = {
           created_at: string;
           full_name: string;
           id: string;
+          is_test_user: boolean;
           nik: string | null;
           phone: string | null;
           role: Database["public"]["Enums"]["user_role"];
@@ -712,6 +713,7 @@ export type Database = {
           created_at?: string;
           full_name: string;
           id: string;
+          is_test_user?: boolean;
           nik?: string | null;
           phone?: string | null;
           role: Database["public"]["Enums"]["user_role"];
@@ -722,6 +724,7 @@ export type Database = {
           created_at?: string;
           full_name?: string;
           id?: string;
+          is_test_user?: boolean;
           nik?: string | null;
           phone?: string | null;
           role?: Database["public"]["Enums"]["user_role"];
@@ -1280,7 +1283,17 @@ export type Database = {
     Views: {
       [_ in never]: never;
     };
-    Functions: {
+    Functions: {      test_automate_submission: {
+        Args: {
+          p_project_id: string;
+          p_customer_id: string;
+          p_signature_path: string;
+          p_supervisor_id: string;
+          p_mandor_id: string;
+        };
+        Returns: Json;
+      };
+
       approve_progress_report: {
         Args: { report_id: string; review_note?: string };
         Returns: {
