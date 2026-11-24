@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { HouseDesign } from "@/types/house-design";
+import { useTestMode } from "@/hooks/useTestMode";
+import { loadAllTestDocuments } from "@/utils/test-assets";
 
 export type BuildDocumentField = {
   id: string;
@@ -28,11 +30,13 @@ function UploadField({
   state,
   onChange,
   onError,
+  isTestMode = false,
 }: {
   field: BuildDocumentField;
   state: DocumentFile | null;
   onChange: (file: DocumentFile | null) => void;
   onError: (id: string, message: string) => void;
+  isTestMode?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -83,13 +87,12 @@ function UploadField({
 
   return (
     <label
-      className={`flex min-h-44 cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-6 text-center transition ${
-        dragging
-          ? "border-[#045ec2] bg-[#eef5ff]"
-          : state
-            ? "border-[#059669] bg-[#ecfdf5]"
-            : "border-[#dbe4f2] bg-white hover:border-[#8fb9ed]"
-      }`}
+      className={`flex min-h-44 cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-6 text-center transition ${dragging
+        ? "border-[#045ec2] bg-[#eef5ff]"
+        : state
+          ? "border-[#059669] bg-[#ecfdf5]"
+          : "border-[#dbe4f2] bg-white hover:border-[#8fb9ed]"
+        }`}
       onDragOver={(event) => {
         event.preventDefault();
         setDragging(true);
@@ -109,14 +112,28 @@ function UploadField({
       />
 
       {state?.preview ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={state.preview}
-          alt={`Pratinjau ${field.title}`}
-          className="max-h-24 max-w-24 rounded-xl object-cover"
-        />
+        <div className="relative">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={state.preview}
+            alt={`Pratinjau ${field.title}`}
+            className="max-h-24 max-w-24 rounded-xl object-cover"
+          />
+          {isTestMode && (
+            <span className="absolute -top-2 -right-2 rounded-full bg-[#fbbf24] px-2 py-0.5 text-xs font-bold text-[#78350f] shadow-sm">
+              TEST
+            </span>
+          )}
+        </div>
       ) : state ? (
-        <div className="text-4xl">📄</div>
+        <div className="relative">
+          <div className="text-4xl">📄</div>
+          {isTestMode && (
+            <span className="absolute -top-2 -right-2 rounded-full bg-[#fbbf24] px-2 py-0.5 text-xs font-bold text-[#78350f] shadow-sm">
+              DUMMY
+            </span>
+          )}
+        </div>
       ) : (
         <div className="text-4xl opacity-70">📁</div>
       )}
@@ -146,6 +163,7 @@ function UploadField({
 }
 
 export default function BuildHouseForm({ design }: { design: HouseDesign }) {
+  const { isTestMode, loading: testModeLoading } = useTestMode();
   const [address, setAddress] = useState("");
   const [budget, setBudget] = useState("");
   const [documents, setDocuments] = useState<
@@ -156,6 +174,7 @@ export default function BuildHouseForm({ design }: { design: HouseDesign }) {
     imb_pbg: null,
     surat_kuasa: null,
   });
+  const [loadingTestAssets, setLoadingTestAssets] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -167,6 +186,49 @@ export default function BuildHouseForm({ design }: { design: HouseDesign }) {
     type: "success" | "error";
     text: string;
   } | null>(null);
+
+  // Auto-prefill test documents for test users
+  useEffect(() => {
+    if (testModeLoading || !isTestMode) return;
+    if (documents.sertifikat_tanah) return; // Already loaded
+
+    async function prefillTestDocuments() {
+      setLoadingTestAssets(true);
+      try {
+        const testDocs = await loadAllTestDocuments();
+
+        const newDocuments: Record<string, DocumentFile | null> = {};
+
+        for (const [key, file] of Object.entries(testDocs)) {
+          if (file) {
+            // Convert File to DocumentFile with preview
+            let preview: string | null = null;
+            if (file.type.startsWith('image/')) {
+              preview = URL.createObjectURL(file);
+            }
+
+            newDocuments[key] = {
+              name: file.name,
+              size: file.size,
+              type: file.type,
+              preview,
+              file,
+            };
+          } else {
+            newDocuments[key] = null;
+          }
+        }
+
+        setDocuments(newDocuments);
+      } catch (error) {
+        console.error('Failed to load test documents:', error);
+      } finally {
+        setLoadingTestAssets(false);
+      }
+    }
+
+    prefillTestDocuments();
+  }, [isTestMode, testModeLoading, documents.sertifikat_tanah]);
 
   useEffect(() => {
     if (!notification) return;
@@ -342,11 +404,10 @@ export default function BuildHouseForm({ design }: { design: HouseDesign }) {
         {notification && (
           <div
             role="status"
-            className={`mt-8 rounded-2xl border p-4 text-sm font-semibold ${
-              notification.type === "success"
-                ? "border-[#059669] bg-[#ecfdf5] text-[#065f46]"
-                : "border-[#dc2626] bg-[#fef2f2] text-[#991b1b]"
-            }`}
+            className={`mt-8 rounded-2xl border p-4 text-sm font-semibold ${notification.type === "success"
+              ? "border-[#059669] bg-[#ecfdf5] text-[#065f46]"
+              : "border-[#dc2626] bg-[#fef2f2] text-[#991b1b]"
+              }`}
           >
             <p>{notification.text}</p>
             {existingProjectId && (
@@ -513,12 +574,40 @@ export default function BuildHouseForm({ design }: { design: HouseDesign }) {
             <p className="mt-3 text-sm text-[#64748b]">
               1 file maksimal 2MB · JPG, PNG, atau PDF
             </p>
+            {isTestMode && loadingTestAssets && (
+              <div className="mt-4 rounded-xl border border-[#e5e7eb] bg-[#f9fafb] p-4 text-sm text-[#6b7280]">
+                <div className="flex items-center gap-3">
+                  <svg className="h-5 w-5 animate-spin text-[#f59e0b]" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span>Memuat dokumen dummy untuk mode testing...</span>
+                </div>
+              </div>
+            )}
+            {isTestMode && !loadingTestAssets && documents.sertifikat_tanah && (
+              <div className="mt-4 rounded-xl border-2 border-[#fbbf24] bg-gradient-to-r from-[#fffbeb] to-[#fef3c7] p-4 text-sm">
+                <div className="flex items-start gap-3">
+                  <svg className="mt-0.5 h-5 w-5 shrink-0 text-[#f59e0b]" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                  <div>
+                    <p className="font-bold text-[#92400e]">Mode Testing</p>
+                    <p className="mt-1 text-[#78350f]">
+                      Dokumen sudah terisi otomatis dengan file dummy untuk mempercepat testing.
+                      Anda tetap dapat mengisi alamat dan budget sesuai kebutuhan testing.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
               {documentFields.map((field) => (
                 <div key={field.id}>
                   <UploadField
                     field={field}
                     state={documents[field.id]}
+                    isTestMode={isTestMode}
                     onChange={(file) => {
                       setDocuments((prev) => ({ ...prev, [field.id]: file }));
                       if (submitAttempted && field.required && !file) {
