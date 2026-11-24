@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Project } from "@/types/proyek";
 import { useCountdown, formatRemaining } from "@/hooks/useCountdown";
 import { useToast } from "@/hooks/useToast";
 import Toast from "@/components/Toast";
 import ContractModal from "./ContractModal";
-import { verifyMidtransPayment } from "@/utils/midtrans-payment";
 
 type Banner = {
   icon:
@@ -193,63 +192,14 @@ function bannerIcon(icon: Banner["icon"]) {
   }
 }
 
-function useLoadSnapScript() {
-  const loadSnap = useCallback((): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      if (window.snap) {
-        resolve();
-        return;
-      }
-      const clientKey = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY;
-      if (!clientKey) {
-        reject(
-          new Error(
-            "Konfigurasi pembayaran belum lengkap. Tambahkan NEXT_PUBLIC_MIDTRANS_CLIENT_KEY di .env.local",
-          ),
-        );
-        return;
-      }
-      const existing = document.querySelector(
-        'script[src*="snap.js"]',
-      ) as HTMLScriptElement | null;
-      if (existing) {
-        if (window.snap) {
-          resolve();
-          return;
-        }
-        existing.addEventListener("load", () => resolve());
-        existing.addEventListener("error", () =>
-          reject(new Error("Gagal memuat sistem pembayaran.")),
-        );
-        return;
-      }
-      const script = document.createElement("script");
-      script.src = "https://app.sandbox.midtrans.com/snap/snap.js";
-      script.setAttribute("data-client-key", clientKey);
-      script.async = true;
-      script.onload = () => resolve();
-      script.onerror = () =>
-        reject(new Error("Gagal memuat sistem pembayaran."));
-      document.head.appendChild(script);
-    });
-  }, []);
-
-  return loadSnap;
-}
-
 export default function ActionPanel({ project }: { project: Project }) {
   const router = useRouter();
   const banner = getBanner(project);
-  const { toast, showToast, dismissToast } = useToast();
+  const { toast, dismissToast } = useToast();
   const [modalOpen, setModalOpen] = useState(false);
   const [cancelConfirm, setCancelConfirm] = useState(false);
   const [cancelSubmitting, setCancelSubmitting] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
-
-  // Midtrans DP payment state
-  const [dpLoading, setDpLoading] = useState(false);
-  const [dpError, setDpError] = useState<string | null>(null);
-  const loadSnap = useLoadSnapScript();
 
   const contractCountdown = useCountdown(
     project.contract.status === "menunggu"
@@ -279,9 +229,6 @@ export default function ActionPanel({ project }: { project: Project }) {
   const canCancel =
     !canceled && !contractLocked && project.status !== "Selesai";
 
-  const activePayment = project.payments.find((p) => p.status === "aktif");
-  const allInstallmentsPaid = !activePayment && dpPaid;
-
   async function deleteProject() {
     setCancelSubmitting(true);
     setCancelError(null);
@@ -307,97 +254,7 @@ export default function ActionPanel({ project }: { project: Project }) {
     }
   }
 
-  async function handlePayDP() {
-    setDpError(null);
-    setDpLoading(true);
-
-    try {
-      // Load Snap.js dynamically
-      await loadSnap();
-
-      // Find the DP stage id (urutan 0)
-      const dpStageId = project.payments.find(
-        (payment) => payment.periode === 0,
-      )?.stageId;
-      if (!dpStageId) {
-        throw new Error(
-          "ID tahap pembayaran DP tidak ditemukan. Muat ulang halaman.",
-        );
-      }
-
-      // Request snap token from our API
-      const response = await fetch(`/api/projects/${project.id}/pay`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ payment_stage_id: dpStageId }),
-      });
-
-      const data = (await response.json()) as {
-        token?: string;
-        message?: string;
-      };
-
-      if (!response.ok || !data.token) {
-        throw new Error(data.message || "Gagal membuat transaksi pembayaran.");
-      }
-
-      // Open Snap popup
-      const snap = window.snap;
-      if (!snap) {
-        throw new Error("Sistem pembayaran belum siap. Silakan coba lagi.");
-      }
-      snap.pay(data.token, {
-        onSuccess: (result) => {
-          void (async () => {
-            try {
-              const paid = await verifyMidtransPayment(
-                project.id,
-                result.order_id,
-              );
-              const message = paid
-                ? "Pembayaran DP berhasil dan statusnya sudah lunas. Proyek Anda akan segera aktif."
-                : "Pembayaran DP sedang dikonfirmasi Midtrans. Status akan diperbarui setelah pembayaran terverifikasi.";
-              showToast(message, "success", 3000);
-              await router.refresh();
-            } catch (verificationError) {
-              const errMsg =
-                verificationError instanceof Error
-                  ? verificationError.message
-                  : "Pembayaran berhasil, tetapi status belum dapat diverifikasi.";
-              setDpError(errMsg);
-              showToast(errMsg, "error", 3000);
-              await router.refresh();
-            } finally {
-              setDpLoading(false);
-            }
-          })();
-        },
-        onPending: () => {
-          const message =
-            "Pembayaran sedang diproses. Status akan diperbarui otomatis.";
-          showToast(message, "info", 3000);
-          setDpLoading(false);
-          setTimeout(async () => {
-            await router.refresh();
-          }, 3000);
-        },
-        onError: () => {
-          setDpError("Pembayaran gagal. Silakan coba lagi.");
-          showToast("Pembayaran gagal. Silakan coba lagi.", "error", 3000);
-          setDpLoading(false);
-        },
-        onClose: () => {
-          setDpLoading(false);
-        },
-      });
-    } catch (err) {
-      setDpError(err instanceof Error ? err.message : "Terjadi kesalahan.");
-      setDpLoading(false);
-    }
-  }
-
-  if (!banner && !canCancel && !activePayment && !allInstallmentsPaid)
-    return null;
+  if (!banner && !canCancel) return null;
 
   return (
     <section className="flex flex-col gap-4">
@@ -471,32 +328,6 @@ export default function ActionPanel({ project }: { project: Project }) {
         </div>
       )}
 
-      {/* Error message (DP payment only show error inline if needed) */}
-      {dpError && (
-        <div className="flex items-start gap-3 rounded-2xl border border-[#fecaca] bg-[#fef2f2] p-5 text-[#991b1b]">
-          <svg
-            width="22"
-            height="22"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-            className="mt-0.5 shrink-0"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <path d="m15 9-6 6" />
-            <path d="m9 9 6 6" />
-          </svg>
-          <div>
-            <h3 className="font-bold">Pembayaran Gagal</h3>
-            <p className="mt-1 text-sm leading-6">{dpError}</p>
-          </div>
-        </div>
-      )}
-
       {canceled ? (
         <div className="flex items-center gap-3 rounded-2xl border border-[#e2e8f0] bg-white p-5">
           <span className="h-3 w-3 rounded-full bg-[#dc2626]" />
@@ -542,49 +373,6 @@ export default function ActionPanel({ project }: { project: Project }) {
                 Ajukan Kontrak Ulang
               </button>
             )}
-
-          {project.status === "Pembayaran DP" && !activePayment && (
-            <button
-              type="button"
-              disabled={dpLoading}
-              onClick={handlePayDP}
-              className="flex min-h-14 cursor-pointer items-center gap-3 rounded-full bg-gradient-to-r from-[#004796] to-[#045ec2] px-8 font-bold text-white shadow-[0_10px_25px_rgba(0,71,150,0.3)] transition hover:-translate-y-0.5 hover:shadow-lg active:scale-95 disabled:cursor-wait disabled:opacity-60"
-            >
-              {dpLoading ? (
-                <>
-                  <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  Memproses Pembayaran...
-                </>
-              ) : (
-                <>
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    <rect width="20" height="14" x="2" y="5" rx="2" />
-                    <path d="M2 10h20" />
-                  </svg>
-                  Bayar Down Payment
-                </>
-              )}
-            </button>
-          )}
-
-          {project.status === "Selesai" && (
-            <button
-              type="button"
-              className="flex min-h-14 cursor-pointer items-center gap-3 rounded-full bg-[#eef5ff] px-8 font-bold text-[#004796] transition hover:-translate-y-0.5 active:scale-95"
-            >
-              Lihat Dokumentasi Rumah
-            </button>
-          )}
 
           {canCancel &&
             (cancelConfirm ? (

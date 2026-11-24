@@ -8,7 +8,7 @@ const STATUS_STYLE: Record<string, string> = {
   "Alokasi Tim": "bg-[#eef5ff] text-[#004796]",
   "Menunggu Verifikasi": "bg-[#fffaf0] text-[#92400e]",
   "Revisi Dokumen": "bg-[#fffaf0] text-[#92400e]",
-  Selesai: "bg-[#f1f5f9] text-[#475569]",
+  Selesai: "bg-[#d1fae5] text-[#047857]",
   Dibatalkan: "bg-[#fef2f2] text-[#991b1b]",
 };
 
@@ -33,12 +33,15 @@ export default function ProjectSidebar({
           ) : (
             projects.map((item) => {
               const isActive = String(item.id) === String(currentId);
+              const isCompleted = item.status === "Selesai";
               return (
                 <Link
                   key={item.id}
                   href={`/proyek/${item.id}`}
                   className={`flex items-center gap-3 rounded-xl px-4 py-3 transition ${
-                    isActive
+                    isCompleted
+                      ? "bg-[#ecfdf5] text-[#065f46] hover:bg-[#d1fae5]"
+                      : isActive
                       ? "bg-[#eef5ff] font-bold text-[#004796]"
                       : "text-[#475569] hover:bg-[#f1f5f9]"
                   }`}

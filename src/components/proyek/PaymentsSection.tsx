@@ -6,6 +6,7 @@ import type { Project, Payment } from "@/types/proyek";
 import { formatDate, formatRupiah } from "@/utils/format";
 import { verifyMidtransPayment } from "@/utils/midtrans-payment";
 import { useToast } from "@/hooks/useToast";
+import { useTestMode } from "@/hooks/useTestMode";
 import Toast from "@/components/Toast";
 
 /**
@@ -72,8 +73,49 @@ export default function PaymentsSection({ project }: PaymentsSectionProps) {
   const { loading, setLoading, error, setError, loadSnapScript } =
     useMidtransSnap();
   const { toast, showToast, dismissToast } = useToast();
+  const { isTestMode, loading: testModeLoading } = useTestMode();
 
   const activePayment = project.payments.find((p) => p.status === "aktif");
+
+  async function handleTestPayDP(payment: Payment) {
+    setError(null);
+    setLoading(true);
+
+    try {
+      const response = await fetch(
+        `/api/projects/${project.id}/pay/test-approve`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ payment_stage_id: payment.stageId }),
+        },
+      );
+      const data = await response.json() as {
+        message?: string;
+        seedingWarning?: string;
+        progressSeeded?: boolean;
+      };
+
+      if (!response.ok) {
+        throw new Error(data.message || "Gagal memproses pembayaran test.");
+      }
+
+      if (data.seedingWarning) {
+        showToast(data.seedingWarning, "info", 4000);
+      } else {
+        showToast(
+          `Pembayaran ${payment.label} test berhasil disetujui.`,
+          "success",
+          3000,
+        );
+      }
+      await router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Terjadi kesalahan.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function handlePay(payment: Payment) {
     setError(null);
@@ -185,11 +227,10 @@ export default function PaymentsSection({ project }: PaymentsSectionProps) {
           return (
             <div
               key={payment.periode}
-              className={`rounded-2xl border p-4 transition-all ${
-                isActive
-                  ? "border-[#004796] bg-[#eef5ff] shadow-md"
-                  : "border-[#dbe4f2] bg-white"
-              }`}
+              className={`rounded-2xl border p-4 transition-all ${isActive
+                ? "border-[#004796] bg-[#eef5ff] shadow-md"
+                : "border-[#dbe4f2] bg-white"
+                }`}
             >
               <div className="flex items-start justify-between gap-2">
                 <p className="text-xs font-bold uppercase tracking-wide text-[#64748b]">
@@ -278,63 +319,117 @@ export default function PaymentsSection({ project }: PaymentsSectionProps) {
         </div>
       )}
 
-      {/* Warning info */}
-      <div className="mt-5 flex items-start gap-3 rounded-2xl bg-[#fffaf0] p-4 text-sm leading-6 text-[#92400e]">
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-          className="mt-0.5 shrink-0"
-        >
-          <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
-          <path d="M12 9v4" />
-          <path d="M12 17h.01" />
-        </svg>
-        <p>
-          <strong>Informasi penting:</strong> Jika pembayaran belum dilunasi
-          sesuai jadwal, pengerjaan proyek akan ditunda sementara.
-        </p>
-      </div>
+      {project.status === "Selesai" ? (
+        <div className="mt-5 flex items-start gap-3 rounded-2xl border border-[#bbf7d0] bg-[#f0fdf4] p-4 text-sm leading-6 text-[#166534]">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+            className="mt-0.5 shrink-0"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <path d="m9 12 2 2 4-4" />
+          </svg>
+          <p>
+            Terima kasih sudah menggunakan platform dan jasa Way2Home.
+            Selamat menikmati rumah baru Anda.
+          </p>
+        </div>
+      ) : (
+        <div className="mt-5 flex items-start gap-3 rounded-2xl bg-[#fffaf0] p-4 text-sm leading-6 text-[#92400e]">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+            className="mt-0.5 shrink-0"
+          >
+            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+            <path d="M12 9v4" />
+            <path d="M12 17h.01" />
+          </svg>
+          <p>
+            <strong>Informasi penting:</strong> Jika pembayaran belum dilunasi
+            sesuai jadwal, pengerjaan proyek akan ditunda sementara.
+          </p>
+        </div>
+      )}
 
       {/* Main pay button for active payment (larger CTA) */}
       {activePayment && (
-        <button
-          type="button"
-          disabled={loading}
-          onClick={() => handlePay(activePayment)}
-          className="mt-5 flex min-h-14 w-full cursor-pointer items-center justify-center gap-3 rounded-full bg-gradient-to-r from-[#004796] to-[#045ec2] px-8 font-bold text-white shadow-[0_10px_25px_rgba(0,71,150,0.3)] transition hover:-translate-y-0.5 hover:shadow-lg active:scale-95 disabled:cursor-wait disabled:opacity-60"
-        >
-          {loading ? (
-            <>
-              <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-              Memproses Pembayaran...
-            </>
+        <>
+          {testModeLoading ? (
+            <button
+              type="button"
+              disabled
+              className="mt-5 flex min-h-14 w-full cursor-wait items-center justify-center gap-3 rounded-full bg-gray-300 px-8 font-bold text-gray-500"
+            >
+              <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-gray-500 border-t-transparent" />
+              Memuat mode test...
+            </button>
+          ) : isTestMode ? (
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => handleTestPayDP(activePayment)}
+              className="mt-5 flex min-h-14 w-full cursor-pointer items-center justify-center gap-3 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-8 font-bold text-white shadow-[0_10px_25px_rgba(245,158,11,0.3)] transition hover:-translate-y-0.5 hover:shadow-lg active:scale-95 disabled:cursor-wait disabled:opacity-60"
+            >
+              {loading ? (
+                <>
+                  <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  Memproses...
+                </>
+              ) : (
+                <>
+                  Bayar {activePayment.label} (Dummy Testing)
+                </>
+              )}
+            </button>
           ) : (
-            <>
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <rect width="20" height="14" x="2" y="5" rx="2" />
-                <path d="M2 10h20" />
-              </svg>
-              Bayar {activePayment.label}
-            </>
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => handlePay(activePayment)}
+              className="mt-5 flex min-h-14 w-full cursor-pointer items-center justify-center gap-3 rounded-full bg-gradient-to-r from-[#004796] to-[#045ec2] px-8 font-bold text-white shadow-[0_10px_25px_rgba(0,71,150,0.3)] transition hover:-translate-y-0.5 hover:shadow-lg active:scale-95 disabled:cursor-wait disabled:opacity-60"
+            >
+              {loading ? (
+                <>
+                  <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  Memproses Pembayaran...
+                </>
+              ) : (
+                <>
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <rect width="20" height="14" x="2" y="5" rx="2" />
+                    <path d="M2 10h20" />
+                  </svg>
+                  Bayar {activePayment.label}
+                </>
+              )}
+            </button>
           )}
-        </button>
+        </>
       )}
     </section>
   );

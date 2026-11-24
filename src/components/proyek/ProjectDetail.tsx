@@ -133,7 +133,7 @@ export default function ProjectDetail({ project }: { project: Project }) {
         >
           <span>
             <span className="block text-base font-bold text-[#173f68]">
-              Pantau progres pembangunan
+              Lihat history pembangunan
             </span>
             <span className="mt-1 block text-sm text-[#647b91]">
               Lihat milestone, pembaruan tim, dan dokumentasi proyek.
