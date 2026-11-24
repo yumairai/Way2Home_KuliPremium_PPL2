@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { createProjectWithDocuments } from "@/services/project.service";
 import { ServiceError } from "@/services/access.service";
+import { automateTestProjectSubmission } from "@/services/test-automation.service";
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,6 +10,17 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
 
     const result = await createProjectWithDocuments(supabase, formData);
+    try {
+      await automateTestProjectSubmission(supabase, result.projectId);
+    } catch (automationError) {
+      console.error("[test-flow] Submission automation failed:", automationError);
+      // Preserve the existing successful submission response. The project ID is
+      // returned so the test user can retry the isolated test-flow endpoint.
+      return NextResponse.json(
+        { ...result, automationPending: true },
+        { status: 201 },
+      );
+    }
     return NextResponse.json(result, { status: 201 });
   } catch (error: unknown) {
     if (error instanceof ServiceError) {
