@@ -9,6 +9,13 @@ import { apiGet, apiPost } from "@/lib/api";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { clearDemoRole, useDemoRole } from "@/utils/demo-auth";
 import {
+  clearMandorTestState,
+  createMandorTestProject,
+  loadMandorTestState,
+  saveMandorTestState,
+} from "@/data/mandor-test";
+import { isMandorTestUser, useMandorTestMode } from "@/hooks/useMandorProjects";
+import {
   initialMandorRegistration,
   type MandorRegistrationStatus,
 } from "@/data/mandor";
@@ -25,6 +32,7 @@ type RegistrationStatus = {
  * `resubmit()` mengajukan ulang pendaftaran (status kembali ke pending).
  */
 export function useMandorStatus() {
+  const { isTestMode, loading: authLoading } = useMandorTestMode();
   const [status, setStatus] = useState<MandorRegistrationStatus>("Menunggu");
   const [reason, setReason] = useState<string>(
     initialMandorRegistration.rejectionReason,
@@ -44,6 +52,15 @@ export function useMandorStatus() {
   }, []);
 
   useEffect(() => {
+    if (authLoading) return;
+    if (isTestMode) {
+      Promise.resolve().then(() => {
+        setStatus("Disetujui");
+        setReason(initialMandorRegistration.rejectionReason);
+        setLoading(false);
+      });
+      return;
+    }
     let active = true;
 
     apiGet<RegistrationStatus>("/api/mandor/registration")
@@ -63,7 +80,7 @@ export function useMandorStatus() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [authLoading, isTestMode]);
 
   return { status, reason, loading, resubmit };
 }
@@ -78,6 +95,9 @@ export default function MandorShell({
   const { user, loading } = useAuthUser();
   const demoRole = useDemoRole();
   const { status } = useMandorStatus();
+  const isTestMode = isMandorTestUser(user);
+  const userId = isTestMode ? (user?.id ?? "") : "";
+  const [testPanelOpen, setTestPanelOpen] = useState(false);
   const [drawer, setDrawer] = useState(false);
   const [leaving, setLeaving] = useState(false);
   useEffect(() => {
@@ -92,6 +112,7 @@ export default function MandorShell({
   }, [demoRole, loading, user, router]);
   const logout = async () => {
     setLeaving(true);
+    if (isTestMode && userId) clearMandorTestState(userId);
     if (demoRole) clearDemoRole();
     else await logoutUser();
     router.replace("/login");
@@ -237,6 +258,97 @@ export default function MandorShell({
         </header>
         <main id="main-content">{children}</main>
       </div>
+      {isTestMode && (
+        <div className="fixed bottom-5 right-5 z-[60]">
+          {testPanelOpen && (
+            <section
+              className="mb-3 w-72 rounded-2xl border border-amber-300 bg-white p-4 shadow-xl"
+              aria-label="Kontrol mode testing"
+            >
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-bold text-[#17344e]">
+                  Mode testing mandor
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setTestPanelOpen(false)}
+                  className="rounded p-1 text-slate-500"
+                  aria-label="Tutup panel"
+                >
+                  ×
+                </button>
+              </div>
+              <p className="mt-2 text-xs leading-5 text-slate-600">
+                Data hanya untuk keperluan testing eksternal dan tidak menganggu
+                production atau development
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!userId) return;
+                    clearMandorTestState(userId);
+                    const currentProject = loadMandorTestState(userId).project;
+                    saveMandorTestState(userId, {
+                      project: {
+                        ...createMandorTestProject(user?.email ?? ""),
+                        id: currentProject.id,
+                      },
+                    });
+                    window.dispatchEvent(
+                      new CustomEvent("w2h:mandor-test-updated"),
+                    );
+                  }}
+                  className="min-h-10 rounded-lg bg-[#2B3361] px-3 text-xs font-semibold text-white"
+                >
+                  Reset ke 0%
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!userId) return;
+                    const { project } = loadMandorTestState(userId);
+                    const pending = project.issueReports.filter(
+                      (report) => report.status === "Menunggu",
+                    ).length;
+                    if (!pending) return;
+                    saveMandorTestState(userId, {
+                      project: {
+                        ...project,
+                        issueReports: project.issueReports.map((report) =>
+                          report.status === "Menunggu"
+                            ? {
+                                ...report,
+                                status: "Selesai",
+                                followUp:
+                                  "Kendala dinyatakan aman dalam mode testing.",
+                              }
+                            : report,
+                        ),
+                      },
+                    });
+                    window.dispatchEvent(
+                      new CustomEvent("w2h:mandor-test-updated"),
+                    );
+                  }}
+                  className="min-h-10 rounded-lg bg-emerald-700 px-3 text-xs font-semibold text-white hover:bg-emerald-800"
+                >
+                  Selesaikan kendala
+                </button>
+              </div>
+            </section>
+          )}
+          <button
+            type="button"
+            onClick={() => setTestPanelOpen((value) => !value)}
+            className="mandor-test-mode-button flex min-h-11 items-center gap-2 rounded-full bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] px-5 py-3 text-xs font-bold uppercase tracking-wide text-[#78350f] shadow-lg hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-amber-500"
+            aria-expanded={testPanelOpen}
+            aria-label="Mode testing aktif"
+          >
+            Testing Mode
+          </button>
+        </div>
+      )}
     </div>
   );
 }

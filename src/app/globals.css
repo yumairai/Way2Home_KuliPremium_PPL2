@@ -145,6 +145,22 @@ body {
   outline-offset: 3px;
 }
 
+.mandor-interactions .mandor-test-mode-button:not(:disabled) {
+  transform: scale(1);
+  transition:
+    transform 300ms ease-out,
+    box-shadow 300ms ease-out;
+  will-change: transform;
+}
+
+.mandor-interactions .mandor-test-mode-button:not(:disabled):hover {
+  transform: scale(1.05);
+}
+
+.mandor-interactions .mandor-test-mode-button:not(:disabled):active {
+  transform: scale(0.98);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .mandor-interactions button,
   .mandor-interactions a[href] {
@@ -155,6 +171,12 @@ body {
   .mandor-interactions button:active,
   .mandor-interactions a[href]:hover,
   .mandor-interactions a[href]:active {
+    transform: none;
+  }
+
+  .mandor-interactions .mandor-test-mode-button:not(:disabled),
+  .mandor-interactions .mandor-test-mode-button:not(:disabled):hover,
+  .mandor-interactions .mandor-test-mode-button:not(:disabled):active {
     transform: none;
   }
 }

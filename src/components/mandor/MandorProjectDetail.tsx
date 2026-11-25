@@ -71,7 +71,13 @@ const formatNow = () =>
 
 export default function MandorProjectDetail({ id }: { id: string }) {
   const { status, loading: statusLoading } = useMandorStatus();
-  const { project, loading: projectLoading, reload } = useMandorProject(id);
+  const {
+    project,
+    loading: projectLoading,
+    reload,
+    isTestMode,
+    updateLocalProject,
+  } = useMandorProject(id);
   const [tab, setTab] = useState<Tab>("Ringkasan");
   const [progressOpen, setProgressOpen] = useState(false);
   const [issueOpen, setIssueOpen] = useState(false);
@@ -149,14 +155,59 @@ export default function MandorProjectDetail({ id }: { id: string }) {
     subtaskId: string,
   ) => {
     try {
-      await apiPost(`/api/mandor/projects/${id}/progress`, {
-        project_subtask_id: subtaskId,
-        keterangan: report.note,
-        foto_url: report.photo,
-      });
-      await reload();
+      if (isTestMode) {
+        updateLocalProject((current) => {
+          const milestones = current.milestones.map((milestone) => ({
+            ...milestone,
+            subtasks: milestone.subtasks.map((task) =>
+              task.id === subtaskId ? { ...task, done: true } : task,
+            ),
+          }));
+          const totalWeight = milestones.reduce(
+            (sum, milestone) => sum + milestone.weight,
+            0,
+          );
+          const completedWeight = milestones.reduce((sum, milestone) => {
+            const doneWeight = milestone.subtasks
+              .filter((task) => task.done)
+              .reduce((weight, task) => weight + task.weight, 0);
+            const milestoneTotal = milestone.subtasks.reduce(
+              (weight, task) => weight + task.weight,
+              0,
+            );
+            return (
+              sum +
+              (milestoneTotal
+                ? (milestone.weight * doneWeight) / milestoneTotal
+                : 0)
+            );
+          }, 0);
+          return {
+            ...current,
+            milestones,
+            overallProgress: totalWeight
+              ? Math.round((completedWeight / totalWeight) * 100)
+              : 0,
+            progressReports: [
+              { ...report, subtaskId, review: "Disetujui" },
+              ...current.progressReports,
+            ],
+          };
+        });
+      } else {
+        await apiPost(`/api/mandor/projects/${id}/progress`, {
+          project_subtask_id: subtaskId,
+          keterangan: report.note,
+          foto_url: report.photo,
+        });
+        await reload();
+      }
       setProgressOpen(false);
-      setToast("Laporan progress terkirim dan menunggu verifikasi pengawas.");
+      setToast(
+        isTestMode
+          ? "Laporan progress disetujui otomatis dalam mode testing."
+          : "Laporan progress terkirim dan menunggu verifikasi pengawas.",
+      );
       window.setTimeout(() => setToast(""), 4000);
     } catch (error) {
       showError(errorMessage(error, "Gagal mengirim laporan progress."));
@@ -168,20 +219,31 @@ export default function MandorProjectDetail({ id }: { id: string }) {
     ids: { stageId: string; subtaskId: string },
   ) => {
     try {
-      await apiPost(`/api/mandor/projects/${id}/kendala`, {
-        project_stage_id: ids.stageId,
-        project_subtask_id: ids.subtaskId,
-        kategori: report.category,
-        deskripsi: report.description,
-        kondisi_pekerjaan: report.workCondition,
-        dampak_waktu_hari: report.estimatedDelayDays,
-        informasi_tambahan: report.additionalInfo,
-        lampiran: report.attachment,
-        lampiran_nama: report.attachmentName,
-      });
-      await reload();
+      if (isTestMode) {
+        updateLocalProject((current) => ({
+          ...current,
+          issueReports: [report, ...current.issueReports],
+        }));
+      } else {
+        await apiPost(`/api/mandor/projects/${id}/kendala`, {
+          project_stage_id: ids.stageId,
+          project_subtask_id: ids.subtaskId,
+          kategori: report.category,
+          deskripsi: report.description,
+          kondisi_pekerjaan: report.workCondition,
+          dampak_waktu_hari: report.estimatedDelayDays,
+          informasi_tambahan: report.additionalInfo,
+          lampiran: report.attachment,
+          lampiran_nama: report.attachmentName,
+        });
+        await reload();
+      }
       setIssueOpen(false);
-      setToast("Laporan kendala terkirim kepada pengawas.");
+      setToast(
+        isTestMode
+          ? "Laporan kendala tersimpan di mode testing."
+          : "Laporan kendala terkirim kepada pengawas.",
+      );
       window.setTimeout(() => setToast(""), 4000);
     } catch (error) {
       showError(errorMessage(error, "Gagal mengirim laporan kendala."));
@@ -190,8 +252,23 @@ export default function MandorProjectDetail({ id }: { id: string }) {
 
   const submitNote = async (note: string) => {
     try {
-      await apiPost(`/api/mandor/projects/${id}/notes`, { catatan: note });
-      await reload();
+      if (isTestMode) {
+        updateLocalProject((current) => ({
+          ...current,
+          notes: [
+            {
+              id: `NOTE-${Date.now()}`,
+              projectId: current.id,
+              note,
+              submitted: formatNow(),
+            },
+            ...current.notes,
+          ],
+        }));
+      } else {
+        await apiPost(`/api/mandor/projects/${id}/notes`, { catatan: note });
+        await reload();
+      }
       setToast("Catatan untuk pengawas terkirim.");
       window.setTimeout(() => setToast(""), 4000);
     } catch (error) {
@@ -436,6 +513,7 @@ export default function MandorProjectDetail({ id }: { id: string }) {
         <ProgressModal
           project={project}
           approvedSubtasks={approvedSubtasks}
+          isTestMode={isTestMode}
           onClose={() => setProgressOpen(false)}
           onSubmit={addProgress}
         />
@@ -786,10 +864,12 @@ function ProgressModal({
   approvedSubtasks,
   onClose,
   onSubmit,
+  isTestMode,
 }: {
   project: MandorProject;
   approvedSubtasks: ApprovedSubtask[];
   onClose: () => void;
+  isTestMode: boolean;
   onSubmit: (
     report: MandorProgressReport,
     subtaskId: string,
@@ -885,7 +965,7 @@ function ProgressModal({
                 note: note.trim(),
                 photo,
                 submitted: formatNow(),
-                review: "Menunggu",
+                review: isTestMode ? "Disetujui" : "Menunggu",
                 feedback: "",
                 weight: subtask.weight,
               },
@@ -897,8 +977,9 @@ function ProgressModal({
         }}
       >
         <p className="mb-4 rounded-xl bg-[#f5f8fb] p-4 text-xs leading-5 text-slate-600">
-          Progress yang Anda kirim menjadi usulan dan belum mengubah progress
-          resmi sebelum diverifikasi pengawas.
+          {isTestMode
+            ? "Dalam mode testing, laporan langsung disetujui dan memperbarui progress."
+            : "Progress yang Anda kirim menjadi usulan dan belum mengubah progress resmi sebelum diverifikasi pengawas."}
         </p>
         <div className="block text-xs font-semibold text-[#29465e]">
           Tahapan pekerjaan <span className="text-[#a75252]">*</span>
