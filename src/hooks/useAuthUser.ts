@@ -10,6 +10,8 @@ export type AuthUser = {
   fullName: string;
   role: UserRole;
   avatarUrl: string | null;
+  isTestUser: boolean;
+  email: string;
 } | null;
 
 export const ROLE_LABEL: Record<UserRole, string> = {
@@ -50,7 +52,7 @@ export function useAuthUser() {
       // Coba ambil dari tabel profiles dulu
       const { data: profile } = await supabase
         .from("profiles")
-        .select("full_name, role, avatar_url")
+        .select("full_name, role, avatar_url, is_test_user")
         .eq("id", id)
         .single();
 
@@ -71,6 +73,8 @@ export function useAuthUser() {
           fullName: profile.full_name ?? "User",
           role: toRole(profile.role),
           avatarUrl: avatar?.signedUrl ?? null,
+          isTestUser: profile.is_test_user === true,
+          email: sessionUser.email ?? "",
         });
       } else {
         // Fallback: gunakan user_metadata dari JWT Supabase
@@ -85,6 +89,8 @@ export function useAuthUser() {
           fullName: fallbackName,
           role: fallbackRole,
           avatarUrl: null,
+          isTestUser: false,
+          email: sessionUser.email ?? "",
         });
       }
       setLoading(false);
