@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -8,250 +8,43 @@ import { useAuthUser } from "@/hooks/useAuthUser";
 import { clearDemoRole, useDemoRole } from "@/utils/demo-auth";
 import { createClient } from "@/utils/supabase/client";
 import { ADMIN_BADGE_COUNTS_REFRESH_EVENT } from "@/utils/admin-badge-counts";
+import { useAdminTestMode } from "@/hooks/useAdminTestMode";
+import { adminTestBadgeCounts } from "@/data/admin-test";
+import AdminTestPanel from "@/components/admin/AdminTestPanel";
+import { getUserDisplayName } from "@/utils/test-display-name";
 
-type BadgeCounts = {
-  documentVerifications: number;
-  mandorVerifications: number;
-  supervisorAllocations: number;
-};
-
-export default function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const { user, loading } = useAuthUser();
-  const demoRole = useDemoRole();
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [loggingOut, setLoggingOut] = useState(false);
-  const [badgeCounts, setBadgeCounts] = useState<BadgeCounts>({
-    documentVerifications: 0,
-    mandorVerifications: 0,
-    supervisorAllocations: 0,
-  });
-
+type BadgeCounts = { documentVerifications: number; mandorVerifications: number; supervisorAllocations: number };
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  const router = useRouter(); const pathname = usePathname();
+  const { user: authUser, loading } = useAuthUser();
+  const user = useMemo(
+    () =>
+      authUser
+        ? { ...authUser, fullName: getUserDisplayName(authUser) }
+        : null,
+    [authUser],
+  );
+  const testMode = useAdminTestMode(); const demoRole = useDemoRole();
+  const [drawerOpen, setDrawerOpen] = useState(false); const [loggingOut, setLoggingOut] = useState(false);
+  const [badgeCounts, setBadgeCounts] = useState<BadgeCounts>({ documentVerifications: 0, mandorVerifications: 0, supervisorAllocations: 0 });
+  const visibleBadgeCounts = testMode.active && testMode.state ? adminTestBadgeCounts(testMode.state) : badgeCounts;
   useEffect(() => {
-    if (loading || user?.role !== "admin") return;
-
+    if (testMode.active || loading || user?.role !== "admin") return;
     let active = true;
-    async function fetchBadgeCounts() {
-      try {
-        const response = await fetch("/api/admin/badge-counts");
-        if (!response.ok) {
-          console.error(
-            "Failed to fetch admin badge counts:",
-            response.status,
-          );
-          return;
-        }
-        const data = (await response.json()) as BadgeCounts;
-        if (active) setBadgeCounts(data);
-      } catch (error) {
-        console.error("Failed to fetch badge counts:", error);
-      }
-    }
-
-    const refresh = () => void fetchBadgeCounts();
-    const supabase = createClient();
-    const channel = supabase
-      .channel("admin-badge-counts")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "projects" },
-        refresh,
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "mandor_profiles" },
-        refresh,
-      )
-      .subscribe((status) => {
-        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-          console.error("Admin badge realtime subscription failed:", status);
-        }
-      });
-
-    window.addEventListener(ADMIN_BADGE_COUNTS_REFRESH_EVENT, refresh);
-    refresh();
-    const interval = window.setInterval(refresh, 30000);
-
-    return () => {
-      active = false;
-      window.removeEventListener(ADMIN_BADGE_COUNTS_REFRESH_EVENT, refresh);
-      window.clearInterval(interval);
-      void supabase.removeChannel(channel);
-    };
-  }, [loading, user?.role]);
-
+    const refresh = async () => { try { const response = await fetch("/api/admin/badge-counts"); if (response.ok && active) setBadgeCounts(await response.json()); } catch (error) { console.error("Failed to fetch admin badge counts:", error); } };
+    const supabase = createClient(); const channel = supabase.channel("admin-badge-counts").on("postgres_changes", { event: "*", schema: "public", table: "projects" }, refresh).on("postgres_changes", { event: "*", schema: "public", table: "mandor_profiles" }, refresh).subscribe();
+    window.addEventListener(ADMIN_BADGE_COUNTS_REFRESH_EVENT, refresh); void refresh(); const interval = window.setInterval(refresh, 30000);
+    return () => { active = false; window.removeEventListener(ADMIN_BADGE_COUNTS_REFRESH_EVENT, refresh); window.clearInterval(interval); void supabase.removeChannel(channel); };
+  }, [loading, user?.role, testMode.active, testMode.state]);
   const navigation = [
     { label: "Dashboard", href: "/admin" },
-    {
-      label: "Verifikasi dokumen",
-      href: "/admin/verifikasi-dokumen",
-      badge:
-        badgeCounts.documentVerifications > 0
-          ? String(badgeCounts.documentVerifications)
-          : undefined,
-    },
-    {
-      label: "Verifikasi Mandor",
-      href: "/admin/verifikasi-mandor",
-      badge:
-        badgeCounts.mandorVerifications > 0
-          ? String(badgeCounts.mandorVerifications)
-          : undefined,
-    },
-    {
-      label: "Manajemen Pengawas",
-      href: "/admin/manajemen-pengawas",
-      badge:
-        badgeCounts.supervisorAllocations > 0
-          ? String(badgeCounts.supervisorAllocations)
-          : undefined,
-    },
+    { label: "Verifikasi dokumen", href: "/admin/verifikasi-dokumen", badge: visibleBadgeCounts.documentVerifications || undefined },
+    { label: "Verifikasi Mandor", href: "/admin/verifikasi-mandor", badge: visibleBadgeCounts.mandorVerifications || undefined },
+    { label: "Manajemen Pengawas", href: "/admin/manajemen-pengawas", badge: visibleBadgeCounts.supervisorAllocations || undefined },
   ];
-  useEffect(() => {
-    if (demoRole) {
-      if (demoRole !== "admin")
-        router.replace(demoRole === "mandor" ? "/mandor" : "/pengawas");
-      return;
-    }
-    if (!loading && !user) router.replace("/login");
-    else if (!loading && user && user.role !== "admin")
-      router.replace("/dashboard");
-  }, [demoRole, loading, user, router]);
-  const onLogout = async () => {
-    setLoggingOut(true);
-    if (demoRole) clearDemoRole();
-    else await logout();
-    router.replace("/login");
-    router.refresh();
-  };
-  if (!demoRole && (loading || !user || user.role !== "admin"))
-    return (
-      <main className="grid min-h-screen place-items-center bg-[#f3f6fa] text-slate-600">
-        Memuat halaman...
-      </main>
-    );
-  const sidebar = (
-    <aside className="flex h-full flex-col bg-[#10283d] text-white">
-      <Link
-        href="/admin"
-        className="flex h-[82px] items-center gap-3 border-b border-white/10 px-7"
-        aria-label="Way2Home Admin dashboard"
-      >
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-1">
-          <Image
-            src="/images/logo-w2h.png"
-            alt="Logo Way2Home"
-            width={40}
-            height={40}
-            className="h-full w-full object-contain"
-            priority
-          />
-        </span>
-        <span>
-          <b className="block text-[17px] tracking-tight">Way2Home</b>
-          <small className="text-[10px] font-semibold tracking-[.18em] text-slate-400">
-            ADMINISTRATION
-          </small>
-        </span>
-      </Link>
-      <div className="px-5 pt-7">
-        <p className="px-3 text-[10px] font-bold uppercase tracking-[.18em] text-slate-500">
-          Menu utama
-        </p>
-        <nav className="mt-3 space-y-1" aria-label="Navigasi admin">
-          {navigation.map((item) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              aria-current={
-                pathname === item.href ||
-                (item.href !== "/admin" && pathname.startsWith(`${item.href}/`))
-                  ? "page"
-                  : undefined
-              }
-              onClick={() => setDrawerOpen(false)}
-              className={`flex h-11 items-center gap-3 rounded-xl px-3 text-sm ${pathname === item.href || (item.href !== "/admin" && pathname.startsWith(`${item.href}/`)) ? "border border-white/10 bg-white/10 font-semibold text-white" : "text-slate-300 hover:bg-white/[.06] hover:text-white"}`}
-            >
-              <span className="flex-1">{item.label}</span>
-              {item.badge && (
-                <span className="rounded-md bg-[#e4a84d]/15 px-2 py-0.5 text-[10px] font-bold text-[#f3c476]">
-                  {item.badge}
-                </span>
-              )}
-            </Link>
-          ))}
-        </nav>
-      </div>
-      <div className="mt-auto border-t border-white/10 p-5">
-        <div className="flex items-center gap-3 rounded-xl bg-white/[.06] p-3">
-          <span className="grid h-9 w-9 place-items-center rounded-full bg-[#d6e5f2] text-xs font-bold text-[#17344e]">
-            AD
-          </span>
-          <span className="min-w-0 flex-1">
-            <b className="block truncate text-xs">
-              {demoRole ? "Superadmin" : user?.fullName}
-            </b>
-            <small className="text-[10px] text-slate-400">Administrator</small>
-          </span>
-        </div>
-      </div>
-    </aside>
-  );
-  return (
-    <div className="admin-interactions min-h-screen bg-[#f3f6fa] text-[#183047]">
-      <div className="fixed inset-y-0 left-0 z-30 hidden w-[280px] lg:block">
-        {sidebar}
-      </div>
-      {drawerOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <button
-            aria-label="Tutup menu"
-            className="absolute inset-0 bg-[#091827]/55"
-            onClick={() => setDrawerOpen(false)}
-          />
-          <div className="relative h-full w-[280px] max-w-[85vw]">
-            {sidebar}
-          </div>
-        </div>
-      )}
-      <div className="lg:pl-[280px]">
-        <header className="sticky top-0 z-20 flex h-[74px] items-center justify-between border-b border-[#e6ebf1] bg-white/95 px-5 backdrop-blur md:px-8">
-          <div className="flex items-center gap-3">
-            <button
-              className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 lg:hidden"
-              aria-label="Buka menu"
-              onClick={() => setDrawerOpen(true)}
-            >
-              ☰
-            </button>
-            <div>
-              <p className="text-[11px] text-slate-500">Way2Home / Admin</p>
-              <p className="text-sm font-semibold">Ringkasan operasional</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="hidden text-xs text-slate-500 sm:block">
-              Kamis, 15 Oktober 2026
-            </span>
-            <span className="grid h-9 w-9 place-items-center rounded-full bg-[#e7eef5] text-xs font-bold">
-              {demoRole ? "AD" : user?.fullName?.slice(0, 2).toUpperCase()}
-            </span>
-            <button
-              onClick={onLogout}
-              disabled={loggingOut}
-              className="rounded-lg border border-[#d99a9a] bg-[#a94444] px-3 py-2 text-xs font-semibold text-white hover:bg-[#913838] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {loggingOut ? "Logout..." : "Logout"}
-            </button>
-          </div>
-        </header>
-        <main id="main-content">{children}</main>
-      </div>
-    </div>
-  );
+  useEffect(() => { if (demoRole) { if (demoRole !== "admin") router.replace(demoRole === "mandor" ? "/mandor" : "/pengawas"); return; } if (!loading && !user) router.replace("/login"); else if (!loading && user && user.role !== "admin") router.replace("/dashboard"); }, [demoRole, loading, user, router]);
+  const onLogout = async () => { setLoggingOut(true); if (demoRole) clearDemoRole(); else await logout(); router.replace("/login"); router.refresh(); };
+  if (!demoRole && (loading || !user || user.role !== "admin")) return <main className="grid min-h-screen place-items-center bg-[#f3f6fa] text-slate-600">Memuat halaman...</main>;
+  const sidebar = <aside className="flex h-full flex-col bg-[#10283d] text-white"><Link href="/admin" className="flex h-[82px] items-center gap-3 border-b border-white/10 px-7" aria-label="Way2Home Admin dashboard"><span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-1"><Image src="/images/logo-w2h.png" alt="Logo Way2Home" width={40} height={40} className="h-full w-full object-contain" priority /></span><span><b className="block text-[17px] tracking-tight">Way2Home</b><small className="text-[10px] font-semibold tracking-[.18em] text-slate-400">ADMINISTRATION</small></span></Link><div className="px-5 pt-7"><p className="px-3 text-[10px] font-bold uppercase tracking-[.18em] text-slate-500">Menu utama</p><nav className="mt-3 space-y-1" aria-label="Navigasi admin">{navigation.map((item) => <Link key={item.label} href={item.href} aria-current={pathname === item.href || (item.href !== "/admin" && pathname.startsWith(`${item.href}/`)) ? "page" : undefined} onClick={() => setDrawerOpen(false)} className={`flex h-11 items-center gap-3 rounded-xl px-3 text-sm ${pathname === item.href || (item.href !== "/admin" && pathname.startsWith(`${item.href}/`)) ? "border border-white/10 bg-white/10 font-semibold text-white" : "text-slate-300 hover:bg-white/[.06] hover:text-white"}`}><span className="flex-1">{item.label}</span>{item.badge && <span className="rounded-md bg-[#e4a84d]/15 px-2 py-0.5 text-[10px] font-bold text-[#f3c476]">{item.badge}</span>}</Link>)}</nav></div><div className="mt-auto border-t border-white/10 p-5"><div className="flex items-center gap-3 rounded-xl bg-white/[.06] p-3"><span className="grid h-9 w-9 place-items-center rounded-full bg-[#d6e5f2] text-xs font-bold text-[#17344e]">AD</span><span className="min-w-0 flex-1"><b className="block truncate text-xs">{demoRole ? "Superadmin" : user?.fullName}</b><small className="text-[10px] text-slate-400">Administrator</small></span></div></div></aside>;
+  return <div className="admin-interactions min-h-screen bg-[#f3f6fa] text-[#183047]"><div className="fixed inset-y-0 left-0 z-30 hidden w-[280px] lg:block">{sidebar}</div>{drawerOpen && <div className="fixed inset-0 z-50 lg:hidden"><button aria-label="Tutup menu" className="absolute inset-0 bg-[#091827]/55" onClick={() => setDrawerOpen(false)} /><div className="relative h-full w-[280px] max-w-[85vw]">{sidebar}</div></div>}<div className="lg:pl-[280px]"><header className="sticky top-0 z-20 flex h-[74px] items-center justify-between border-b border-[#e6ebf1] bg-white/95 px-5 backdrop-blur md:px-8"><div className="flex items-center gap-3"><button className="grid h-10 w-10 items-center justify-center rounded-xl border border-slate-200 lg:hidden" aria-label="Buka menu" onClick={() => setDrawerOpen(true)}>☰</button><div><p className="text-[11px] text-slate-500">Way2Home / Admin</p><p className="text-sm font-semibold">Ringkasan operasional</p></div></div><div className="flex items-center gap-3"><span className="hidden text-xs text-slate-500 sm:block">Kamis, 15 Oktober 2026</span><span className="grid h-9 w-9 place-items-center rounded-full bg-[#e7eef5] text-xs font-bold">{demoRole ? "AD" : user?.fullName?.slice(0, 2).toUpperCase()}</span><button onClick={onLogout} disabled={loggingOut} className="rounded-lg border border-[#d99a9a] bg-[#a94444] px-3 py-2 text-xs font-semibold text-white hover:bg-[#913838] disabled:cursor-not-allowed disabled:opacity-50">{loggingOut ? "Logout..." : "Logout"}</button></div></header><main id="main-content">{children}</main></div>{testMode.active && testMode.state && testMode.userId && <AdminTestPanel reset={testMode.reset} />}</div>;
 }

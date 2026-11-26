@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { createClient } from "@/utils/supabase/client";
+import { useAdminTestMode } from "@/hooks/useAdminTestMode";
+import { adminTestDashboard } from "@/data/admin-test";
 import type {
   AdminDashboardData,
   AdminDashboardProject,
@@ -240,10 +241,13 @@ function ProjectTable({ projects }: { projects: AdminDashboardProject[] }) {
 }
 
 export default function AdminDashboard() {
+  const testMode = useAdminTestMode();
   const [data, setData] = useState<AdminDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const dashboardDataOverride = testMode.active && testMode.state ? adminTestDashboard(testMode.state) : null;
   useEffect(() => {
+    if (testMode.active || !testMode.ready) return;
     let active = true;
 
     async function loadDashboard() {
@@ -264,37 +268,8 @@ export default function AdminDashboard() {
 
     void loadDashboard();
 
-    // Subscribe to realtime updates for live synchronization
-    const supabase = createClient();
-    const refresh = () => void loadDashboard();
-
-    const channel = supabase
-      .channel("admin-dashboard-realtime")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "projects" },
-        refresh,
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "profiles" },
-        refresh,
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "mandor_profiles" },
-        refresh,
-      )
-      .subscribe();
-
-    const interval = window.setInterval(refresh, 30000);
-
-    return () => {
-      active = false;
-      window.clearInterval(interval);
-      void supabase.removeChannel(channel);
-    };
-  }, []);
+    return () => { active = false; };
+  }, [testMode.active, testMode.ready]);
 
   const todayFormatted = useMemo(() => {
     return new Intl.DateTimeFormat("id-ID", {
@@ -305,7 +280,7 @@ export default function AdminDashboard() {
     }).format(new Date());
   }, []);
 
-  if (loading && !data) {
+  if (loading && !data && !testMode.active && testMode.ready) {
     return (
       <div className="mx-auto max-w-[1500px] space-y-6 p-5 md:space-y-7 md:p-8 xl:p-10">
         <section className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
@@ -333,7 +308,7 @@ export default function AdminDashboard() {
     );
   }
 
-  const dashboardData = data || {
+  const dashboardData = dashboardDataOverride || data || {
     currentDateFormatted: todayFormatted,
     metrics: [
       {
@@ -458,7 +433,11 @@ export default function AdminDashboard() {
 
       <footer className="flex flex-col gap-1 border-t border-[#e2e8ee] pt-4 text-[10px] text-slate-400 sm:flex-row sm:justify-between">
         <span>Way2Home · Panel administrasi</span>
-        <span>Data diperbarui otomatis dari database.</span>
+        <span>
+          {testMode.active
+            ? "Data testing tersimpan lokal di browser."
+            : "Data diperbarui otomatis dari database."}
+        </span>
       </footer>
     </div>
   );
