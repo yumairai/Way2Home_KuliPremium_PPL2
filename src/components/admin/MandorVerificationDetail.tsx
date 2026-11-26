@@ -3,8 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { MandorApplication } from "@/services/mandor-verification.service";
+import { useAdminTestMode } from "@/hooks/useAdminTestMode";
 
 export default function MandorVerificationDetail({ id }: { id: string }) {
+  const testMode = useAdminTestMode();
   const [applicant, setApplicant] = useState<MandorApplication | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -15,6 +17,7 @@ export default function MandorVerificationDetail({ id }: { id: string }) {
   const [completed, setCompleted] = useState<"approved" | "rejected" | null>(null);
 
   useEffect(() => {
+    if (testMode.active || !testMode.ready) return;
     let active = true;
     fetch(`/api/admin/mandor-verification/${id}`)
       .then(async (res) => {
@@ -38,13 +41,21 @@ export default function MandorVerificationDetail({ id }: { id: string }) {
     return () => {
       active = false;
     };
-  }, [id]);
+  }, [id, testMode.active, testMode.ready, testMode.state]);
 
   const submitDecision = async () => {
     if (!decision) return;
     setError("");
     setSubmitting(true);
     try {
+      if (testMode.active && testMode.state && visibleApplicant) {
+        if (decision === "reject" && !reason.trim()) throw new Error("Alasan penolakan wajib diisi.");
+        const status = decision === "approve" ? "approved" : "rejected";
+        const applications = testMode.state.applications.map((item) => item.id === id ? { ...item, status: status as MandorApplication["status"], verificationNote: decision === "reject" ? reason.trim() : null } : item);
+        testMode.setState({ ...testMode.state, applications });
+        setApplicant(visibleApplicant ? { ...visibleApplicant, status: status as MandorApplication["status"], verificationNote: decision === "reject" ? reason.trim() : null } : null);
+        setCompleted(status); setDecision(null); setSubmitting(false); return;
+      }
       const res = await fetch(`/api/admin/mandor-verification/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -66,7 +77,13 @@ export default function MandorVerificationDetail({ id }: { id: string }) {
     }
   };
 
-  if (loading) {
+  const testApplication = testMode.active && testMode.state ? testMode.state.applications.find((application) => application.id === id) ?? null : null;
+  const visibleApplicant = testMode.active ? testApplication : applicant;
+  if (testMode.active && !testApplication) return <main className="mx-auto max-w-3xl p-10 text-center text-sm text-slate-500">Pendaftaran dummy tidak ditemukan.</main>;
+  if (!visibleApplicant && (loading || !testMode.ready)) return <main className="mx-auto max-w-3xl p-10 text-center text-sm text-slate-500">Memuat detail pendaftaran...</main>;
+  if (!visibleApplicant) return <main className="mx-auto max-w-3xl p-10 text-center text-sm text-slate-500">Pendaftaran tidak ditemukan.</main>;
+  const activeApplicant = visibleApplicant;
+  if (loading && !testMode.active) {
     return (
       <main className="mx-auto max-w-[1440px] px-5 py-12 md:px-8 text-center">
         <span className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-[#2B3361]/25 border-t-[#2B3361]" />
@@ -75,7 +92,7 @@ export default function MandorVerificationDetail({ id }: { id: string }) {
     );
   }
 
-  if (loadError || !applicant) {
+  if (loadError || (!applicant && !visibleApplicant)) {
     return (
       <main className="mx-auto max-w-[1440px] px-5 py-12 md:px-8 text-center">
         <div className="mx-auto max-w-md rounded-2xl border border-red-200 bg-red-50 p-6">
@@ -92,7 +109,7 @@ export default function MandorVerificationDetail({ id }: { id: string }) {
     );
   }
 
-  const cvLink = applicant.cvUrl || "";
+  const cvLink = activeApplicant.cvUrl || "";
 
   return (
     <main className="mx-auto max-w-[1440px] px-5 py-7 md:px-8 md:py-9">
@@ -108,7 +125,7 @@ export default function MandorVerificationDetail({ id }: { id: string }) {
             Detail pendaftaran mandor
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Diajukan {applicant.submitted}
+            Diajukan {activeApplicant.submitted}
           </p>
         </div>
         <span
@@ -127,8 +144,8 @@ export default function MandorVerificationDetail({ id }: { id: string }) {
           className={`mb-5 rounded-lg border px-4 py-3 text-sm ${completed === "approved" ? "border-green-200 bg-green-50 text-green-900" : "border-red-200 bg-red-50 text-red-900"}`}
         >
           {completed === "approved"
-            ? `${applicant.name} telah terverifikasi dan akunnya aktif sebagai mandor.`
-            : `Pendaftaran ${applicant.name} ditolak dan akun telah dihapus dari sistem. Calon mandor dapat melakukan pendaftaran ulang.`}
+            ? `${activeApplicant.name} telah terverifikasi dan akunnya aktif sebagai mandor.`
+            : `Pendaftaran ${activeApplicant.name} ditolak dan akun telah dihapus dari sistem. Calon mandor dapat melakukan pendaftaran ulang.`}
         </div>
       )}
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(380px,0.92fr)]">
@@ -136,14 +153,14 @@ export default function MandorVerificationDetail({ id }: { id: string }) {
           <section className="rounded-2xl border border-[#e3e9ef] bg-white p-5 md:p-6">
             <div className="flex items-center gap-4 border-b border-[#edf0f3] pb-5">
               <span className="grid h-14 w-14 place-items-center rounded-full bg-[#eaf1f6] text-base font-bold text-[#345c78]">
-                {applicant.initials}
+                {activeApplicant.initials}
               </span>
               <div>
                 <h2 className="text-lg font-bold text-[#203c54]">
-                  {applicant.name}
+                  {activeApplicant.name}
                 </h2>
                 <p className="mt-1 text-xs text-slate-500">
-                  ID: {applicant.id}
+                  ID: {activeApplicant.id}
                 </p>
               </div>
             </div>
@@ -151,31 +168,31 @@ export default function MandorVerificationDetail({ id }: { id: string }) {
               <div>
                 <dt className="text-xs text-slate-500">Email</dt>
                 <dd className="mt-1 text-sm font-medium text-[#29465e]">
-                  {applicant.email || "-"}
+                  {activeApplicant.email || "-"}
                 </dd>
               </div>
               <div>
                 <dt className="text-xs text-slate-500">Nomor HP</dt>
                 <dd className="mt-1 text-sm font-medium text-[#29465e]">
-                  {applicant.phone || "-"}
+                  {activeApplicant.phone || "-"}
                 </dd>
               </div>
               <div>
                 <dt className="text-xs text-slate-500">Area kerja</dt>
                 <dd className="mt-1 text-sm font-medium text-[#29465e]">
-                  {applicant.city || "-"}
+                  {activeApplicant.city || "-"}
                 </dd>
               </div>
               <div>
                 <dt className="text-xs text-slate-500">Keahlian utama</dt>
                 <dd className="mt-1 text-sm font-medium text-[#29465e]">
-                  {applicant.expertise || "-"}
+                  {activeApplicant.expertise || "-"}
                 </dd>
               </div>
               <div>
                 <dt className="text-xs text-slate-500">Pengalaman</dt>
                 <dd className="mt-1 text-sm font-medium text-[#29465e]">
-                  {applicant.experience} tahun
+                  {activeApplicant.experience} tahun
                 </dd>
               </div>
               <div className="sm:col-span-2">
@@ -183,7 +200,7 @@ export default function MandorVerificationDetail({ id }: { id: string }) {
                   Keterampilan yang dimiliki
                 </dt>
                 <dd className="mt-1 text-sm font-medium leading-6 text-[#29465e]">
-                  {applicant.skills || "-"}
+                  {activeApplicant.skills || "-"}
                 </dd>
               </div>
             </dl>
@@ -193,13 +210,13 @@ export default function MandorVerificationDetail({ id }: { id: string }) {
               Ringkasan pengalaman
             </h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              {applicant.summary || "-"}
+              {activeApplicant.summary || "-"}
             </p>
             <h3 className="mt-5 text-sm font-semibold text-[#29465e]">
               Jenis pekerjaan yang pernah ditangani
             </h3>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              {applicant.projects || "-"}
+              {activeApplicant.projects || "-"}
             </p>
           </section>
           <section className="rounded-2xl border border-[#e3e9ef] bg-white p-5 md:p-6">
@@ -242,7 +259,7 @@ export default function MandorVerificationDetail({ id }: { id: string }) {
                 </div>
                 <div className="mt-4 overflow-hidden rounded-xl border border-[#e6ebf0] bg-slate-50">
                   <iframe
-                    title={`Pratinjau CV ${applicant.name}`}
+                    title={`Pratinjau CV ${activeApplicant.name}`}
                     src={cvLink}
                     className="h-[420px] w-full"
                   />
@@ -321,8 +338,8 @@ export default function MandorVerificationDetail({ id }: { id: string }) {
             </h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
               {decision === "approve"
-                ? `${applicant.name} akan aktif sebagai mandor terverifikasi. Role tetap mandor; pengawas dapat menugaskannya ke proyek.`
-                : `Akun dan seluruh data ${applicant.name} akan dihapus dari sistem. Calon mandor dapat mendaftar ulang kembali.`}
+                ? `${activeApplicant.name} akan aktif sebagai mandor terverifikasi. Role tetap mandor; pengawas dapat menugaskannya ke proyek.`
+                : `Akun dan seluruh data ${activeApplicant.name} akan dihapus dari sistem. Calon mandor dapat mendaftar ulang kembali.`}
             </p>
             {decision === "reject" && (
               <div className="mt-4">
@@ -330,7 +347,7 @@ export default function MandorVerificationDetail({ id }: { id: string }) {
                   htmlFor="rejection-reason"
                   className="mb-1.5 block text-sm font-medium text-[#29465e]"
                 >
-                  Alasan penolakan (opsional)
+                  Alasan penolakan {testMode.active ? "(wajib)" : "(opsional)"}
                 </label>
                 <textarea
                   id="rejection-reason"
@@ -338,7 +355,7 @@ export default function MandorVerificationDetail({ id }: { id: string }) {
                   onChange={(event) => setReason(event.target.value)}
                   rows={4}
                   maxLength={500}
-                  placeholder="Catatan alasan penolakan (opsional)"
+                  placeholder={testMode.active ? "Tuliskan alasan penolakan yang akan disimpan di arsip" : "Catatan alasan penolakan (opsional)"}
                   className="w-full resize-y rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-[#045ec2] focus:ring-2 focus:ring-[#045ec2]/15"
                 />
                 {error && (
@@ -358,7 +375,7 @@ export default function MandorVerificationDetail({ id }: { id: string }) {
               </button>
               <button
                 type="button"
-                disabled={submitting}
+                disabled={submitting || (decision === "reject" && testMode.active && !reason.trim())}
                 onClick={submitDecision}
                 className={`rounded-lg px-4 py-2.5 text-sm font-semibold text-white ${decision === "approve" ? "bg-[#2B3361] hover:bg-[#21274b]" : "bg-[#9c4545] hover:bg-[#803939]"} disabled:opacity-60`}
               >

@@ -3,14 +3,17 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { MandorApplication } from "@/services/mandor-verification.service";
+import { useAdminTestMode } from "@/hooks/useAdminTestMode";
 
 export default function MandorVerification() {
+  const testMode = useAdminTestMode();
   const [applicants, setApplicants] = useState<MandorApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
 
   const fetchApplicants = async () => {
+    if (testMode.active && testMode.state) { setLoading(false); setError(null); return; }
     setLoading(true);
     setError(null);
     try {
@@ -28,6 +31,7 @@ export default function MandorVerification() {
   };
 
   useEffect(() => {
+    if (testMode.active || !testMode.ready) return;
     let ignore = false;
     fetch("/api/admin/mandor-verification")
       .then(async (res) => {
@@ -53,9 +57,12 @@ export default function MandorVerification() {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [testMode.active, testMode.ready, testMode.state]);
 
-  const filtered = applicants.filter((applicant) =>
+  const visibleApplicants = testMode.active && testMode.state ? testMode.state.applications.filter((a) => a.status === "pending") : applicants;
+  const isLoading =
+    !testMode.ready || (testMode.active ? !testMode.state : loading);
+  const filtered = visibleApplicants.filter((applicant) =>
     `${applicant.name} ${applicant.email} ${applicant.city} ${applicant.expertise}`
       .toLowerCase()
       .includes(query.trim().toLowerCase()),
@@ -77,7 +84,7 @@ export default function MandorVerification() {
         </div>
         <div className="flex items-center gap-3 rounded-xl border border-[#ead9b6] bg-[#fff9ed] px-4 py-3">
           <span className="grid h-9 w-9 place-items-center rounded-lg bg-[#f7edda] text-sm font-bold text-[#93651e]">
-            {applicants.length}
+            {visibleApplicants.length}
           </span>
           <span>
             <b className="block text-sm text-[#4b3b20]">Menunggu verifikasi</b>
@@ -115,7 +122,7 @@ export default function MandorVerification() {
           />
         </div>
         <div className="divide-y divide-[#edf0f3]">
-          {loading ? (
+          {isLoading ? (
             <div className="flex flex-col items-center justify-center p-12 text-center">
               <span className="h-7 w-7 animate-spin rounded-full border-2 border-[#2B3361]/25 border-t-[#2B3361]" />
               <p className="mt-3 text-sm text-slate-500">Memuat data pendaftar mandor...</p>

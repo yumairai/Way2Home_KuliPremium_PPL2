@@ -6,6 +6,7 @@ import {
 } from "@/data/admin-verification";
 import { useDemoRole } from "@/utils/demo-auth";
 import { refreshAdminBadgeCounts } from "@/utils/admin-badge-counts";
+import { useAdminTestMode } from "@/hooks/useAdminTestMode";
 
 const statusStyle: Record<VerificationDocumentStatus, string> = {
   Menunggu: "border-[#f0d8a8] bg-[#fff6e7] text-[#9a671f]",
@@ -276,7 +277,7 @@ function VerificationModal({
         <div className="grid shrink-0 gap-3 border-t border-[#e7ebef] bg-white p-4 md:grid-cols-[1fr_auto] md:px-6">
           <label className="min-w-0">
             <span className="mb-1 block text-[10px] font-semibold text-slate-600">
-              Alasan penolakan / catatan admin
+              {documents.some((document) => document.status === "Ditolak") ? "Alasan penolakan (wajib)" : "Catatan admin (opsional)"}
             </span>
             <textarea
               value={note}
@@ -303,7 +304,7 @@ function VerificationModal({
             </button>
             <button
               onClick={submit}
-              disabled={pending > 0 || saved || saving}
+              disabled={pending > 0 || saved || saving || (documents.some((document) => document.status === "Ditolak") && !note.trim())}
               className="h-10 rounded-lg bg-[#183b57] px-5 text-xs font-semibold text-white hover:bg-[#234f70] disabled:cursor-not-allowed disabled:opacity-40"
             >
               {saved
@@ -314,6 +315,9 @@ function VerificationModal({
                     ? `Tinjau ${pending} dokumen lagi`
                     : "Simpan hasil review"}
             </button>
+            {documents.some((document) => document.status === "Ditolak") && !note.trim() && (
+              <p className="w-full text-right text-xs text-[#a75252]">Alasan penolakan wajib diisi.</p>
+            )}
             {error && (
               <p
                 role="alert"
@@ -339,20 +343,24 @@ function Detail({ label, value }: { label: string; value: string }) {
 
 export default function AdminVerification() {
   const demoRole = useDemoRole();
+  const testMode = useAdminTestMode();
   const [requests, setRequests] = useState<VerificationRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedRequest, setSelectedRequest] =
     useState<VerificationRequest | null>(null);
+  const visibleRequests = testMode.active && testMode.state ? testMode.state.requests : requests;
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("Semua status");
   const visibleLoadError = demoRole
     ? "Akun Admin Demo hanya untuk preview UI. Keluar, lalu login dengan akun admin Supabase untuk memuat dan memverifikasi pengajuan customer."
     : loadError;
-  const isLoading = loading && !demoRole;
+  const isLoading =
+    !testMode.ready ||
+    (testMode.active ? !testMode.state : loading && !demoRole);
 
   useEffect(() => {
-    if (demoRole) return;
+    if (testMode.active || !testMode.ready || demoRole) return;
 
     let active = true;
     fetch("/api/admin/document-verification")
@@ -377,10 +385,10 @@ export default function AdminVerification() {
     return () => {
       active = false;
     };
-  }, [demoRole]);
+  }, [demoRole, testMode.active, testMode.ready, testMode.state]);
   const filtered = useMemo(
     () =>
-      requests.filter(
+      visibleRequests.filter(
         (request) =>
           `${request.id} ${request.applicant} ${request.house.name}`
             .toLowerCase()
@@ -393,10 +401,10 @@ export default function AdminVerification() {
                 (document) => document.status === filter,
               ))),
       ),
-    [requests, query, filter],
+    [visibleRequests, query, filter],
   );
   const count = (status: VerificationDocumentStatus) =>
-    requests.reduce(
+    visibleRequests.reduce(
       (sum, request) =>
         sum +
         request.documents.filter((document) => document.status === status)
@@ -404,6 +412,12 @@ export default function AdminVerification() {
       0,
     );
   const save = async (updated: VerificationRequest) => {
+    if (testMode.active && testMode.state) {
+      const rejectedWithoutReason = updated.documents.some((doc) => doc.status === "Ditolak" && !updated.adminNote.trim());
+      if (rejectedWithoutReason) throw new Error("Alasan penolakan wajib diisi sebelum menyimpan.");
+      const next = { ...testMode.state, requests: testMode.state.requests.map((request) => request.id === updated.id ? updated : request) };
+      testMode.setState(next); refreshAdminBadgeCounts(); return;
+    }
     const response = await fetch(
       `/api/admin/document-verification/${updated.id}`,
       {
@@ -429,12 +443,12 @@ export default function AdminVerification() {
   const summaries = [
     {
       label: "Total pengajuan",
-      value: requests.length,
+      value: visibleRequests.length,
       style: "text-[#294c69] bg-[#eaf1f6]",
     },
     {
       label: "Menunggu review",
-      value: requests.filter((request) => !final(request)).length,
+      value: visibleRequests.filter((request) => !final(request)).length,
       style: "text-[#9a671f] bg-[#fff5e3]",
     },
     {
@@ -540,7 +554,7 @@ export default function AdminVerification() {
             </thead>
             <tbody className="divide-y divide-[#edf0f4]">
               {filtered.map((request) => {
-                const isFinal = final(request);
+                const isFinal = !request.documents.some((document) => document.status === "Menunggu");
                 const rejected = request.documents.some(
                   (document) => document.status === "Ditolak",
                 );
@@ -557,7 +571,7 @@ export default function AdminVerification() {
                         {request.applicant}
                       </span>
                       <span className="mt-1 block text-[9px] text-slate-400">
-                        {request.house.name} Â· {request.house.style}
+                        {request.house.name} · {request.house.style}
                       </span>
                     </td>
                     {request.documents.map((document) => (
@@ -578,11 +592,11 @@ export default function AdminVerification() {
                           disabled
                           className="rounded-lg border border-[#e1e6ea] px-3 py-2 text-[10px] font-semibold text-slate-400"
                         >
-                          {rejected ? "Selesai Â· Ditolak" : "Terverifikasi"}
+                          {rejected ? "Selesai · Ditolak" : "Terverifikasi"}
                         </button>
                       ) : (
                         <button
-                          onClick={() => setSelectedRequest(request)}
+                          onClick={() => setSelectedRequest({ ...request, documents: request.documents.map((document) => ({ ...document, dataUrl: `/test-assets/documents/${document.fileName}` })) })}
                           className="rounded-lg bg-[#183b57] px-4 py-2 text-[10px] font-semibold text-white hover:bg-[#234f70] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#477ba6]"
                         >
                           Review
@@ -598,7 +612,7 @@ export default function AdminVerification() {
                     colSpan={8}
                     className="px-6 py-12 text-center text-slate-500"
                   >
-                    {requests.length === 0
+                    {visibleRequests.length === 0
                       ? "Belum ada pengajuan dokumen untuk diverifikasi."
                       : "Tidak ada pengajuan yang cocok dengan pencarian atau filter."}
                   </td>
@@ -619,9 +633,9 @@ export default function AdminVerification() {
         </div>
         <div className="flex flex-col gap-2 border-t border-[#edf0f4] px-5 py-3 text-[10px] text-slate-400 sm:flex-row sm:justify-between">
           <span>
-            Menampilkan {filtered.length} dari {requests.length} pengajuan
+            Menampilkan {filtered.length} dari {visibleRequests.length} pengajuan
           </span>
-          <span>Keputusan review tersimpan pada data proyek customer.</span>
+          <span>{testMode.active ? "Keputusan review hanya tersimpan lokal di browser." : "Keputusan review tersimpan pada data proyek customer."}</span>
         </div>
       </section>
       <p className="text-[10px] leading-5 text-slate-400">
