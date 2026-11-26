@@ -12,27 +12,34 @@ import type { SupervisorProject } from "@/data/pengawas";
 export default function SupervisorContractModal({
   project,
   onClose,
+  localMode = false,
+  onLocalSign,
 }: {
   project: SupervisorProject;
   onClose: () => void;
+  localMode?: boolean;
+  onLocalSign?: (signature: string) => void;
 }) {
   const router = useRouter();
   const [signatureOpen, setSignatureOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [signedImage, setSignedImage] = useState<string | null>(null);
+  const displayedSignature = localMode ? project.supervisorSignaturePath : signedImage;
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
     };
     document.addEventListener("keydown", onKeyDown);
+    const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = "";
+      document.body.style.overflow = previousOverflow;
     };
   }, [onClose]);
   useEffect(() => {
+    if (localMode) return;
     const path = project.supervisorSignaturePath;
     if (!path) return;
     let active = true;
@@ -47,7 +54,7 @@ export default function SupervisorContractModal({
     return () => {
       active = false;
     };
-  }, [project.supervisorSignaturePath]);
+  }, [project.supervisorSignaturePath, localMode]);
 
   const paymentStages =
     project.payments.length > 0
@@ -176,10 +183,13 @@ export default function SupervisorContractModal({
                 />
               </SignatureSlot>
               <SignatureSlot role="Pengawas" name={project.supervisor}>
-                {signedImage ? (
-                  <img
-                    src={signedImage}
+                {displayedSignature ? (
+                  <Image
+                    src={displayedSignature}
                     alt="Tanda tangan pengawas"
+                    width={220}
+                    height={90}
+                    unoptimized
                     className="h-[72px] max-w-full object-contain"
                   />
                 ) : (
@@ -191,10 +201,7 @@ export default function SupervisorContractModal({
               <div className="sm:col-span-2 sm:mx-auto sm:w-1/2">
                 <SignatureSlot role="Customer" name={project.customer}>
                   {project.customerSignaturePath ? (
-                    <span className="pb-6 text-xs text-slate-500">
-                      Tanda tangan customer akan tampil setelah kontrak
-                      disetujui.
-                    </span>
+                    <Image src={project.customerSignaturePath} alt="Tanda tangan customer" width={220} height={90} unoptimized className="h-[72px] w-[180px] object-contain" />
                   ) : (
                     <span className="pb-6 text-xs text-slate-500">
                       Menunggu tanda tangan customer
@@ -203,6 +210,13 @@ export default function SupervisorContractModal({
                 </SignatureSlot>
               </div>
             </div>
+            {localMode && !project.supervisorSignedAt && (
+              <p className="mt-5 text-xs leading-5 text-slate-600">
+                Untuk simulasi, setelah pengawas menandatangani kontrak,
+                customer akan ditandatangani otomatis dan pembayaran DP
+                dianggap lunas.
+              </p>
+            )}
           </div>
         </div>
         <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-[#e7ebef] bg-[#fafbfc] px-5 py-4">
@@ -264,11 +278,24 @@ export default function SupervisorContractModal({
         {signatureOpen && (
           <SignaturePadModal
             busy={saving}
+            lockScroll={false}
             onClose={() => setSignatureOpen(false)}
             onContinue={async (signature) => {
               setSaving(true);
               setError(null);
               try {
+                if (localMode) {
+                  if (!onLocalSign) {
+                    throw new Error(
+                      "Penyimpanan tanda tangan lokal tidak tersedia.",
+                    );
+                  }
+                  onLocalSign(signature);
+                  setSignatureOpen(false);
+                  onClose();
+                  return;
+                }
+
                 const response = await fetch(
                   `/api/pengawas/projects/${project.id}/contract-signature`,
                   {
@@ -286,6 +313,7 @@ export default function SupervisorContractModal({
                 onClose(); // Tutup modal utama
                 router.refresh(); // Refresh data
               } catch (err) {
+                if (localMode) setSignatureOpen(false);
                 setError(
                   err instanceof Error
                     ? err.message

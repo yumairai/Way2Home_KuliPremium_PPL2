@@ -17,6 +17,13 @@ import { ServiceError } from "@/services/access.service";
 import { getPengawasProgressProjects } from "@/services/progress.service";
 import SupervisorContractModal from "@/components/pengawas/SupervisorContractModal";
 import type { SupervisorProject } from "@/data/pengawas";
+import { usePengawasTestMode } from "@/hooks/usePengawasTestMode";
+import PengawasTestPanel from "@/components/pengawas/PengawasTestPanel";
+import {
+  assignTestForemen,
+  signTestContract,
+  TEST_FOREMEN,
+} from "@/data/pengawas-test";
 
 // ─── Status helpers ────────────────────────────────────────────────────────────
 
@@ -43,6 +50,126 @@ const STATUS_CLASS: Record<string, string> = {
 
 function getStatusClass(status: string) {
   return STATUS_CLASS[status] ?? STATUS_CLASS.default;
+}
+
+function TestForemanAssignmentDialog({
+  onClose,
+  onAssign,
+}: {
+  onClose: () => void;
+  onAssign: (ids: string[]) => void;
+}) {
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const toggleSelected = (id: string) => {
+    setSelectedIds((current) =>
+      current.includes(id)
+        ? current.filter((selectedId) => selectedId !== id)
+        : current.length < 3
+          ? [...current, id]
+          : current,
+    );
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[70] grid place-items-center bg-[#0c1b2b]/60 p-4"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="test-foreman-title"
+        className="w-full max-w-[680px] overflow-hidden rounded-2xl bg-white shadow-2xl"
+      >
+        <header className="flex items-start justify-between border-b border-[#e8edf1] px-5 py-4 md:px-6">
+          <div>
+            <h2
+              id="test-foreman-title"
+              className="text-lg font-bold text-[#17344e]"
+            >
+              Pilih mandor proyek
+            </h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Pilih maksimal 3 mandor untuk melanjutkan ke tanda tangan kontrak.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Tutup pilihan mandor"
+            className="h-9 shrink-0 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-500 hover:bg-slate-50"
+          >
+            Tutup
+          </button>
+        </header>
+        <div className="max-h-[55vh] space-y-2 overflow-y-auto p-5">
+          {TEST_FOREMEN.map((foreman) => {
+            const selected = selectedIds.includes(foreman.id);
+            return (
+              <button
+                key={foreman.id}
+                type="button"
+                aria-pressed={selected}
+                onClick={() => toggleSelected(foreman.id)}
+                className={`flex w-full items-center gap-3 rounded-xl border p-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#477ba6] ${selected
+                  ? "border-[#7395b1] bg-[#f0f5f8]"
+                  : "border-[#e7ebef] hover:bg-slate-50"
+                  }`}
+              >
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#eaf1f6] text-xs font-bold text-[#355973]">
+                  {foreman.name
+                    .split(" ")
+                    .map((part) => part[0])
+                    .slice(0, 2)
+                    .join("")}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <b className="block text-sm text-[#29465e]">{foreman.name}</b>
+                  <span className="mt-1 block text-[11px] leading-5 text-slate-500">
+                    {foreman.specialties.join(", ")} · {foreman.experience} tahun
+                    pengalaman
+                  </span>
+                  <span className="block text-[10px] text-slate-400">
+                    {foreman.area}
+                  </span>
+                </span>
+                <span
+                  className={`shrink-0 text-[10px] font-semibold ${selected ? "text-[#355c78]" : "text-slate-400"
+                    }`}
+                >
+                  {selected ? "Dipilih" : "Pilih"}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <footer className="flex flex-col-reverse gap-3 border-t border-[#e8edf1] bg-[#fafbfc] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <p aria-live="polite" className="text-xs text-slate-500">
+            {selectedIds.length} mandor dipilih
+          </p>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="h-10 rounded-lg border border-[#dfe6ed] px-4 text-xs font-semibold text-slate-600 hover:bg-white"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={() => onAssign(selectedIds)}
+              disabled={selectedIds.length === 0}
+              className="h-10 rounded-lg bg-[#183b57] px-5 text-xs font-semibold text-white hover:bg-[#234f70] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Alokasikan mandor
+            </button>
+          </div>
+        </footer>
+      </section>
+    </div>
+  );
 }
 
 // ─── Mandor Allocation Modal ───────────────────────────────────────────────────
@@ -331,10 +458,10 @@ function MandorAllocationModal({
                     onClick={() => toggleSelect(m.id)}
                     disabled={!canSelectMandor(m)}
                     className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors ${selectedIds.has(m.id)
-                        ? "border-[#7395b1] bg-[#f0f5f8] ring-2 ring-[#7395b1]/15"
-                        : canSelectMandor(m)
-                          ? "border-[#e7ebef] hover:bg-slate-50"
-                          : "cursor-not-allowed border-[#e7ebef] bg-slate-50 opacity-50"
+                      ? "border-[#7395b1] bg-[#f0f5f8] ring-2 ring-[#7395b1]/15"
+                      : canSelectMandor(m)
+                        ? "border-[#e7ebef] hover:bg-slate-50"
+                        : "cursor-not-allowed border-[#e7ebef] bg-slate-50 opacity-50"
                       }`}
                   >
                     <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[#d8e3eb] bg-[#eaf1f6] text-[10px] font-bold text-[#355973]">
@@ -370,8 +497,8 @@ function MandorAllocationModal({
                     </span>
                     <span
                       className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border text-[10px] font-bold ${selectedIds.has(m.id)
-                          ? "border-[#477ba6] bg-[#477ba6] text-white"
-                          : "border-slate-300"
+                        ? "border-[#477ba6] bg-[#477ba6] text-white"
+                        : "border-slate-300"
                         }`}
                     >
                       {selectedIds.has(m.id) ? "✓" : ""}
@@ -437,6 +564,9 @@ function MandorAllocationModal({
 // ─── Main Dashboard ────────────────────────────────────────────────────────────
 
 export default function PengawasDashboard() {
+  const testMode = usePengawasTestMode();
+  const [testAssignmentOpen, setTestAssignmentOpen] = useState(false);
+  const [testContractOpen, setTestContractOpen] = useState(false);
   const [projects, setProjects] = useState<ProjectForPengawas[]>([]);
   const [allMandors, setAllMandors] = useState<VerifiedMandor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -456,17 +586,19 @@ export default function PengawasDashboard() {
   const [contractError, setContractError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
+    if (testMode.active || !testMode.ready) return [[], []] as [ProjectForPengawas[], VerifiedMandor[]];
     const supabase = createClient();
     return Promise.all([
       getProjectsForPengawas(supabase),
       getVerifiedMandors(supabase),
     ]);
-  }, []);
+  }, [testMode.active, testMode.ready]);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
+      if (testMode.active || !testMode.ready) return;
       const [projectsData, mandorsData] = await fetchData();
       setProjects(projectsData);
       setAllMandors(mandorsData);
@@ -489,9 +621,10 @@ export default function PengawasDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [fetchData]);
+  }, [fetchData, testMode.active, testMode.ready]);
 
   useEffect(() => {
+    if (testMode.active || !testMode.ready) return;
     let active = true;
 
     fetchData()
@@ -525,7 +658,7 @@ export default function PengawasDashboard() {
     return () => {
       active = false;
     };
-  }, [fetchData]);
+  }, [fetchData, testMode.active, testMode.ready]);
 
   const filtered = useMemo(
     () =>
@@ -603,6 +736,265 @@ export default function PengawasDashboard() {
       setContractLoadingId(null);
     }
   };
+
+  if (testMode.active) {
+    const project = testMode.state?.project;
+    const stageLabel =
+      testMode.state?.testStage === "alokasi_mandor_pengawas"
+        ? "Menunggu tim"
+        : testMode.state?.testStage === "finalisasi_kontrak"
+          ? "Finalisasi kontrak"
+          : project?.status ?? "Proyek testing";
+    const statusKey =
+      testMode.state?.testStage === "alokasi_mandor_pengawas"
+        ? "alokasi_mandor_pengawas"
+        : testMode.state?.testStage === "finalisasi_kontrak"
+          ? "finalisasi_kontrak"
+          : project?.status.toLowerCase() ?? "";
+    const isFinished = ["selesai", "batal"].includes(
+      project?.status.toLowerCase() ?? "",
+    );
+    const testProjectMatches =
+      !!project &&
+      `${project.id} ${project.title} ${project.customer} ${project.address}`
+        .toLowerCase()
+        .includes(query.trim().toLowerCase()) &&
+      (filter === "Semua proyek" ||
+        (filter === "Aktif" ? !isFinished : isFinished));
+    const activeCount = project && !isFinished ? 1 : 0;
+    const withoutMandor =
+      project && (project.foremen ?? []).length === 0 ? 1 : 0;
+    return (
+      <div className="mx-auto max-w-[1500px] space-y-7 p-5 md:p-8 xl:p-10">
+        <section className="flex flex-col justify-between gap-5 border-b border-[#dfe6ec] pb-6 md:flex-row md:items-end">
+          <div>
+            <h1 className="text-[28px] font-bold tracking-tight text-[#17344e] md:text-[34px]">
+              Ringkasan operasional
+            </h1>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">
+              Pantau proyek yang dipercayakan kepada Anda, kelola tim mandor,
+              dan pastikan setiap tahap bergerak sesuai rencana.
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <div className="min-w-[110px] border-l-2 border-[#6b91ae] pl-3">
+              <p className="text-[10px] text-slate-500">Proyek aktif</p>
+              <strong className="mt-1 block text-2xl text-[#183b57]">
+                {activeCount}
+              </strong>
+            </div>
+            <div className="min-w-[140px] border-l-2 border-[#d7a348] pl-3">
+              <p className="text-[10px] text-slate-500">Perlu mandor</p>
+              <strong className="mt-1 block text-2xl text-[#183b57]">
+                {withoutMandor}
+              </strong>
+            </div>
+          </div>
+        </section>
+
+        <section id="proyek" className="space-y-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-[#263d53]">Proyek Anda</h2>
+              <p className="mt-1 text-xs text-slate-500">
+                Pilih proyek untuk membuka detail atau mengalokasikan mandor.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <label>
+                <span className="sr-only">Cari proyek</span>
+                <input
+                  id="search-pengawas-proyek"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Cari proyek, customer, alamat..."
+                  className="h-10 w-full rounded-lg border border-[#dfe6ed] bg-white px-3 text-xs outline-none focus:border-[#477ba6] focus:ring-2 focus:ring-[#477ba6]/15 sm:w-[250px]"
+                />
+              </label>
+              <label>
+                <span className="sr-only">Filter daftar proyek</span>
+                <select
+                  id="filter-proyek-pengawas"
+                  value={filter}
+                  onChange={(event) => setFilter(event.target.value)}
+                  className="h-10 rounded-lg border border-[#dfe6ed] bg-white px-3 text-xs text-slate-600 outline-none focus:border-[#477ba6]"
+                >
+                  <option>Semua proyek</option>
+                  <option>Aktif</option>
+                  <option>Selesai</option>
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <div className="grid gap-4 xl:grid-cols-2">
+            {project && testProjectMatches && (
+              <article
+                key={project.id}
+                className="overflow-hidden rounded-2xl border border-[#e2e8ed] bg-white"
+              >
+                <div className="flex flex-col justify-between gap-4 p-5 sm:flex-row sm:items-start sm:px-6 sm:py-5">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold text-[#365873]">
+                        #{project.id.slice(0, 8)}
+                      </span>
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-[9px] font-semibold ${getStatusClass(statusKey)}`}
+                      >
+                        {stageLabel}
+                      </span>
+                    </div>
+                    <h3 className="mt-2 text-lg font-bold text-[#183b57]">
+                      {project.title}
+                    </h3>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {project.customer}
+                      {project.address ? ` · ${project.address.slice(0, 60)}` : ""}
+                    </p>
+                  </div>
+                  {testMode.state?.testStage === "alokasi_mandor_pengawas" ? (
+                    <button
+                      type="button"
+                      onClick={() => setTestAssignmentOpen(true)}
+                      className="inline-flex h-10 shrink-0 items-center justify-center rounded-lg border border-[#183b57] px-4 text-xs font-semibold text-[#183b57] transition-colors hover:bg-[#183b57] hover:text-white"
+                    >
+                      Alokasikan Mandor
+                    </button>
+                  ) : testMode.state?.testStage === "finalisasi_kontrak" ? (
+                    <button
+                      type="button"
+                      onClick={() => setTestContractOpen(true)}
+                      className="inline-flex h-10 shrink-0 items-center justify-center rounded-lg bg-[#183b57] px-4 text-xs font-semibold text-white hover:bg-[#234f70]"
+                    >
+                      Tanda tangani kontrak
+                    </button>
+                  ) : (
+                    <Link
+                      href={`/pengawas/proyek/${project.id}`}
+                      className="inline-flex h-10 shrink-0 items-center justify-center rounded-lg border border-[#cfdce6] px-4 text-xs font-semibold text-[#355c78] hover:bg-[#f3f7fa] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#477ba6]"
+                    >
+                      Buka detail
+                    </Link>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-y-4 border-t border-[#edf0f3] bg-[#fafbfc] px-5 py-4 sm:grid-cols-4 sm:px-6">
+                  <div>
+                    <p className="text-[9px] text-slate-500">Customer</p>
+                    <p className="mt-1 truncate text-xs font-semibold text-slate-700">
+                      {project.customer}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-slate-500">Progres resmi</p>
+                    <p className="mt-1 text-xs font-semibold text-slate-700">
+                      {project.progress}%
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-slate-500">Tim Mandor</p>
+                    <div className="mt-1 flex flex-wrap items-center gap-1">
+                      {project.foremen?.length ? (
+                        project.foremen.map((name) => (
+                          <span
+                            key={name}
+                            className="inline-block truncate text-xs font-semibold text-slate-700"
+                            title={name}
+                          >
+                            {name}
+                          </span>
+                        ))
+                      ) : (
+                        <p className="truncate text-xs font-semibold text-slate-700">
+                          Belum ditetapkan
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-slate-500">Status proyek</p>
+                    <p className="mt-1 truncate text-xs font-semibold text-slate-700">
+                      {stageLabel}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="px-5 pb-5 sm:px-6">
+                  <div className="flex items-center justify-between text-[10px] text-slate-500">
+                    <span>Progres keseluruhan</span>
+                    <span>{project.progress}%</span>
+                  </div>
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#e9edf2]">
+                    <span
+                      className="block h-full rounded-full bg-[#5e83a0]"
+                      style={{ width: `${project.progress}%` }}
+                    />
+                  </div>
+                </div>
+              </article>
+            )}
+          </div>
+
+          {!project && (
+            <div className="rounded-xl border border-dashed border-[#d8e1e8] bg-white px-5 py-12 text-center">
+              <p className="text-sm font-semibold text-[#35546d]">
+                Belum ada proyek ditugaskan
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                Admin akan mengalokasikan proyek kepada Anda.
+              </p>
+            </div>
+          )}
+          {project && !testProjectMatches && (
+            <div className="rounded-xl border border-dashed border-[#d8e1e8] bg-white px-5 py-12 text-center">
+              <p className="text-sm font-semibold text-[#35546d]">
+                Tidak ada proyek ditemukan
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                Ubah kata kunci atau filter proyek.
+              </p>
+            </div>
+          )}
+          <footer className="border-t border-[#dfe6ec] pt-4 text-[10px] text-slate-400">
+            Project testing ini tersimpan secara lokal dan tidak mengubah data
+            development.
+          </footer>
+        </section>
+
+        {testMode.state && testMode.userId && (
+          <PengawasTestPanel
+            state={testMode.state}
+            setState={testMode.setState}
+          />
+        )}
+        {testMode.state && testAssignmentOpen && (
+          <TestForemanAssignmentDialog
+            onClose={() => setTestAssignmentOpen(false)}
+            onAssign={(ids) => {
+              const current = testMode.state;
+              if (!current) return;
+              testMode.setState(assignTestForemen(current, ids));
+              setTestAssignmentOpen(false);
+            }}
+          />
+        )}
+        {project && testMode.state && testContractOpen && (
+          <SupervisorContractModal
+            project={project}
+            localMode
+            onLocalSign={(signature) => {
+              const current = testMode.state;
+              if (current) {
+                testMode.setState(signTestContract(current, signature));
+              }
+            }}
+            onClose={() => setTestContractOpen(false)}
+          />
+        )}
+      </div>
+    );
+  }
 
   if (loading) {
     return (

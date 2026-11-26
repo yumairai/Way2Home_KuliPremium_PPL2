@@ -17,6 +17,12 @@ import { errorMessage, apiGet, apiPatch, apiPost, apiPut } from "@/lib/api";
 import { compressImage } from "@/utils/image";
 import type { MandorIssueReport } from "@/data/mandor";
 import type { IssueAiAnalysisResult } from "@/services/ai-kendala.service";
+import { assignTestForemen, decideTestCustomerIssue, decideTestReport, savePengawasTestState, saveTestIssueResolution, TEST_FOREMEN, type PengawasTestState } from "@/data/pengawas-test";
+import { usePengawasTestMode } from "@/hooks/usePengawasTestMode";
+import { useAuthUser } from "@/hooks/useAuthUser";
+import PengawasTestPanel, {
+  PengawasTestControls,
+} from "@/components/pengawas/PengawasTestPanel";
 
 const money = (value: number) =>
   new Intl.NumberFormat("id-ID", {
@@ -106,19 +112,22 @@ function AssignmentDialog({
   project,
   onClose,
   onAssign,
+  localMode = false,
 }: {
   project: SupervisorProject;
   onClose: () => void;
   onAssign: (selectedIds: string[]) => Promise<void> | void;
+  localMode?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
-  const [mandors, setMandors] = useState<VerifiedForeman[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [mandors, setMandors] = useState<VerifiedForeman[]>(localMode ? TEST_FOREMEN.map((item) => ({ ...item, portfolio: `${item.experience} tahun pengerjaan konstruksi`, verified: true })) : []);
+  const [loading, setLoading] = useState(!localMode);
   const [submitting, setSubmitting] = useState(false);
   const [assignError, setAssignError] = useState("");
 
   useEffect(() => {
+    if (localMode) return;
     let active = true;
     apiGet<
       {
@@ -160,7 +169,7 @@ function AssignmentDialog({
     return () => {
       active = false;
     };
-  }, []);
+  }, [localMode]);
 
   const assignedNames =
     project.foremen ?? (project.foreman ? [project.foreman] : []);
@@ -443,6 +452,9 @@ function IssueWorkflow({
   onNotify,
   resolution,
   onPersist,
+  testMode,
+  onTestCustomerDecision,
+  onTestAi,
 }: {
   issue: SupervisorIssue;
   report?: MandorIssueReport;
@@ -460,6 +472,13 @@ function IssueWorkflow({
     },
   ) => void | Promise<void>;
   onPatch?: (next: IssueResolution) => void;
+  testMode?: boolean;
+  onTestCustomerDecision?: (
+    issueId: string,
+    decision: "approve" | "reject",
+    feedback?: string,
+  ) => void;
+  onTestAi?: (issue: SupervisorIssue) => Promise<IssueAiAnalysisResult | null>;
 }) {
   const [detailsOpen, setDetailsOpen] = useState(
     resolution?.status === "Menunggu approval customer" ||
@@ -490,6 +509,7 @@ function IssueWorkflow({
   const [evidence, setEvidence] = useState<string | null>(null);
   const [evidenceName, setEvidenceName] = useState("");
   const [discussionReply, setDiscussionReply] = useState("");
+  const [testCustomerFeedback, setTestCustomerFeedback] = useState("");
   const parsedAdditionalCost = parseIntegerInput(additionalCost);
   const parsedAdditionalDays = additionalDays.trim()
     ? Number(additionalDays)
@@ -565,12 +585,12 @@ function IssueWorkflow({
     setAiLoading(true);
     setSelectedOption(null);
     try {
-      const res = await apiPost<{
-        success: boolean;
-        analysis: IssueAiAnalysisResult;
-      }>(`/api/pengawas/kendala/${issue.id}/ai-analysis`);
-      if (res?.analysis) {
-        setAiData(res.analysis);
+      if (testMode && onTestAi) {
+        const analysis = await onTestAi(issue);
+        if (analysis) setAiData(analysis);
+      } else {
+        const res = await apiPost<{ success: boolean; analysis: IssueAiAnalysisResult }>(`/api/pengawas/kendala/${issue.id}/ai-analysis`);
+        if (res?.analysis) setAiData(res.analysis);
       }
     } catch (error) {
       onNotify(
@@ -718,6 +738,7 @@ function IssueWorkflow({
     const finalResolution: IssueResolution = {
       ...resolution,
       solution: discussionReply.trim(),
+      status: "Ditindaklanjuti",
       impactType,
       additionalCost: impactType === "waktu" ? null : parsedAdditionalCost,
       additionalDays: impactType === "biaya" ? null : parsedAdditionalDays,
@@ -1023,6 +1044,53 @@ function IssueWorkflow({
                   customer. Customer dapat menyetujui langsung atau meminta
                   penyesuaian melalui portal mereka.
                 </p>
+                {testMode && onTestCustomerDecision && (
+                  <div className="mt-3 border-t border-[#edd9b4] pt-3">
+                    <p className="text-[10px] font-bold text-[#75551f]">
+                      Kontrol simulasi customer
+                    </p>
+                    <p className="mt-1 text-[10px] leading-4 text-slate-600">
+                      Uji keputusan customer secara lokal tanpa membuka akun
+                      customer.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onTestCustomerDecision(issue.id, "approve")
+                      }
+                      className="mt-2 min-h-9 rounded-lg bg-[#edf6ef] px-3 text-[10px] font-semibold text-[#477c50] hover:bg-[#dcefe0]"
+                    >
+                      Simulasikan customer setuju
+                    </button>
+                    <label className="mt-3 block text-[10px] font-semibold text-[#40596f]">
+                      Alasan penolakan customer
+                      <textarea
+                        value={testCustomerFeedback}
+                        onChange={(event) =>
+                          setTestCustomerFeedback(event.target.value)
+                        }
+                        rows={2}
+                        placeholder="Contoh: Mohon sesuaikan biaya dengan anggaran."
+                        className="mt-1.5 w-full rounded-lg border border-[#dfe6ed] bg-white p-2.5 text-xs font-normal outline-none focus:border-[#477ba6]"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      disabled={testCustomerFeedback.trim().length < 5}
+                      onClick={() => {
+                        onTestCustomerDecision(
+                          issue.id,
+                          "reject",
+                          testCustomerFeedback.trim(),
+                        );
+                        setTestCustomerFeedback("");
+                      }}
+                      className="mt-2 min-h-9 rounded-lg border border-[#d8e2ea] bg-white px-3 text-[10px] font-semibold text-[#526b80] hover:bg-[#f3f7fa] disabled:cursor-not-allowed disabled:opacity-45"
+                    >
+                      Simulasikan customer menolak
+                    </button>
+                  </div>
+                )}
               </div>
             )}
             {resolution.status === "Diskusi dengan pengawas" && (
@@ -1370,13 +1438,14 @@ function IssueWorkflow({
   );
 }
 
-export default function ProjectDetail({ projectId }: { projectId: string }) {
+function ProjectDetailContent({ projectId, localMode, testState, setTestState, userId }: { projectId: string; localMode: boolean; testState: PengawasTestState | null; setTestState: (next: PengawasTestState) => void; userId: string | null }) {
   const {
     project: loaded,
     loading,
     error,
     reload,
-  } = useSupervisorProject(projectId);
+  } = useSupervisorProject(projectId, localMode, testState);
+  const [testAI, setTestAI] = useState<Record<string, IssueAiAnalysisResult>>({});
   const [addedForemanNames] = useState<string[]>([]);
   const [resolutionPatches, setResolutionPatches] = useState<
     Record<string, IssueResolution>
@@ -1407,6 +1476,10 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
     setDocUploading(true);
     setDocError("");
     try {
+      if (localMode && testState) {
+        const updated = { ...testState, project: { ...testState.project, documentation: [...testState.project.documentation, { id: `test-doc-${Date.now()}`, date: new Date().toISOString(), caption: docNote.trim(), image: docPhoto }] } };
+        setTestState(updated); setShowAddDoc(false); setDocPhoto(null); setDocNote(""); setDocStageId(""); notify("Dokumentasi dummy disimpan lokal."); return;
+      }
       await apiPost(`/api/pengawas/projects/${projectId}/documentation`, {
         url: docPhoto,
         catatan: docNote.trim(),
@@ -1472,6 +1545,16 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
       final?: boolean;
     },
   ) => {
+    if (localMode && testState) {
+      setTestState(
+        saveTestIssueResolution(
+          testState,
+          next,
+          opts?.final ? "Keputusan final pengawas" : undefined,
+        ),
+      );
+      return;
+    }
     await apiPut(`/api/pengawas/kendala/${next.issueId}/resolution`, {
       resolution_id: loaded?.resolutions?.find(
         (item) => item.issueId === next.issueId,
@@ -1539,6 +1622,16 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
         document.getElementById(`revision-${id}`) as HTMLTextAreaElement | null
       )?.value?.trim() ?? "";
     try {
+      if (localMode && testState) {
+        const nextState = decideTestReport(testState, id, decision, feedback);
+        if (decision === "Disetujui" && nextState === testState) {
+          notify(`Batas pembayaran saat ini ${testState.paidInstallments.includes(3) ? 100 : testState.paidInstallments.includes(2) ? 80 : testState.paidInstallments.includes(1) ? 55 : 30}%. Bayar cicilan berikutnya untuk melanjutkan progress.`);
+          return;
+        }
+        setTestState(nextState);
+        notify(decision === "Disetujui" ? "Laporan dummy diverifikasi. Progress lokal diperbarui." : "Laporan dummy ditandai perlu revisi.");
+        return;
+      }
       await apiPatch(`/api/pengawas/reports/${id}`, { decision, feedback });
 
       if (decision === "Disetujui" && localReport?.photo) {
@@ -1562,6 +1655,7 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
   const addCustomerUpdate = async () => {
     if (!customerMessage.trim()) return;
     try {
+      if (localMode) { notify("Update customer tidak tersedia pada project dummy lokal."); return; }
       await apiPost(`/api/pengawas/projects/${project.id}/updates`, {
         judul: "Informasi proyek",
         isi: customerMessage.trim(),
@@ -1579,6 +1673,16 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
   const mergedDocs = project.documentation;
   return (
     <div className="mx-auto max-w-[1500px] space-y-6 p-5 md:p-8 xl:p-10">
+      {localMode && testState && userId && (
+        <>
+          <PengawasTestPanel state={testState} setState={setTestState} />
+          <PengawasTestControls
+            state={testState}
+            setState={setTestState}
+            userId={userId}
+          />
+        </>
+      )}
       {toast && (
         <div
           role="status"
@@ -1682,6 +1786,13 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
           ))}
         </nav>
       </section>
+      {localMode && testState?.testStage !== "berjalan" && (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900">
+          Alokasi mandor dan tanda tangan kontrak pengawas dilakukan dari kartu
+          proyek di dashboard. Tanda tangan customer dan pembayaran DP akan
+          disimulasikan otomatis.
+        </p>
+      )}
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_330px]">
         <div className="space-y-5">
           <Surface
@@ -1737,7 +1848,12 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
                   Belum ada mandor ditetapkan.
                 </p>
               )}
-              {(project.foremen ?? (project.foreman ? [project.foreman] : []))
+              {localMode && !project.supervisorSignedAt && (
+                <p className="rounded-lg bg-[#f7f9fb] px-3 py-2 text-[10px] leading-5 text-slate-500">
+                  Untuk testing, pilih mandor melalui kartu proyek di dashboard.
+                </p>
+              )}
+              {!localMode && (project.foremen ?? (project.foreman ? [project.foreman] : []))
                 .length < 3 &&
                 !project.supervisorSignedAt &&
                 project.contractStatus !== "menunggu_ttd" && (
@@ -1966,6 +2082,40 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
                         resolution={resolution}
                         onPersist={persistResolution}
                         onPatch={patchResolution}
+                        testMode={localMode}
+                        onTestCustomerDecision={(issueId, decision, feedback) => {
+                          if (!testState) return;
+                          const updated = decideTestCustomerIssue(
+                            testState,
+                            issueId,
+                            decision,
+                            feedback,
+                          );
+                          if (updated === testState) {
+                            notify("Keputusan customer testing tidak dapat diproses.");
+                            return;
+                          }
+                          setTestState(updated);
+                          notify(
+                            decision === "approve"
+                              ? "Simulasi customer menyetujui usulan."
+                              : "Simulasi customer menolak usulan; diskusi dengan pengawas dibuka.",
+                          );
+                        }}
+                        onTestAi={async (testIssue) => {
+                          if (testAI[testIssue.id]) return testAI[testIssue.id];
+                          if (testState?.aiAnalyses[testIssue.id]) return testState.aiAnalyses[testIssue.id] as IssueAiAnalysisResult;
+                          const context = { project: { title: project.title, design: project.design, progress: project.progress, milestones: project.milestones.map((m) => m.name) }, issue: { title: testIssue.title, description: testIssue.description, category: report?.categoryLabel, affectedMilestone: report?.affectedMilestoneTitle, affectedSubtask: report?.affectedSubtaskTitle, workCondition: report?.workCondition, estimatedDelayDays: report?.estimatedDelayDays, additionalInfo: report?.additionalInfo } };
+                          const response = await fetch("/api/ai/kendala-testing", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(context) });
+                          if (!response.ok) throw new Error("Layanan AI testing tidak tersedia.");
+                          const result = await response.json() as IssueAiAnalysisResult;
+                          setTestAI((current) => ({ ...current, [testIssue.id]: result }));
+                          if (testState && userId) {
+                            const next = { ...testState, aiAnalyses: { ...testState.aiAnalyses, [testIssue.id]: result } };
+                            setTestState(next); savePengawasTestState(userId, next);
+                          }
+                          return result;
+                        }}
                       />
                     );
                   })
@@ -2139,15 +2289,21 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
                 Nilai kontrak{" "}
                 <b className="float-right">{money(project.value)}</b>
               </p>
-              <button
-                type="button"
-                onClick={() => setShowContract(true)}
-                className="mt-3 h-10 w-full rounded-lg border border-[#cfdce6] px-4 text-xs font-semibold text-[#355c78] transition hover:bg-[#f3f7fa] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#477ba6]"
-              >
-                {project.supervisorSignedAt
-                  ? "Lihat Kontrak · Tanda tangan tersimpan"
-                  : "Lihat & Tanda Tangani Kontrak"}
-              </button>
+              {localMode && !project.supervisorSignedAt ? (
+                <p className="mt-3 rounded-lg bg-[#f7f9fb] px-3 py-2 text-[10px] leading-5 text-slate-500">
+                  Tanda tangani kontrak dari kartu proyek di dashboard.
+                </p>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowContract(true)}
+                  className="mt-3 h-10 w-full rounded-lg border border-[#cfdce6] px-4 text-xs font-semibold text-[#355c78] transition hover:bg-[#f3f7fa] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#477ba6]"
+                >
+                  {project.supervisorSignedAt
+                    ? "Lihat Kontrak · Tanda tangan tersimpan"
+                    : "Lihat & Tanda Tangani Kontrak"}
+                </button>
+              )}
             </div>
           </Surface>
           <Surface id="jadwal" title="Jadwal proyek">
@@ -2217,7 +2373,7 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
               ))}
             </div>
             <p className="mt-3 text-[9px] text-slate-400">
-              Pengawas tidak dapat mengubah status pembayaran.
+              {localMode ? "Pembayaran testing mengatur batas verifikasi progress." : "Pengawas tidak dapat mengubah status pembayaran."}
             </p>
           </Surface>
         </aside>
@@ -2227,15 +2383,15 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
           project={project}
           onClose={() => setShowForemen(false)}
           onAssign={async (selectedIds) => {
-            await apiPost(`/api/pengawas/projects/${project.id}/mandors`, {
-              mandor_ids: selectedIds,
-            });
+            if (localMode && testState) setTestState(assignTestForemen(testState, selectedIds));
+            else await apiPost(`/api/pengawas/projects/${project.id}/mandors`, { mandor_ids: selectedIds });
             setShowForemen(false);
             notify(
               `${selectedIds.length} mandor berhasil ditugaskan ke proyek.`,
             );
-            await reload();
+            if (!localMode) await reload();
           }}
+          localMode={localMode}
         />
       )}
       {showAddDoc && (
@@ -2354,12 +2510,20 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
       {showContract && (
         <SupervisorContractModal
           project={project}
+          localMode={localMode}
           onClose={() => {
             setShowContract(false);
-            void reload();
+            if (!localMode) void reload();
           }}
         />
       )}
     </div>
   );
+}
+
+export default function ProjectDetail({ projectId }: { projectId: string }) {
+  const mode = usePengawasTestMode();
+  const { user, loading } = useAuthUser();
+  if (loading) return <div className="mx-auto max-w-3xl p-10 text-sm text-slate-500">Memuat halaman...</div>;
+  return <ProjectDetailContent projectId={projectId} localMode={mode.active} testState={mode.state} setTestState={mode.setState} userId={mode.userId ?? user?.id ?? null} />;
 }

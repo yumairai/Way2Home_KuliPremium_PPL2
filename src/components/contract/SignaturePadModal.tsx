@@ -6,10 +6,12 @@ export default function SignaturePadModal({
   onContinue,
   onClose,
   busy = false,
+  lockScroll = true,
 }: {
   onContinue: (signature: string) => void | Promise<void>;
   onClose: () => void;
   busy?: boolean;
+  lockScroll?: boolean;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
@@ -50,13 +52,13 @@ export default function SignaturePadModal({
     };
     document.addEventListener("keydown", onKey);
     const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    if (lockScroll) document.body.style.overflow = "hidden";
     return () => {
       window.removeEventListener("resize", resize);
       document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = previousOverflow;
+      if (lockScroll) document.body.style.overflow = previousOverflow;
     };
-  }, [busy, onClose, resize]);
+  }, [busy, lockScroll, onClose, resize]);
 
   const point = (event: React.PointerEvent<HTMLCanvasElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { logout } from "@/services/auth.service";
 import { useAuthUser } from "@/hooks/useAuthUser";
+import { isPengawasTestAccount } from "@/data/pengawas-test";
 import { clearDemoRole, useDemoRole } from "@/utils/demo-auth";
 
 export default function PengawasShell({
@@ -18,6 +19,7 @@ export default function PengawasShell({
   const demoRole = useDemoRole();
   const [drawer, setDrawer] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const testAccount = !!user && isPengawasTestAccount(user.email, user.isTestUser);
   useEffect(() => {
     if (demoRole) {
       if (demoRole !== "pengawas")
@@ -25,9 +27,9 @@ export default function PengawasShell({
       return;
     }
     if (!loading && !user) router.replace("/login");
-    else if (!loading && user && user.role !== "pengawas")
+    else if (!loading && user && user.role !== "pengawas" && !testAccount)
       router.replace("/dashboard");
-  }, [demoRole, loading, user, router]);
+  }, [demoRole, loading, user, router, testAccount]);
   const onLogout = async () => {
     setLoggingOut(true);
     if (demoRole) clearDemoRole();
@@ -35,7 +37,7 @@ export default function PengawasShell({
     router.replace("/login");
     router.refresh();
   };
-  if (!demoRole && (loading || !user || user.role !== "pengawas"))
+  if (!demoRole && !testAccount && (loading || !user || user.role !== "pengawas"))
     return (
       <main className="grid min-h-screen place-items-center bg-[#f3f6fa] text-sm text-slate-600">
         Memuat halaman...
