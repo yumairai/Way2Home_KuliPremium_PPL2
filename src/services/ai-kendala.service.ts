@@ -46,7 +46,7 @@ interface FastAiPredictResponse {
 /**
  * Panggil FastAPI AI Service untuk mendapatkan inferensi model Random Forest & HistGradientBoosting.
  */
-async function callAiKendalaService(payload: {
+export async function callAiKendalaService(payload: {
   kategori: string;
   dampak_waktu_hari?: number | null;
   deskripsi?: string | null;
