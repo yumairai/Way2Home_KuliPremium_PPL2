@@ -7,6 +7,7 @@ import { logout } from "@/services/auth.service";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { isPengawasTestAccount } from "@/data/pengawas-test";
 import { clearDemoRole, useDemoRole } from "@/utils/demo-auth";
+import { getUserDisplayName } from "@/utils/test-display-name";
 
 export default function PengawasShell({
   children,
@@ -16,6 +17,7 @@ export default function PengawasShell({
   const router = useRouter();
   const pathname = usePathname();
   const { user, loading } = useAuthUser();
+  const displayName = user ? getUserDisplayName(user) : "";
   const demoRole = useDemoRole();
   const [drawer, setDrawer] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -92,11 +94,11 @@ export default function PengawasShell({
       <div className="mt-auto border-t border-white/10 p-5">
         <div className="flex items-center gap-3 rounded-xl bg-white/[.06] p-3">
           <span className="grid h-9 w-9 place-items-center rounded-full bg-[#d6e5f2] text-xs font-bold text-[#17344e]">
-            {demoRole ? "PW" : user?.fullName?.slice(0, 2).toUpperCase()}
+            {demoRole ? "PW" : displayName.slice(0, 2).toUpperCase()}
           </span>
           <span className="min-w-0 flex-1">
             <b className="block truncate text-xs">
-              {demoRole ? "Rizky Ramadhan" : user?.fullName}
+              {demoRole ? "Rizky Ramadhan" : displayName}
             </b>
             <small className="text-[10px] text-slate-400">Pengawas</small>
           </span>
@@ -141,7 +143,7 @@ export default function PengawasShell({
           </div>
           <div className="flex items-center gap-3">
             <span className="hidden text-xs text-slate-500 sm:block">
-              {demoRole ? "Rizky Ramadhan" : user?.fullName}
+              {demoRole ? "Rizky Ramadhan" : displayName}
             </span>
             <button
               type="button"

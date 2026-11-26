@@ -11,6 +11,8 @@ import {
 } from "@/services/allocation.service";
 import { ServiceError } from "@/services/access.service";
 import { refreshAdminBadgeCounts } from "@/utils/admin-badge-counts";
+import { useAdminTestMode } from "@/hooks/useAdminTestMode";
+import { assignAdminTestSupervisor } from "@/data/admin-test";
 
 // ─── Status helpers ────────────────────────────────────────────────────────────
 
@@ -47,6 +49,7 @@ function AssignPengawasModal({
   pengawasList,
   onClose,
   onAssigned,
+  localMode = false,
 }: {
   project: ProjectForAdmin;
   pengawasList: PengawasOption[];
@@ -57,20 +60,22 @@ function AssignPengawasModal({
     pengawasName: string,
     notificationWarning?: string,
   ) => void;
+  localMode?: boolean;
 }) {
   const [selected, setSelected] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleAssign = async () => {
-    if (!selected) return;
+    if (!selected || project.pengawas_id) return;
     setSubmitting(true);
     setError(null);
     try {
+      const chosenPengawas = pengawasList.find((p) => p.id === selected);
+      if (localMode) { onAssigned(project.id, selected, chosenPengawas?.full_name ?? selected); onClose(); setSubmitting(false); return; }
       const supabase = createClient();
       await assignPengawasToProject(supabase, project.id, selected);
       refreshAdminBadgeCounts();
-      const chosenPengawas = pengawasList.find((p) => p.id === selected);
       let notificationWarning: string | undefined;
       try {
         const response = await fetch(
@@ -236,6 +241,7 @@ function AssignPengawasModal({
 // ─── Main Component ─────────────────────────────────────────────────────────────
 
 export default function SupervisorManagement() {
+  const testMode = useAdminTestMode();
   const [projects, setProjects] = useState<ProjectForAdmin[]>([]);
   const [pengawasList, setPengawasList] = useState<PengawasOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -251,14 +257,16 @@ export default function SupervisorManagement() {
   } | null>(null);
 
   const fetchData = useCallback(async () => {
+    if (testMode.active) return [[], []] as [ProjectForAdmin[], PengawasOption[]];
     const supabase = createClient();
     return Promise.all([
       getProjectsForAdmin(supabase),
       getActivePengawas(supabase),
     ]);
-  }, []);
+  }, [testMode.active]);
 
   const load = useCallback(async () => {
+    if (testMode.active) return;
     setLoading(true);
     setError(null);
     try {
@@ -274,9 +282,10 @@ export default function SupervisorManagement() {
     } finally {
       setLoading(false);
     }
-  }, [fetchData]);
+  }, [fetchData, testMode.active]);
 
   useEffect(() => {
+    if (testMode.active || !testMode.ready) return;
     let active = true;
 
     fetchData()
@@ -300,11 +309,19 @@ export default function SupervisorManagement() {
     return () => {
       active = false;
     };
-  }, [fetchData]);
+  }, [fetchData, testMode.active, testMode.ready, testMode.state]);
 
+  const visibleProjects =
+    testMode.active && testMode.state ? testMode.state.projects : projects;
+  const visiblePengawasList =
+    testMode.active && testMode.state
+      ? testMode.state.supervisors
+      : pengawasList;
+  const isLoading =
+    !testMode.ready || (testMode.active ? !testMode.state : loading);
   const filtered = useMemo(
     () =>
-      projects.filter((p) => {
+      visibleProjects.filter((p) => {
         const q = query.trim().toLowerCase();
         const matchQuery =
           !q ||
@@ -325,11 +342,11 @@ export default function SupervisorManagement() {
 
         return matchQuery && matchStatus && matchAllocation;
       }),
-    [projects, query, statusFilter, allocationFilter],
+    [visibleProjects, query, statusFilter, allocationFilter],
   );
 
-  const totalAllocated = projects.filter((p) => p.pengawas_id !== null).length;
-  const totalUnallocated = projects.filter(
+  const totalAllocated = visibleProjects.filter((p) => p.pengawas_id !== null).length;
+  const totalUnallocated = visibleProjects.filter(
     (p) => p.pengawas_id === null,
   ).length;
 
@@ -339,6 +356,15 @@ export default function SupervisorManagement() {
     pengawasName: string,
     notificationWarning?: string,
   ) => {
+    if (testMode.active && testMode.state) {
+      testMode.setState(
+        assignAdminTestSupervisor(
+          testMode.state,
+          projectId,
+          _pengawasId,
+        ),
+      );
+    }
     setProjects((curr) =>
       curr.map((p) =>
         p.id === projectId
@@ -355,7 +381,7 @@ export default function SupervisorManagement() {
     window.setTimeout(() => setNotice(null), 8000);
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="mx-auto max-w-[1500px] space-y-6 p-5 md:p-8 xl:p-10">
         <div className="flex min-h-[300px] items-center justify-center rounded-2xl border border-[#e5eaf0] bg-white">
@@ -419,7 +445,7 @@ export default function SupervisorManagement() {
         {[
           {
             label: "Total proyek",
-            value: projects.length,
+            value: visibleProjects.length,
             tone: "text-[#294c69] bg-[#eaf1f6]",
           },
           {
@@ -457,7 +483,7 @@ export default function SupervisorManagement() {
               Daftar Proyek
             </h2>
             <p className="mt-1 text-xs text-slate-500">
-              Menampilkan {filtered.length} dari {projects.length} proyek
+              Menampilkan {filtered.length} dari {visibleProjects.length} proyek
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -568,7 +594,7 @@ export default function SupervisorManagement() {
                   <td className="px-6 py-4 text-right">
                     {project.pengawas_id ? (
                       <span className="inline-flex h-9 items-center rounded-lg border border-[#e5e9ed] px-3 text-[10px] font-semibold text-slate-400">
-                        ✓ Sudah dialokasikan
+                        ✓ Sudah dialokasikan · {project.pengawas_name}
                       </span>
                     ) : !canAllocateStaff(project.status) ? (
                       <span className="inline-flex h-9 items-center rounded-lg border border-[#e5e9ed] px-3 text-[10px] font-semibold text-slate-400">
@@ -605,9 +631,9 @@ export default function SupervisorManagement() {
 
         <div className="flex flex-col gap-1 border-t border-[#edf0f4] px-5 py-3 text-[10px] text-slate-400 sm:flex-row sm:justify-between">
           <span>
-            Menampilkan {filtered.length} dari {projects.length} proyek
+            Menampilkan {filtered.length} dari {visibleProjects.length} proyek
           </span>
-          <span>Data diambil dari database aktual.</span>
+          <span>{testMode.active ? "Data dan alokasi tersimpan lokal di browser." : "Data diambil dari database aktual."}</span>
         </div>
       </section>
 
@@ -615,9 +641,10 @@ export default function SupervisorManagement() {
       {selectedProject && (
         <AssignPengawasModal
           project={selectedProject}
-          pengawasList={pengawasList}
+          pengawasList={visiblePengawasList}
           onClose={() => setSelectedProject(null)}
           onAssigned={handleAssigned}
+          localMode={testMode.active}
         />
       )}
     </div>

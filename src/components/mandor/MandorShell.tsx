@@ -15,6 +15,7 @@ import {
   saveMandorTestState,
 } from "@/data/mandor-test";
 import { isMandorTestUser, useMandorTestMode } from "@/hooks/useMandorProjects";
+import { getUserDisplayName } from "@/utils/test-display-name";
 import {
   initialMandorRegistration,
   type MandorRegistrationStatus,
@@ -93,6 +94,7 @@ export default function MandorShell({
   const router = useRouter();
   const pathname = usePathname();
   const { user, loading } = useAuthUser();
+  const displayName = user ? getUserDisplayName(user) : "";
   const demoRole = useDemoRole();
   const { status } = useMandorStatus();
   const isTestMode = isMandorTestUser(user);
@@ -178,8 +180,8 @@ export default function MandorShell({
           <span className="grid h-9 w-9 place-items-center rounded-full bg-[#d6e5f2] text-xs font-bold text-[#17344e]">
             {demoRole
               ? "BS"
-              : user?.fullName
-                ? user.fullName
+              : displayName
+                ? displayName
                     .trim()
                     .split(/\s+/)
                     .map((part) => part[0])
@@ -190,7 +192,7 @@ export default function MandorShell({
           </span>
           <span className="min-w-0 flex-1">
             <b className="block truncate text-xs">
-              {demoRole ? "Bima Saputra" : user?.fullName || "Mandor"}
+              {demoRole ? "Bima Saputra" : displayName || "Mandor"}
             </b>
             <small className="text-[10px] text-slate-400">Mandor</small>
           </span>
