@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { logout } from "@/services/auth.service";
 import { useAuthUser, ROLE_LABEL } from "@/hooks/useAuthUser";
+import { getUserDisplayName } from "@/utils/test-display-name";
 
 export default function DefaultNavbar() {
   const router = useRouter();
@@ -16,6 +17,7 @@ export default function DefaultNavbar() {
   // user = null  → guest
   // user = {...} → sudah login (data dari tabel profiles)
   const { user, loading } = useAuthUser();
+  const displayName = user ? getUserDisplayName(user) : "";
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -127,7 +129,7 @@ export default function DefaultNavbar() {
                     >
                       <Image
                         src={user.avatarUrl || "/images/aset/avatar.jpg"}
-                        alt={`Foto profil ${user.fullName}`}
+                        alt={`Foto profil ${displayName}`}
                         width={48}
                         height={48}
                         unoptimized={Boolean(user.avatarUrl)}
@@ -155,7 +157,7 @@ export default function DefaultNavbar() {
                                 src={
                                   user.avatarUrl || "/images/aset/avatar.jpg"
                                 }
-                                alt={`Foto profil ${user.fullName}`}
+                                alt={`Foto profil ${displayName}`}
                                 width={48}
                                 height={48}
                                 unoptimized={Boolean(user.avatarUrl)}
@@ -165,7 +167,7 @@ export default function DefaultNavbar() {
 
                             <div>
                               <h3 className="text-lg font-extrabold leading-tight">
-                                {user.fullName}
+                                {displayName}
                               </h3>
 
                               <p className="mt-1 text-xs opacity-90">
@@ -337,7 +339,7 @@ export default function DefaultNavbar() {
               <div className="flex items-center gap-3.5 rounded-2xl border border-[#cac4cf]/45 bg-gradient-to-br from-[#004796]/[0.08] to-[#045ec2]/[0.04] px-4 py-3.5">
                 <Image
                   src={user.avatarUrl || "/images/aset/avatar.jpg"}
-                  alt={`Foto profil ${user.fullName}`}
+                  alt={`Foto profil ${displayName}`}
                   width={48}
                   height={48}
                   unoptimized={Boolean(user.avatarUrl)}
@@ -350,7 +352,7 @@ export default function DefaultNavbar() {
                   </p>
 
                   <h3 className="truncate text-base font-extrabold text-[#111e3f]">
-                    {user.fullName}
+                    {displayName}
                   </h3>
 
                   <p className="text-xs text-[#475569]">
